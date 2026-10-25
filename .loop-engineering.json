@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "max_repair_iterations": 3,
+  "commands": [
+    {
+      "name": "unit-tests",
+      "argv": [
+        "{python}",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "required": true
+    },
+    {
+      "name": "compile-check",
+      "argv": [
+        "{python}",
+        "-m",
+        "compileall",
+        "-q",
+        "loop_engineering"
+      ],
+      "required": true
+    }
+  ]
+}

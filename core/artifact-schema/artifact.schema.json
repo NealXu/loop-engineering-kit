@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "artifact.schema.json",
+  "title": "Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "artifact_type",
+    "version",
+    "content",
+    "source",
+    "work_item_id"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "kind": { "const": "artifact" },
+    "artifact_type": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "content": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "work_item_id": { "type": "string", "minLength": 1 }
+  }
+}

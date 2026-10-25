@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "iteration.schema.json",
+  "title": "Iteration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "work_item_id",
+    "cycle",
+    "input_versions",
+    "changes",
+    "result"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "kind": { "const": "iteration" },
+    "work_item_id": { "type": "string", "minLength": 1 },
+    "cycle": { "type": "integer", "minimum": 1 },
+    "input_versions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "changes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "result": {
+      "enum": ["CONTINUE", "ACCEPT", "REPAIR", "ESCALATE", "STOP"]
+    }
+  }
+}

@@ -1,0 +1,104 @@
+# Universal Work Loop Engine Kit v0.2.0
+
+基于证据的多角色工作闭环。代码开发是第一个可运行领域实例；架构设计用于
+验证同一套协议也可以处理非代码交付。
+
+## 当前实现（阶段 1）
+
+- `core/`：通用协议、状态机、决策策略，以及 Work Item、Artifact、
+  Finding、Verification、Decision、Iteration 六类 JSON Schema。
+- `roles/`：Producer、Verifier、Reviewer、Challenger、Arbiter 五类职责。
+- `workflows/`：迭代交付、对抗审查、受控持续改进。
+- `packs/`：软件开发和架构设计两个领域包。
+- `.codex/`、`.claude/`、`adapters/`：Codex 与 Claude Code 的角色映射。
+- `loop_engineering/cli.py`：无第三方依赖的环境检查和确定性验证报告工具。
+
+阶段 2（持久化运行时、检查点、恢复和人工审批）和阶段 3（指标、版本注册、
+自动改进候选）尚未实现，当前文档不会把它们描述成已有能力。
+
+## 快速开始
+
+Windows PowerShell：
+
+```powershell
+py -3 loop_engineering\cli.py doctor
+py -3 -m unittest discover -s tests -v
+.\scripts\install.ps1 -Target Both -Scope User
+```
+
+如果本机执行策略拒绝未签名脚本，可只在这一次安装进程中绕过策略：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Target Both -Scope User
+```
+
+CentOS 8 / Linux：
+
+```bash
+python3 loop_engineering/cli.py doctor
+python3 -m unittest discover -s tests -v
+bash scripts/install.sh --target both --scope user
+```
+
+`doctor` 默认检查当前 Kit 是否完整。在普通目标项目中检查可选配置时使用
+`--mode project`：缺少 `.loop-engineering.json` 不算失败，存在但格式或检查项
+无效则失败。
+
+默认用户级安装五个角色和自包含的 `loop-engineering` Skill。安装器会复制
+`core/`、`roles/`、`workflows/`、`packs/`，遇到已有文件时跳过，不覆盖。
+`AGENTS.md` / `CLAUDE.md` 仍需手动合并到目标项目。
+
+从已有版本升级时显式传入升级开关。安装器会先为将被替换的受管文件生成
+同目录 `.bak-<时间戳>` 备份，再覆盖；旧 `implementer` Agent 也会备份后
+移出活动配置：
+
+```powershell
+.\scripts\install.ps1 -Target Both -Scope User -Upgrade
+```
+
+```bash
+bash scripts/install.sh --target both --scope user --upgrade
+```
+
+## 使用方式
+
+1. 在目标项目中安装对应宿主适配。
+2. 将 `AGENTS.md` 或 `CLAUDE.md` 的规则合并进现有项目说明。
+3. 选择 `pack.md`，定义 Work Item、验收标准、风险等级与返修预算。
+4. 按 `workflows/iterative-delivery/workflow.md` 完成生产、验证、审查、
+   挑战、汇总和决策。
+5. 代码域可将 `.loop-engineering.example.json` 复制为项目根目录
+   `.loop-engineering.json`，配置确定性检查。
+6. 运行 `python3 loop_engineering/cli.py verify --root .`（Windows 用
+   `py -3`）并保留 JSON/Markdown 证据。
+
+配置示例：
+
+```json
+{
+  "version": 1,
+  "max_repair_iterations": 3,
+  "commands": [
+    {
+      "name": "unit-tests",
+      "argv": ["{python}", "-m", "unittest", "discover", "-s", "tests", "-v"],
+      "required": true
+    }
+  ]
+}
+```
+
+`argv` 必须是参数数组，默认 `shell=False`。`{python}` 替换为当前 CLI 使用的
+Python 解释器。只配置你信任的本地命令。
+
+## 验收门禁
+
+`ACCEPT` 要求：验收标准明确；必需检查有实际执行证据；没有未解决的
+`blocking`/`high` 问题；重要分歧已经按规则解决或升级。`BLOCKED` 与
+`NOT_RUN` 永远不算通过。默认最多返修 3 轮，达到上限后只能停止或升级。
+
+## 边界
+
+宿主负责实际启动模型子 Agent；本工具不绕过 Codex/Claude Code 调模型。
+Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。CentOS 8
+建议使用组织批准的 Python 3.8+。
