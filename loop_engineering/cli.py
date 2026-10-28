@@ -116,6 +116,7 @@ def doctor(root, mode="kit"):
         ".claude/agents/arbiter.md",
         "adapters/codex/README.md",
         "adapters/claude-code/README.md",
+        "loop_engineering/cli.py",
     ):
         present = (root / name).exists()
         print("{}: {}".format(name, "present" if present else "missing"))
@@ -179,6 +180,53 @@ def markdown(data):
     return "\n".join(lines)
 
 
+def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False):
+    common_stops = [
+        "acceptance criteria have passing evidence",
+        "the same failure fingerprint repeats without new evidence",
+        "the repair budget is exhausted",
+        "required evidence is BLOCKED or unavailable",
+    ]
+    if risk in ("high", "critical") or irreversible:
+        data = {
+            "tier": "L3",
+            "roles": ["producer", "verifier", "reviewer", "challenger",
+                      "arbiter"],
+            "review_independence": "independent",
+            "max_repair_iterations": 3,
+            "human_approval_required": True,
+        }
+    elif ambiguous or files > 1 or risk == "medium":
+        data = {
+            "tier": "L2",
+            "roles": ["producer", "verifier", "reviewer", "arbiter"],
+            "review_independence": "independent",
+            "max_repair_iterations": 3,
+            "human_approval_required": False,
+        }
+    elif trivial and files <= 1:
+        data = {
+            "tier": "L0",
+            "roles": [],
+            "review_independence": "not_required",
+            "max_repair_iterations": 0,
+            "human_approval_required": False,
+        }
+    else:
+        data = {
+            "tier": "L1",
+            "roles": ["producer", "verifier", "arbiter"],
+            "review_independence": "non_independent",
+            "max_repair_iterations": 2,
+            "human_approval_required": False,
+        }
+    data["stop_conditions"] = common_stops
+    if data["tier"] == "L3":
+        data["stop_conditions"].append(
+            "human approval is missing before an irreversible action")
+    return data
+
+
 def verify(root, config_path, report_dir, timeout):
     root = Path(root).resolve()
     config_path = Path(config_path).resolve() if config_path else root / ".loop-engineering.json"
@@ -222,6 +270,13 @@ def main():
     v.add_argument("--config", default=None)
     v.add_argument("--report-dir", default=None)
     v.add_argument("--timeout", type=int, default=900)
+    rte = subs.add_parser("route")
+    rte.add_argument("--risk", choices=("low", "medium", "high", "critical"),
+                     default="low")
+    rte.add_argument("--files", type=int, default=1)
+    rte.add_argument("--trivial", action="store_true")
+    rte.add_argument("--ambiguous", action="store_true")
+    rte.add_argument("--irreversible", action="store_true")
     r = subs.add_parser("report")
     r.add_argument("--input", required=True)
     r.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -232,6 +287,13 @@ def main():
         if a.timeout <= 0:
             p.error("--timeout must be positive")
         return verify(a.root, a.config, a.report_dir, a.timeout)
+    if a.command == "route":
+        if a.files < 0:
+            p.error("--files must be non-negative")
+        print(json.dumps(route_plan(
+            a.risk, a.files, a.trivial, a.ambiguous, a.irreversible),
+            indent=2, ensure_ascii=False))
+        return 0
     try:
         data = load_json(a.input)
     except ValueError as exc:

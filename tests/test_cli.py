@@ -21,6 +21,7 @@ class CliTests(unittest.TestCase):
         self.assertIn("core/protocol.md: present", p.stdout)
         self.assertIn("roles/challenger.md: present", p.stdout)
         self.assertIn("packs/architecture-design/pack.md: present", p.stdout)
+        self.assertIn("loop_engineering/cli.py: present", p.stdout)
 
     def test_artifact_schemas_are_valid_json(self):
         schema_root = CLI.parents[1] / "core" / "artifact-schema"
@@ -171,6 +172,47 @@ class CliTests(unittest.TestCase):
                 p = run_cli("doctor", "--root", root, "--mode", "project")
                 self.assertEqual(p.returncode, 1)
                 self.assertIn("max_repair_iterations", p.stdout)
+
+    def test_route_selects_contract_for_each_tier(self):
+        cases = [
+            (("--trivial", "--risk", "low", "--files", "1"),
+             "L0", [], "not_required", 0),
+            (("--risk", "low", "--files", "1"),
+             "L1", ["producer", "verifier", "arbiter"], "non_independent", 2),
+            (("--risk", "medium", "--files", "2"),
+             "L2", ["producer", "verifier", "reviewer", "arbiter"],
+             "independent", 3),
+            (("--risk", "high", "--files", "1", "--irreversible"),
+             "L3", ["producer", "verifier", "reviewer", "challenger",
+                    "arbiter"], "independent", 3),
+        ]
+        for args, tier, roles, independence, budget in cases:
+            with self.subTest(tier=tier):
+                p = run_cli("route", *args)
+                self.assertEqual(p.returncode, 0, p.stderr)
+                data = json.loads(p.stdout)
+                self.assertEqual(data["tier"], tier)
+                self.assertEqual(data["roles"], roles)
+                self.assertEqual(data["review_independence"], independence)
+                self.assertEqual(data["max_repair_iterations"], budget)
+
+    def test_route_promotes_ambiguous_or_irreversible_work(self):
+        ambiguous = json.loads(run_cli(
+            "route", "--trivial", "--risk", "low", "--files", "1",
+            "--ambiguous").stdout)
+        irreversible = json.loads(run_cli(
+            "route", "--risk", "low", "--files", "1",
+            "--irreversible").stdout)
+        self.assertEqual(ambiguous["tier"], "L2")
+        self.assertIn("reviewer", ambiguous["roles"])
+        self.assertEqual(irreversible["tier"], "L3")
+        self.assertIn("challenger", irreversible["roles"])
+        self.assertTrue(irreversible["human_approval_required"])
+
+    def test_route_rejects_negative_file_count(self):
+        p = run_cli("route", "--risk", "low", "--files", "-1")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("--files must be non-negative", p.stderr)
 
 
 if __name__ == "__main__":

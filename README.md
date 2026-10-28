@@ -1,4 +1,4 @@
-# Universal Work Loop Engine Kit v0.2.0
+# Universal Work Loop Engine Kit v0.3.0
 
 基于证据的多角色工作闭环。代码开发是第一个可运行领域实例；架构设计用于
 验证同一套协议也可以处理非代码交付。
@@ -11,7 +11,8 @@
 - `workflows/`：迭代交付、对抗审查、受控持续改进。
 - `packs/`：软件开发和架构设计两个领域包。
 - `.codex/`、`.claude/`、`adapters/`：Codex 与 Claude Code 的角色映射。
-- `loop_engineering/cli.py`：无第三方依赖的环境检查和确定性验证报告工具。
+- `loop_engineering/cli.py`：无第三方依赖的任务分级、环境检查和确定性
+  验证报告工具。
 
 阶段 2（持久化运行时、检查点、恢复和人工审批）和阶段 3（指标、版本注册、
 自动改进候选）尚未实现，当前文档不会把它们描述成已有能力。
@@ -45,7 +46,8 @@ bash scripts/install.sh --target both --scope user
 无效则失败。
 
 默认用户级安装五个角色和自包含的 `loop-engineering` Skill。安装器会复制
-`core/`、`roles/`、`workflows/`、`packs/`，遇到已有文件时跳过，不覆盖。
+`core/`、`roles/`、`workflows/`、`packs/`、`loop_engineering/`，遇到已有
+文件时跳过，不覆盖。
 `AGENTS.md` / `CLAUDE.md` 仍需手动合并到目标项目。
 
 从已有版本升级时显式传入升级开关。安装器会先为将被替换的受管文件生成
@@ -64,13 +66,35 @@ bash scripts/install.sh --target both --scope user --upgrade
 
 1. 在目标项目中安装对应宿主适配。
 2. 将 `AGENTS.md` 或 `CLAUDE.md` 的规则合并进现有项目说明。
-3. 选择 `pack.md`，定义 Work Item、验收标准、风险等级与返修预算。
-4. 按 `workflows/iterative-delivery/workflow.md` 完成生产、验证、审查、
+3. 先运行 `python loop_engineering/cli.py route` 选择 L0-L3；只启动该档位
+   需要的角色。
+4. 选择 `pack.md`，定义 Work Item、验收标准、风险等级与返修预算。
+5. 按 `workflows/iterative-delivery/workflow.md` 完成生产、验证、审查、
    挑战、汇总和决策。
-5. 代码域可将 `.loop-engineering.example.json` 复制为项目根目录
+6. 代码域可将 `.loop-engineering.example.json` 复制为项目根目录
    `.loop-engineering.json`，配置确定性检查。
-6. 运行 `python3 loop_engineering/cli.py verify --root .`（Windows 用
+7. 运行 `python3 loop_engineering/cli.py verify --root .`（Windows 用
    `py -3`）并保留 JSON/Markdown 证据。
+
+任务分级：
+
+| 档位 | 场景 | 角色 | 返修预算 |
+|---|---|---|---:|
+| L0 | 低风险、单点、无歧义 | 宿主直接修改与检查 | 0 |
+| L1 | 有界单文件任务 | Producer、Verifier、Arbiter | 2 |
+| L2 | 多文件、中风险或有歧义 | L1 + 独立 Reviewer | 3 |
+| L3 | 高风险或不可逆动作 | L2 + Challenger + 人工批准 | 3 |
+
+例如：
+
+```powershell
+py -3 loop_engineering\cli.py route --risk medium --files 2
+py -3 loop_engineering\cli.py route --risk low --files 1 --trivial
+py -3 loop_engineering\cli.py route --risk low --files 1 --irreversible
+```
+
+`route` 只输出控制策略，不修改项目。L0 不要求多角色记录；非平凡任务仍使用
+原有 Work Item、Verification、Finding、Decision 和 Iteration 契约。
 
 配置示例：
 
@@ -96,9 +120,25 @@ Python 解释器。只配置你信任的本地命令。
 `ACCEPT` 要求：验收标准明确；必需检查有实际执行证据；没有未解决的
 `blocking`/`high` 问题；重要分歧已经按规则解决或升级。`BLOCKED` 与
 `NOT_RUN` 永远不算通过。默认最多返修 3 轮，达到上限后只能停止或升级。
+如果同一失败指纹重复出现且 artifact 版本没有变化，立即停止或升级。
 
 ## 边界
 
 宿主负责实际启动模型子 Agent；本工具不绕过 Codex/Claude Code 调模型。
 Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。CentOS 8
 建议使用组织批准的 Python 3.8+。
+
+## 设计依据
+
+v0.3.0 的任务分级、独立审查、上下文检查点和停机规则参考了以下工程结论：
+
+- Agentless 表明简单、可解释的定位—修复—验证路径必须保留为基线。
+- SWE-agent 表明工具与文件接口本身会改变 Agent 行为。
+- Rethinking Verification in Agent Harnesses 发现独立 Reviewer 比单纯增加
+  完成检查通常具有更好的准确率—成本折中。
+- TurnCost 发现编码 Agent 的成本主要由回合数而非平均观察长度解释。
+- Context as a Tool 与 The Hidden Costs of Forgetting 说明上下文应作为可维护
+  工作集，且压缩必须计入重复取数与缓存成本。
+- Why Do Multi-Agent LLM Systems Fail? 说明增加角色并不自动增加可靠性。
+
+这里的数值均为论文在特定模型、任务和预算下的报告，不是本仓库的实测提升。

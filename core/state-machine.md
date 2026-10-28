@@ -18,10 +18,16 @@
 
 `VERIFY`, `REVIEW`, and `CHALLENGE` may run in parallel. `RECONCILE` starts
 only after every stage required by the selected pack has returned.
+The control route determines which stages are required. L0 may use the host's
+direct edit-and-check path; L1 requires verification but not independent
+review; L2 requires independent review; L3 also requires challenge and human
+approval before irreversible actions.
 
 ## Transition Guards
 
 - Missing acceptance criteria blocks `DEFINE -> PRODUCE`.
+- A route that permits no artifact repair blocks a second artifact version
+  unless the Controller explicitly redefines the task.
 - Missing artifact version blocks review and verification.
 - Missing evidence is not a pass.
 - A required check failure or open `blocking`/`high` finding permits only
@@ -34,6 +40,8 @@ only after every stage required by the selected pack has returned.
   records a rule-based resolution or escalates it.
 - Reaching the artifact repair limit permits only `STOP`, `ESCALATE`, or an
   evidence-only verification route that does not change the artifact.
+- A repeated failure fingerprint with no artifact change permits only `STOP`
+  or `ESCALATE` unless new evidence changes the diagnosis.
 - No configured checks prevents automatic `ACCEPT`.
 
 ## Parallelism
@@ -49,3 +57,8 @@ The state and version identifiers are part of the records so a later run can
 resume from the last completed stage. Persistent runtime storage is a Stage 2
 capability; until implemented, the Controller records the same identifiers in
 the run report.
+
+Context compression is not recovery by itself. A resumed run needs the frozen
+artifact version, original evidence references, open findings, and the exact
+next state. When host metrics exist, retain turn count, tool-call count, token
+use, and cost alongside the outcome.

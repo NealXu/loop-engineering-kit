@@ -31,6 +31,11 @@ Apply the first matching rule:
 5. All required criteria have passing evidence, no `blocking`/`high` finding is
    open, and the changes are understood: `ACCEPT`.
 
+A failure fingerprint combines the failed check, failure signature, and
+artifact versions. If the same fingerprint repeats with no artifact change,
+the loop has not made progress: `STOP`, or `ESCALATE` when new authority or a
+changed scope can unlock it.
+
 ## Acceptance Record
 
 An `ACCEPT` decision records:
@@ -50,3 +55,6 @@ findings it targets, changed artifact versions, and rerun checks. Repeating the
 same failure without new evidence stops the loop rather than consuming the
 budget silently. Only `repair_kind: artifact` consumes the budget; an
 evidence-only `repair_kind: evidence` cycle does not.
+
+The selected control tier may use a smaller budget. L0 uses zero, L1 uses two,
+and L2/L3 default to three. A budget is a ceiling, not a target.

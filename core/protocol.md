@@ -23,6 +23,39 @@ agent environments execute the loop; they are not the loop itself.
 Artifact repair returns to `PRODUCE`; evidence-only repair returns to `VERIFY`.
 Other repair routes follow the decision's declared `next_state`.
 
+## Control Route
+
+Select the smallest complete loop before producing an artifact:
+
+| Tier | Use when | Required roles | Review independence | Repair budget |
+|---|---|---|---|---:|
+| `L0` | Low-risk trivial change with no ambiguity | none or the direct host workflow | not required | 0 |
+| `L1` | Bounded single-file work | Producer, Verifier, Arbiter | not required | 2 |
+| `L2` | Multiple files, medium risk, or ambiguity | Producer, Verifier, Reviewer, Arbiter | required | 3 |
+| `L3` | High/critical risk or an irreversible action | all five roles | required | 3 |
+
+Ambiguity promotes the route. Irreversibility always requires `L3` and human
+approval before the irreversible action. A host may combine duties only when
+the route allows it and must disclose `non_independent` review.
+
+The route is a control budget, not evidence. The Controller records the chosen
+tier and later reports omitted roles or checks.
+
+## Working Set
+
+At Define, after the first artifact version, and before an artifact repair,
+update a short run brief containing:
+
+- current goal and acceptance criteria;
+- artifact ids and versions;
+- verification evidence references;
+- open findings and disagreements;
+- the next action and the current failure fingerprint.
+
+The brief is a working set, not a replacement for source evidence. Do not
+delete original command output or trajectory records merely to shorten the
+conversation. Preserve the information needed to resume and audit the run.
+
 ## Required Records
 
 Every non-trivial run should produce these machine-readable records when they
@@ -53,6 +86,9 @@ reports may summarize records, but must not replace their evidence.
 - Recovery: repair addresses named findings and reruns affected checks.
 - Stopping: acceptance criteria, iteration budget, timeout, and escalation path
   are defined before work starts.
+- No progress: if the same check fails with the same failure fingerprint and
+  no artifact version changes, stop or escalate instead of spending the
+  remaining budget on another identical turn.
 
 ## Authority Boundary
 

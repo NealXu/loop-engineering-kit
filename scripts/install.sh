@@ -26,7 +26,7 @@ copy_tree_safe() {
       echo "Backed up: $target.bak-$BACKUP_STAMP"
     fi
     mkdir -p "$(dirname "$target")"; cp -f "$file" "$target"; echo "Installed: $target"
-  done < <(find "$src" -type f -print0)
+  done < <(find "$src" -type f ! -path '*/__pycache__/*' ! -name '*.pyc' -print0)
 }
 retire_legacy_file() {
   local path="$1" backup
@@ -39,7 +39,7 @@ if [[ "$TARGET" == "codex" || "$TARGET" == "both" ]]; then
   copy_tree_safe "$REPO_ROOT/.codex/agents" "$CODEX_ROOT/agents"
   retire_legacy_file "$CODEX_ROOT/agents/implementer.toml"
   copy_tree_safe "$REPO_ROOT/.agents/skills/loop-engineering" "$CODEX_SKILLS/loop-engineering"
-  for package in core roles workflows packs; do
+  for package in core roles workflows packs loop_engineering; do
     copy_tree_safe "$REPO_ROOT/$package" "$CODEX_SKILLS/loop-engineering/$package"
   done
 fi
@@ -47,7 +47,7 @@ if [[ "$TARGET" == "claude" || "$TARGET" == "both" ]]; then
   copy_tree_safe "$REPO_ROOT/.claude/agents" "$CLAUDE_ROOT/agents"
   retire_legacy_file "$CLAUDE_ROOT/agents/implementer.md"
   copy_tree_safe "$REPO_ROOT/.claude/skills/loop-engineering" "$CLAUDE_ROOT/skills/loop-engineering"
-  for package in core roles workflows packs; do
+  for package in core roles workflows packs loop_engineering; do
     copy_tree_safe "$REPO_ROOT/$package" "$CLAUDE_ROOT/skills/loop-engineering/$package"
   done
 fi

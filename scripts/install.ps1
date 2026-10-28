@@ -17,7 +17,9 @@ if ($Scope -eq "User") {
   $ClaudeRoot = Join-Path $ProjectRoot ".claude"
 }
 function Copy-TreeFilesSafe($Source, $Destination) {
-  Get-ChildItem -Path $Source -File -Recurse | ForEach-Object {
+  Get-ChildItem -Path $Source -File -Recurse | Where-Object {
+    $_.FullName -notmatch '[\\/]__pycache__[\\/]' -and $_.Extension -ne '.pyc'
+  } | ForEach-Object {
     $Relative = $_.FullName.Substring($Source.Length).TrimStart([char[]]@('\','/'))
     $DestFile = Join-Path $Destination $Relative
     if (Test-Path $DestFile) {
@@ -41,7 +43,7 @@ if ($Target -in @("Codex","Both")) {
   Copy-TreeFilesSafe (Join-Path $RepoRoot ".codex\agents") (Join-Path $CodexRoot "agents")
   Retire-LegacyFile (Join-Path $CodexRoot "agents\implementer.toml")
   Copy-TreeFilesSafe (Join-Path $RepoRoot ".agents\skills\loop-engineering") (Join-Path $CodexSkills "loop-engineering")
-  foreach ($Package in @("core","roles","workflows","packs")) {
+  foreach ($Package in @("core","roles","workflows","packs","loop_engineering")) {
     Copy-TreeFilesSafe (Join-Path $RepoRoot $Package) (Join-Path $CodexSkills "loop-engineering\$Package")
   }
 }
@@ -49,7 +51,7 @@ if ($Target -in @("Claude","Both")) {
   Copy-TreeFilesSafe (Join-Path $RepoRoot ".claude\agents") (Join-Path $ClaudeRoot "agents")
   Retire-LegacyFile (Join-Path $ClaudeRoot "agents\implementer.md")
   Copy-TreeFilesSafe (Join-Path $RepoRoot ".claude\skills\loop-engineering") (Join-Path $ClaudeRoot "skills\loop-engineering")
-  foreach ($Package in @("core","roles","workflows","packs")) {
+  foreach ($Package in @("core","roles","workflows","packs","loop_engineering")) {
     Copy-TreeFilesSafe (Join-Path $RepoRoot $Package) (Join-Path $ClaudeRoot "skills\loop-engineering\$Package")
   }
 }

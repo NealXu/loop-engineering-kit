@@ -24,6 +24,10 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue(skill.exists())
             self.assertTrue((target / ".claude" / "skills" / "loop-engineering"
                              / "core" / "protocol.md").exists())
+            self.assertTrue((target / ".claude" / "skills" / "loop-engineering"
+                             / "loop_engineering" / "cli.py").exists())
+            self.assertTrue((target / ".agents" / "skills" / "loop-engineering"
+                             / "loop_engineering" / "cli.py").exists())
             self.assertTrue(legacy.exists())
 
             marker = "local marker"
