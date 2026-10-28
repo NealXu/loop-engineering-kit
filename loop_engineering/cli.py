@@ -143,6 +143,7 @@ def run_one(spec, root, timeout):
     started = time.monotonic()
     try:
         p = subprocess.run(argv, cwd=str(root), shell=False, text=True,
+                           encoding="utf-8", errors="replace",
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                            timeout=timeout, check=False)
         return dict(base, status="PASS" if p.returncode == 0 else "FAIL",

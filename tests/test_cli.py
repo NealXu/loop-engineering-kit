@@ -134,6 +134,26 @@ class CliTests(unittest.TestCase):
             report = next((root / "artifacts/loop-engineering").glob("*.json"))
             self.assertEqual(json.loads(report.read_text(encoding="utf-8"))["overall_status"], "PASS")
 
+    def test_verify_handles_utf8_child_output(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            (root / ".loop-engineering.json").write_text(json.dumps({
+                "commands": [{
+                    "name": "utf8-output",
+                    "argv": [
+                        sys.executable,
+                        "-c",
+                        "import sys; sys.stdout.buffer.write(b'\\xe2\\x9c\\x94\\n')",
+                    ],
+                    "required": True,
+                }]
+            }), encoding="utf-8")
+            p = run_cli("verify", "--root", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            report = next((root / "artifacts/loop-engineering").glob("*.json"))
+            data = json.loads(report.read_text(encoding="utf-8"))
+            self.assertEqual(data["checks"][0]["stdout"], "✔\n")
+
     def test_required_failure(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
