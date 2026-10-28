@@ -1,4 +1,4 @@
-# Universal Work Loop Engine Kit v0.3.0
+# Universal Work Loop Engine Kit v0.3.1
 
 基于证据的多角色工作闭环。代码开发是第一个可运行领域实例；架构设计用于
 验证同一套协议也可以处理非代码交付。
@@ -78,12 +78,12 @@ bash scripts/install.sh --target both --scope user --upgrade
 
 任务分级：
 
-| 档位 | 场景 | 角色 | 返修预算 |
-|---|---|---|---:|
-| L0 | 低风险、单点、无歧义 | 宿主直接修改与检查 | 0 |
-| L1 | 有界单文件任务 | Producer、Verifier、Arbiter | 2 |
-| L2 | 多文件、中风险或有歧义 | L1 + 独立 Reviewer | 3 |
-| L3 | 高风险或不可逆动作 | L2 + Challenger + 人工批准 | 3 |
+| 档位 | 场景 | 角色 | 返修预算 | 记录深度 |
+|---|---|---|---:|---|
+| L0 | 低风险、单点、无歧义 | 宿主直接修改与检查 | 0 | none |
+| L1 | 有界单文件任务 | Producer、Verifier、Arbiter | 2 | compact |
+| L2 | 多文件、中风险或有歧义 | L1 + 独立 Reviewer | 3 | full（会话内） |
+| L3 | 高风险或不可逆动作 | L2 + Challenger + 人工批准 | 3 | audited |
 
 例如：
 
@@ -95,6 +95,8 @@ py -3 loop_engineering\cli.py route --risk low --files 1 --irreversible
 
 `route` 只输出控制策略，不修改项目。L0 不要求多角色记录；非平凡任务仍使用
 原有 Work Item、Verification、Finding、Decision 和 Iteration 契约。
+L1 只保留三行目标/验收/预算简报；L2 使用完整角色循环但默认不落盘；
+只有 L3 或项目明确要求时才创建机器记录。
 
 配置示例：
 
@@ -130,7 +132,7 @@ Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。Ce
 
 ## 设计依据
 
-v0.3.0 的任务分级、独立审查、上下文检查点和停机规则参考了以下工程结论：
+v0.3.x 的任务分级、独立审查、上下文检查点和停机规则参考了以下工程结论：
 
 - Agentless 表明简单、可解释的定位—修复—验证路径必须保留为基线。
 - SWE-agent 表明工具与文件接口本身会改变 Agent 行为。

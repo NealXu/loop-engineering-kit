@@ -19,6 +19,17 @@ paths are emitted beside this `SKILL.md`.
    L0 is a trivial direct change; L1 adds Verifier; L2 adds independent
    Reviewer; L3 also adds Challenger and human approval before irreversible
    actions.
+   Respect the route's `record_depth`:
+   - `none`: make the direct change, run one relevant check, and stop. Do not
+     read the full protocol, create JSON records, or print a role report.
+   - `compact`: read project instructions and only the selected pack. State the
+     goal, acceptance criteria, and repair budget in three lines, produce,
+     verify, and decide. Do not create JSON records or narrate roles unless the
+     project explicitly requires them.
+   - `full`: continue through the complete loop below, but keep role records
+     in-session unless the project has a Loop configuration or asks for files.
+   - `audited`: continue through the complete loop and persist the required
+     machine-readable records.
 2. **Define:** read project instructions and `core/protocol.md`; select a pack;
    create a Work Item with `id` and `pack_id`; state goal, constraints, risk,
    acceptance criteria, and repair budget.
@@ -31,6 +42,8 @@ paths are emitted beside this `SKILL.md`.
    CLI/config exists, run `python loop_engineering/cli.py verify --root
    <project-root>` from the kit root (`python3` on Linux, `py -3` on Windows).
    Link each Verification to the tested Artifact id/version.
+   For money, numeric aggregation, security, or data-loss logic, add at least
+   one boundary or aggregate check beyond the visible happy-path tests.
 5. **Review and challenge:** use only the roles selected by the route. For L2+,
    give the independent Reviewer the frozen artifact, acceptance criteria, and
    evidence, without the Producer's rationale. Start Challenger for L3 or when
@@ -56,6 +69,9 @@ paths are emitted beside this `SKILL.md`.
    use, and cost. A repeated failure fingerprint with no artifact change stops
    further repair unless new evidence changes the diagnosis.
 
-Use the record shapes in `core/artifact-schema/`. Never fabricate results or
-treat BLOCKED/NOT_RUN as PASS. Ask before destructive, irreversible,
-production-impacting, or credential-related actions.
+Use the record shapes in `core/artifact-schema/` when `record_depth` is
+`audited`, or when a full run explicitly opts into machine records. Do not add
+an `artifacts/` directory to an otherwise unrelated project without a request
+or project configuration. Never fabricate results or treat BLOCKED/NOT_RUN as
+PASS. Ask before destructive, irreversible, production-impacting, or
+credential-related actions.

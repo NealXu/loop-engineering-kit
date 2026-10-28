@@ -4,7 +4,9 @@ Use this workflow for a bounded task that must produce a reviewable result.
 
 1. **Route:** select L0-L3 from expected files, risk, ambiguity, and
    irreversibility. The route determines required roles and the repair budget.
-   A trivial L0 change uses the host's direct edit-and-check path.
+   A trivial L0 change uses the host's direct edit-and-check path. L1 uses a
+   compact three-line brief and does not create machine records unless the
+   project asks for them.
 2. **Define:** create the Work Item with a stable `id` and `pack_id`, assign
    roles, and state the repair budget and risk level.
    Update the run brief with the goal, acceptance criteria, open questions, and

@@ -234,6 +234,18 @@ class CliTests(unittest.TestCase):
         self.assertEqual(p.returncode, 2)
         self.assertIn("--files must be non-negative", p.stderr)
 
+    def test_route_reports_record_depth(self):
+        cases = [
+            (("--trivial", "--risk", "low", "--files", "1"), "none"),
+            (("--risk", "low", "--files", "1"), "compact"),
+            (("--risk", "medium", "--files", "2"), "full"),
+            (("--risk", "high", "--files", "1"), "audited"),
+        ]
+        for args, expected in cases:
+            with self.subTest(depth=expected):
+                data = json.loads(run_cli("route", *args).stdout)
+                self.assertEqual(data["record_depth"], expected)
+
 
 if __name__ == "__main__":
     unittest.main()

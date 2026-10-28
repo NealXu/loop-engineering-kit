@@ -196,6 +196,7 @@ def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False):
             "review_independence": "independent",
             "max_repair_iterations": 3,
             "human_approval_required": True,
+            "record_depth": "audited",
         }
     elif ambiguous or files > 1 or risk == "medium":
         data = {
@@ -204,6 +205,7 @@ def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False):
             "review_independence": "independent",
             "max_repair_iterations": 3,
             "human_approval_required": False,
+            "record_depth": "full",
         }
     elif trivial and files <= 1:
         data = {
@@ -212,6 +214,7 @@ def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False):
             "review_independence": "not_required",
             "max_repair_iterations": 0,
             "human_approval_required": False,
+            "record_depth": "none",
         }
     else:
         data = {
@@ -220,6 +223,7 @@ def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False):
             "review_independence": "non_independent",
             "max_repair_iterations": 2,
             "human_approval_required": False,
+            "record_depth": "compact",
         }
     data["stop_conditions"] = common_stops
     if data["tier"] == "L3":

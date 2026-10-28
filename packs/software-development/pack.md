@@ -21,6 +21,8 @@
 
 - Requested behavior and edge cases are covered.
 - Required build, test, and compatibility checks have executed evidence.
+- Numeric or monetary changes include an aggregate or boundary check; a visible
+  happy-path test alone is insufficient.
 - The selected control tier was followed: L0 is direct; L1 has verification;
   L2 has independent review; L3 has challenge and human approval before
   irreversible actions.

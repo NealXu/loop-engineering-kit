@@ -27,12 +27,12 @@ Other repair routes follow the decision's declared `next_state`.
 
 Select the smallest complete loop before producing an artifact:
 
-| Tier | Use when | Required roles | Review independence | Repair budget |
-|---|---|---|---|---:|
-| `L0` | Low-risk trivial change with no ambiguity | none or the direct host workflow | not required | 0 |
-| `L1` | Bounded single-file work | Producer, Verifier, Arbiter | not required | 2 |
-| `L2` | Multiple files, medium risk, or ambiguity | Producer, Verifier, Reviewer, Arbiter | required | 3 |
-| `L3` | High/critical risk or an irreversible action | all five roles | required | 3 |
+| Tier | Use when | Required roles | Review independence | Repair budget | Records |
+|---|---|---|---|---:|---|
+| `L0` | Low-risk trivial change with no ambiguity | none or the direct host workflow | not required | 0 | none |
+| `L1` | Bounded single-file work | Producer, Verifier, Arbiter | not required | 2 | compact |
+| `L2` | Multiple files, medium risk, or ambiguity | Producer, Verifier, Reviewer, Arbiter | required | 3 | full |
+| `L3` | High/critical risk or an irreversible action | all five roles | required | 3 | audited |
 
 Ambiguity promotes the route. Irreversibility always requires `L3` and human
 approval before the irreversible action. A host may combine duties only when
@@ -40,6 +40,11 @@ the route allows it and must disclose `non_independent` review.
 
 The route is a control budget, not evidence. The Controller records the chosen
 tier and later reports omitted roles or checks.
+
+`compact` states the goal, acceptance criteria, and budget in the working
+conversation; it does not create machine-readable records. `full` performs the
+complete role loop but keeps records in-session unless the project opts in.
+`audited` persists the record shapes in `core/artifact-schema/`.
 
 ## Working Set
 

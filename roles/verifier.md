@@ -7,6 +7,8 @@ The Verifier proves whether a deliverable satisfies specified checks.
 - Map each check to an acceptance criterion.
 - Execute an authorized test, measurement, calculation, experiment, or source
   comparison.
+- For money, numeric aggregation, security, and data-loss paths, verify a
+  boundary or aggregate case beyond the visible happy path.
 - Record the exact method, status, evidence, artifact version, and limitations.
 - Use `PASS`, `FAIL`, `BLOCKED`, or `NOT_RUN` exactly as defined by the decision
   policy.
