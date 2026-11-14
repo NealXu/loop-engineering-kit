@@ -798,16 +798,17 @@ class CliTests(unittest.TestCase):
             self.assertIn("current lineage", p.stderr)
 
         for budget, expected in ((1, 0), (0, 1)):
-            with (self.subTest(budget=budget),
-                  tempfile.TemporaryDirectory() as t):
-                root = Path(t)
-                records = stage2_records()
-                records["work-item.json"]["max_repair_iterations"] = budget
-                write_records(root, records)
-                p = run_cli("check-records", "--dir", root)
-                self.assertEqual(p.returncode, expected, p.stdout + p.stderr)
-                if expected:
-                    self.assertIn("max_repair_iterations", p.stderr)
+            with self.subTest(budget=budget):
+                with tempfile.TemporaryDirectory() as t:
+                    root = Path(t)
+                    records = stage2_records()
+                    records["work-item.json"]["max_repair_iterations"] = budget
+                    write_records(root, records)
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(
+                        p.returncode, expected, p.stdout + p.stderr)
+                    if expected:
+                        self.assertIn("max_repair_iterations", p.stderr)
 
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
