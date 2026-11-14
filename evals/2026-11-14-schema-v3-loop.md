@@ -3,7 +3,7 @@
 ## Scope
 
 - Work Item: `WI-LE-SCHEMA-V3-20261114`
-- Artifact: `A-LE-SCHEMA-V3` version `5`
+- Artifact: `A-LE-SCHEMA-V3` version `6`
 - Base: `c02f1f6`; previous head: `7cf0af6`
 - Repair budget: `3`
 
@@ -39,8 +39,13 @@ Reviewer-evidence gate.
 - `F-MIGRATION-CLARITY`: the migration record discloses that two role fields
   predated the version-only rewrite; 12 roleless Verification IDs are an
   explicit legacy allowlist.
-- `F-LEGACY-ROLE-BOUNDARY`: new roleless Verifications are rejected unless the
-  Work Item explicitly allowlists them; Producer roles never satisfy Verifier.
+- `F-LEGACY-ROLE-BOUNDARY`: roleless Verifications are rejected unless the frozen
+  migration entry applies; Producer roles never satisfy Verifier.
+- `F-LEGACY-ALLOWLIST-BYPASS`: the editable Work Item allowlist was removed;
+  roleless evidence now requires the frozen migration entry and exact 29-record
+  digest.
+- `F-MIGRATION-DIGEST`: `migrations/v2-to-v3.json` binds the available history
+  to SHA-256 `db0609f79b9d28db3294150ad6b38dd10aeedbb6b2eaf5ff19cbe37cfa656ad9`.
 
 ## Verification
 
@@ -51,11 +56,11 @@ Reviewer-evidence gate.
 - External Schema engine: 6 valid samples accepted, 6 invalid samples rejected
 - Source and both installed CLI copies: identical SHA-256; installed doctors
   and real Codex/Claude checks PASS
-- Final PowerShell User Scope backup stamp: `20261114-225053`
-- Artifact code head `f900bb5`; cumulative diff blob
-  `cf0462d66481516cd36add1c260294889ee2a281` from
-  `git diff --binary c02f1f6..f900bb5 | git hash-object --stdin`
-- CI run `43606799946`: 5/5 jobs PASS at `f900bb5`, including Rocky Linux 8
+- Final PowerShell User Scope backup stamp: `20261114-230608`
+- Artifact code head `74e2c59`; cumulative diff blob
+  `b125fc80bfb04adcad03858ae51293613c83e6cb` from
+  `git diff --binary c02f1f6..74e2c59 | git hash-object --stdin`
+- CI run `43608192970`: 5/5 jobs PASS at `74e2c59`, including Rocky Linux 8
   and all Python 3.8/3.12 targets
 
 ## Residual Risks
