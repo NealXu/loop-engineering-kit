@@ -151,7 +151,7 @@ Python 解释器。只配置你信任的本地命令。
 Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。本提交的本地
 实测环境为 Windows 11 / Python 3.12；Windows 与 Ubuntu Linux 的 Python 3.8
 和 3.12 是 CI 目标，Ubuntu 固定为 22.04 以保留 Python 3.8 runner；
-Rocky Linux 8.10 容器使用 Python 3.8 覆盖 CentOS 8 兼容路径。远端工作流
+Rocky Linux 8 容器使用 Python 3.8 覆盖 CentOS 8 兼容路径。远端工作流
 实际执行前，这些环境不作为兼容性通过证据。
 
 ## 设计依据

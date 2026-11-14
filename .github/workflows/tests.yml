@@ -37,5 +37,5 @@ jobs:
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
-            rockylinux:8.10 \
+            rockylinux:8 \
             bash -lc 'dnf -y install python38 && python3.8 -m unittest discover -s tests -v'

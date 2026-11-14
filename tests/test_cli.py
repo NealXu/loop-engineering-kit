@@ -1072,7 +1072,7 @@ class CliTests(unittest.TestCase):
         self.assertIn('"3.12"', text)
         self.assertIn("python -m unittest discover -s tests -v", text)
         self.assertIn("rocky8:", text)
-        self.assertIn("rockylinux:8.10", text)
+        self.assertIn("rockylinux:8", text)
         self.assertIn("python3.8 -m unittest discover -s tests -v", text)
 
     def test_arbiter_docs_require_finding_gate(self):
