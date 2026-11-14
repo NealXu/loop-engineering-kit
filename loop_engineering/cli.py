@@ -671,6 +671,23 @@ def records_errors(records):
     if len(decisions) != 1:
         errors.append("records must contain exactly one Decision")
     final_versions = set(artifact_versions)
+    declared_outputs = set()
+    for iteration in groups.get("iteration", []):
+        produced = iteration.get("output_versions")
+        if isinstance(produced, list):
+            declared_outputs.update(
+                version for version in produced if isinstance(version, str))
+    lineage_final = artifact_versions - declared_outputs
+    ordered_iterations = sorted(
+        groups.get("iteration", []),
+        key=lambda item: item.get("cycle", 0)
+        if isinstance(item.get("cycle"), int) else 0)
+    for iteration in ordered_iterations:
+        produced = iteration.get("output_versions")
+        if isinstance(produced, list) and produced:
+            lineage_final = {
+                version for version in produced
+                if isinstance(version, str) and version in artifact_versions}
     for decision in decisions:
         if decision.get("work_item_id") != work_item_id:
             errors.append("Decision work_item_id does not match Work Item")
@@ -685,6 +702,19 @@ def records_errors(records):
                 errors.append("Decision artifact version {} not found".format(
                     json.dumps(version, ensure_ascii=True)))
         if decision.get("decision") == "ACCEPT":
+            if work_item.get("open_questions"):
+                errors.append("open_questions block ACCEPT")
+            risk_level = work_item.get("risk_level")
+            independence = decision.get("review_independence")
+            if (risk_level in {"medium", "high", "critical"}
+                    and independence != "independent"):
+                errors.append(
+                    "ACCEPT requires independent review for this risk level")
+            approver = decision.get("approver")
+            if (risk_level in {"high", "critical"}
+                    and (not isinstance(approver, str)
+                         or approver.strip().lower() == "controller")):
+                errors.append("L3 ACCEPT requires human approval")
             if decision.get("unresolved_disagreements"):
                 errors.append("unresolved disagreements block ACCEPT")
             if any(
@@ -696,6 +726,14 @@ def records_errors(records):
             if not isinstance(evidence_map, dict):
                 errors.append("ACCEPT requires criteria_evidence")
                 evidence_map = {}
+            if len(lineage_final) != 1:
+                errors.append("Decision requires one final Artifact version")
+                final_version = None
+            else:
+                final_version = next(iter(lineage_final))
+                if set(versions) != {final_version}:
+                    errors.append(
+                        "Decision must accept the final Artifact version")
             if set(evidence_map) != set(criteria):
                 errors.append("Decision criteria_evidence must match Work Item criteria")
             for criterion_id, evidence in evidence_map.items():
@@ -724,6 +762,11 @@ def records_errors(records):
                     if verification.get("artifact_version") not in versions:
                         errors.append(
                             "Decision verification {} has stale artifact version".format(
+                                json.dumps(verification_id, ensure_ascii=True)))
+                    if (final_version is not None
+                            and verification.get("artifact_version") != final_version):
+                        errors.append(
+                            "Decision verification {} does not target the final Artifact version".format(
                                 json.dumps(verification_id, ensure_ascii=True)))
                     if criterion_id not in verification.get("criterion_ids", []):
                         errors.append(

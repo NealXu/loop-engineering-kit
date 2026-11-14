@@ -699,6 +699,22 @@ class CliTests(unittest.TestCase):
              lambda value: value["criteria_evidence"]["AC-1"].update(
                  result="FAIL"),
              "must equal"),
+            ("accept-old-only", "decision.json",
+             lambda value: value.update(artifact_versions=["1"]),
+             "final Artifact version"),
+            ("accept-old-plus-final", "decision.json",
+             lambda value: value.update(artifact_versions=["1", "2"]),
+             "final Artifact version"),
+            ("open-question", "work-item.json",
+             lambda value: value.update(
+                 open_questions=["Which semantic applies?"]),
+             "open_questions"),
+            ("non-independent", "decision.json",
+             lambda value: value.update(review_independence="non_independent"),
+             "independent review"),
+            ("l3-controller", "work-item.json",
+             lambda value: value.update(risk_level="high"),
+             "human approval"),
         ]
         for name, filename, mutate, marker in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as t:

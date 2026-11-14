@@ -27,6 +27,8 @@
 - Added `check-records --dir` with bundled-schema validation, cross-record
   reference resolution, Decision evidence checks, Finding recurrence rejection,
   and explicit Iteration `output_versions`.
+- ACCEPT must target the final lineage version; open questions, non-independent
+  L2 review, and controller-only L3 approval are rejected.
 - Replaced the Bash installer's `find` dependency with Bash globstar recursion,
   allowing the Rocky Linux 8 minimal image to execute the installer test.
 - Added Rocky Linux 8 + Python 3.8 to CI.
@@ -37,7 +39,8 @@
 ## Verification
 
 - Local suite: `53/53 OK`
-- Configured verify: PASS with project repair budget `3`
+- Configured verify: PASS with project repair budget `3` and latest report
+  `loop-engineering-stage2-v3b-20261114-192204`.
 - Source and Codex/Claude installed doctors: PASS
 - GitHub Actions baseline `43587870598`: five jobs PASS at `136f42a`.
 - The final repair commit is awaiting its own pushed matrix; it is not counted

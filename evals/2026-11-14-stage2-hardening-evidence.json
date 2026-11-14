@@ -3,7 +3,7 @@
   "work_item_id": "WI-LE-STAGE2-20261114",
   "artifact": {
     "id": "A-LE-STAGE2",
-    "version": "2",
+    "version": "3",
     "file_count": 45,
     "base": "c02f1f6"
   },
@@ -19,6 +19,20 @@
     "AC-REGRESSION": "All 53 tests, verification, source doctor, both installed doctors, compilation, and diff hygiene pass."
   },
   "findings": [
+    {
+      "id": "F-FINAL-VERSION",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-FINAL-VERSION"]
+    },
+    {
+      "id": "F-PROTOCOL",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-PROTOCOL"]
+    },
     {
       "id": "F-CANONICAL",
       "severity": "high",
@@ -49,6 +63,16 @@
     }
   ],
   "verifications": [
+    {
+      "id": "V-FINAL-VERSION",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-PROTOCOL",
+      "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
+      "status": "PASS"
+    },
     {
       "id": "V-ANCESTRY",
       "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
@@ -88,7 +112,7 @@
   "post_delivery_verification": {
     "tests": "53/53",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-v2-20261114-190906",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-v3b-20261114-192204",
     "check_records": "PASS",
     "source_doctor": "PASS",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
