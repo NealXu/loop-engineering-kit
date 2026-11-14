@@ -1064,7 +1064,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(evidence["acceptance_criteria"], expected)
         self.assertEqual(
             evidence["post_delivery_verification"]["codex_subagent"]["tests"],
-            "48/48")
+            "52/52")
         report = (root / "evals" / "2026-11-13-source-review-loop.md").read_text(
             encoding="utf-8")
         self.assertNotIn("44 tests", report)
