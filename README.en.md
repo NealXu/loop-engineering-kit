@@ -14,11 +14,11 @@ design shows how the same protocol applies to non-code work.
 flowchart TB
     HOST["Codex or Claude Code host"] --> GOAL["User goal + project constraints"]
     GOAL --> ROUTE["Risk-based route<br/>L0 / L1 / L2 / L3"]
-    ROUTE --> ROLES["Minimum required roles<br/>Producer · Verifier · Reviewer<br/>Challenger · Arbiter"]
+    ROUTE --> ROLES["Roles selected by route<br/>Producer · Verifier · Reviewer<br/>Challenger · Arbiter"]
     ROUTE --> PACK["Domain workflow pack<br/>software development<br/>architecture design"]
-    ROLES --> LOOP["Evidence loop<br/>Define → Produce<br/>Verify + Review<br/>Reconcile → Decide"]
+    ROLES --> LOOP["Evidence loop<br/>Define → Produce<br/>Verify · Review · Challenge<br/>Reconcile → Decide"]
     PACK --> LOOP
-    LOOP --> CLI["Deterministic checks<br/>doctor · verify<br/>check-finding"]
+    LOOP --> CLI["Deterministic helpers<br/>doctor · verify<br/>check-finding"]
     CLI --> GATE{"Evidence gate"}
     GATE -->|ACCEPT| ART["Versioned artifact + acceptance evidence"]
     GATE -->|REPAIR| LOOP
@@ -63,8 +63,8 @@ ships.**
   `check-finding` validates the prevention gate before the Arbiter can accept.
 
 The current documentation does not claim Stage 2 capabilities (persistent
-runtime, checkpoints, recovery, and human approval) or Stage 3 capabilities
-(metrics, version registry, and automated improvement candidates).
+runtime, checkpoints, recovery, and a human-approval runtime) or Stage 3
+capabilities (metrics, version registry, and automated improvement candidates).
 
 ## Quick start
 
