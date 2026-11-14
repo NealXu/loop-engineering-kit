@@ -894,13 +894,11 @@ class CliTests(unittest.TestCase):
         self.assertEqual(
             {item["id"] for item in data["findings"]},
             {"F-CI", "F-CONTRACT", "F-GUARD", "F-OUTPUT"})
-        results = {item["id"]: item for item in data["verifications"]}
-        self.assertEqual(results.pop("V-CI-MATRIX")["status"], "NOT_RUN")
         self.assertTrue(all(
-            item["status"] == "PASS" for item in results.values()))
+            item["status"] == "PASS" for item in data["verifications"]))
         ci_finding = next(
             item for item in data["findings"] if item["id"] == "F-CI")
-        self.assertEqual(ci_finding["status"], "open")
+        self.assertEqual(ci_finding["status"], "resolved")
         post = data["post_delivery_verification"]
         self.assertEqual(post["external_json_schema"]["status"], "PASS")
         self.assertEqual(post["codex_subagent"]["status"], "PASS")
