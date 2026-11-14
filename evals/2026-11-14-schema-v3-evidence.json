@@ -1,0 +1,297 @@
+{
+  "schema_version": 1,
+  "work_item_id": "WI-LE-SCHEMA-V3-20261114",
+  "artifact": {
+    "id": "A-LE-SCHEMA-V3",
+    "version": "8",
+    "file_count": 50,
+    "base": "c02f1f6",
+    "previous_head": "7cf0af6",
+    "code_head": "a2eac76e02912187cebffec4ddef2ffad82dae8c",
+    "diff_git_blob": "1b09b5141d07c2648b858d56cf79066e508384dc",
+    "diff_hash_command": "git diff --binary c02f1f6..a2eac76 | git hash-object --stdin"
+  },
+  "budget": {
+    "run": 3,
+    "project_default": 3
+  },
+  "acceptance_criteria": {
+    "AC-SCHEMA": "All six canonical schemas use v3, and built-in schema validation covers every keyword used by those schemas.",
+    "AC-MIGRATION": "The repository freezes the available 29-record state by digest and manifest, discloses the two pre-existing role labels, and permits roleless legacy evidence only for that exact digest.",
+    "AC-REVIEW": "L2/L3 ACCEPT requires a referenced final-version PASS Reviewer Verification; findings and stale or failed reviews cannot substitute.",
+    "AC-REGRESSION": "The full suite, configured verify, record gates, installed copies, and model-host checks pass with exact evidence.",
+    "AC-CI": "The final pushed head passes all five CI jobs, including Rocky Linux 8 and Python 3.8/3.12."
+  },
+  "findings": [
+    {
+      "id": "F-SCHEMA-VERSION",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-SCHEMA"]
+    },
+    {
+      "id": "F-SCHEMA-KEYWORDS",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-SCHEMA"]
+    },
+    {
+      "id": "F-REVIEW-EVIDENCE",
+      "severity": "blocking",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-REVIEW-GATE"]
+    },
+    {
+      "id": "F-ARTIFACT-PROVENANCE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-CI"]
+    },
+    {
+      "id": "F-VERIFIER-ROLE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-VERIFIER-GATE"]
+    },
+    {
+      "id": "F-STOP-OPEN-QUESTIONS",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-STOP-STATE"]
+    },
+    {
+      "id": "F-DIFF-HASH",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-DIFF-PROVENANCE"]
+    },
+    {
+      "id": "F-STALE-TEST-RECORDS",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-STALE-TEST-V3"]
+    },
+    {
+      "id": "F-STOP-TEST-PATH",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-STOP-TEST-PATH-V3"]
+    },
+    {
+      "id": "F-CONTINUE-CYCLES",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-CONTINUE-CYCLES-V4"]
+    },
+    {
+      "id": "F-OPEN-FINDING-CHECKFINDING",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-OPEN-FINDING-V4"]
+    },
+    {
+      "id": "F-MIGRATION-CLARITY",
+      "severity": "blocking",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-MIGRATION-MANIFEST"]
+    },
+    {
+      "id": "F-LEGACY-ROLE-BOUNDARY",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-LEGACY-ROLE-BOUNDARY"]
+    },
+    {
+      "id": "F-LEGACY-ALLOWLIST-BYPASS",
+      "severity": "blocking",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-FROZEN-MIGRATION"]
+    },
+    {
+      "id": "F-MIGRATION-DIGEST",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-MIGRATION-DIGEST"]
+    },
+    {
+      "id": "F-MANIFEST-METADATA",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-MANIFEST-METADATA"]
+    },
+    {
+      "id": "F-MANIFEST-COMPLETENESS",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-MANIFEST-COMPLETENESS"]
+    },
+    {
+      "id": "F-DECISION-CYCLE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-DECISION-CYCLE"]
+    }
+  ],
+  "verifications": [
+    {
+      "id": "V-SCHEMA",
+      "criterion_ids": ["AC-SCHEMA"],
+      "status": "PASS",
+      "evidence": "PowerShell Test-Json accepted 6/6 valid v3 records and rejected 6/6 boundary-invalid records."
+    },
+    {
+      "id": "V-MIGRATION",
+      "criterion_ids": ["AC-MIGRATION", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "29/29 canonical JSON files migrated from v2 to v3; check-records PASS with 2 artifacts and ordered Decision history."
+    },
+    {
+      "id": "V-REVIEW-GATE",
+      "criterion_ids": ["AC-REVIEW"],
+      "status": "PASS",
+      "evidence": "FAIL, BLOCKED, NOT_RUN, stale-version, and Finding-only Reviewer cases are rejected."
+    },
+    {
+      "id": "V-REGRESSION",
+      "criterion_ids": ["AC-SCHEMA", "AC-MIGRATION", "AC-REVIEW", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "56/56 tests, configured verify, 9 Finding gates, compileall, and git diff --check passed locally."
+    },
+    {
+      "id": "V-INSTALL",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Source, Codex, and Claude CLI copies share one SHA-256; both installed doctors and real host checks pass."
+    },
+    {
+      "id": "V-MODEL",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "qwen3.7-plus returned CLAUDE_USER_VERIFY_PASS; Codex returned CODEX_USER_VERIFY_PASS."
+    },
+    {
+      "id": "V-CI",
+      "criterion_ids": ["AC-CI", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Run 43611016032 passed all five jobs on Artifact head a2eac76."
+    },
+    {
+      "id": "V-VERIFIER-GATE",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Each accepted criterion rejects a producer-only Verifier path."
+    },
+    {
+      "id": "V-STOP-STATE",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "A final STOP keeps valid open_questions, while ACCEPT still rejects them."
+    },
+    {
+      "id": "V-DIFF-PROVENANCE",
+      "criterion_ids": ["AC-CI", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "The exact diff blob hash command and value are recorded for reproduction."
+    },
+    {
+      "id": "V-STALE-TEST-V3",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Every record rewrite clears stale JSON files; a removed finding is asserted absent."
+    },
+    {
+      "id": "V-STOP-TEST-PATH-V3",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "STOP with open_questions and a resolved high Finding regression passes; ACCEPT still rejects open_questions."
+    },
+    {
+      "id": "V-CONTINUE-CYCLES-V4",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "A leading undecided CONTINUE followed by REPAIR/ACCEPT passes; duplicate Decision cycles are rejected."
+    },
+    {
+      "id": "V-OPEN-FINDING-V4",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "check-finding accepts an open high Finding; STOP passes and final ACCEPT rejects it."
+    },
+    {
+      "id": "V-MIGRATION-MANIFEST",
+      "criterion_ids": ["AC-MIGRATION"],
+      "status": "PASS",
+      "evidence": "The history discloses two pre-existing role labels and lists all 12 roleless Verification IDs in the Work Item allowlist."
+    },
+    {
+      "id": "V-LEGACY-ROLE-BOUNDARY",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "New roleless Verifications are rejected unless allowlisted; producer roles never count; the old session still passes."
+    },
+    {
+      "id": "V-FROZEN-MIGRATION",
+      "criterion_ids": ["AC-MIGRATION", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "The Work Item allowlist is removed; roleless evidence requires the exact work_item_id and 29-record digest in migrations/v2-to-v3.json."
+    },
+    {
+      "id": "V-MIGRATION-DIGEST",
+      "criterion_ids": ["AC-MIGRATION"],
+      "status": "PASS",
+      "evidence": "Manifest digest db0609f7... matches the exact 29-record canonical set; altered or new sessions do not qualify."
+    },
+    {
+      "id": "V-MANIFEST-METADATA",
+      "criterion_ids": ["AC-MIGRATION", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Manifest schema_version, 2-to-3 direction, record_count, digest, role disclosure, snapshot flag, and roleless IDs are enforced."
+    },
+    {
+      "id": "V-MANIFEST-COMPLETENESS",
+      "criterion_ids": ["AC-MIGRATION", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Manifest role and roleless ID sets must equal the verification records in the exact-digest record set."
+    },
+    {
+      "id": "V-DECISION-CYCLE",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Decision.cycle is required by Schema and defensively checked as a positive integer."
+    }
+  ],
+  "post_delivery_verification": {
+    "tests": "57/57",
+    "verify": "PASS",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-consistency-20261114-233447",
+    "check_records": "PASS with 29 migrated v3 records; 9/9 Finding gates PASS; exact-digest legacy manifest",
+    "external_schema": "PowerShell Test-Json: 6 valid accepted, 6 invalid rejected",
+    "installed_doctors": ["Codex PASS", "Claude PASS"],
+    "installed_cli_hash_match": true,
+    "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
+    "user_scope_backup_stamp": "20261114-233655",
+    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43611016032",
+    "ci_artifact_head": "a2eac76e02912187cebffec4ddef2ffad82dae8c",
+    "ci_artifact_status": "PASS (5/5 jobs)",
+    "provider_default": "BLOCKED: upstream GLM 403",
+    "provider_validated": "qwen3.7-plus"
+  }
+}

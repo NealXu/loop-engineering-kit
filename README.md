@@ -1,4 +1,4 @@
-# Universal Work Loop Engine Kit v0.4.0
+# Universal Work Loop Engine Kit v0.5.0
 
 [English](README.en.md) | 简体中文
 
@@ -26,17 +26,21 @@ Loop Engineering Kit 是给 AI 编程 Agent 用的轻量控制层。它按任务
 ## 当前实现（阶段 1）
 
 - `core/`：通用协议、状态机、决策策略，以及 Work Item、Artifact、
-  Finding、Verification、Decision、Iteration 六类 JSON Schema（v2，验收标准
+  Finding、Verification、Decision、Iteration 六类 JSON Schema（v3，验收标准
   以稳定 `criterion_id` 为键并与验证证据关联）。
 - `roles/`：Producer、Verifier、Reviewer、Challenger、Arbiter 五类职责。
 - `workflows/`：迭代交付、对抗审查、受控持续改进。
 - `packs/`：软件开发和架构设计两个领域包；软件包包含可执行验证技能模板。
 - `.codex/`、`.claude/`、`adapters/`：Codex 与 Claude Code 的角色映射。
 - `loop_engineering/cli.py`：无第三方依赖的任务分级、环境检查和确定性
-  验证报告工具；`check-finding` 在 Arbiter 接受前校验 prevention 门禁。
+  验证报告工具；`check-finding` 校验 prevention 门禁，`check-records`
+  解析跨记录引用和 Artifact/Iteration ancestry。
 
-阶段 2（持久化运行时、检查点、恢复和人工审批）和阶段 3（指标、版本注册、
-自动改进候选）尚未实现，当前文档不会把它们描述成已有能力。
+阶段 2 的确定性记录解析已实现；持久化存储、自动恢复和人工审批运行时仍未
+实现。阶段 3（指标、版本注册、自动改进候选）也尚未实现。
+
+Schema v3 是 breaking change。v1/v2 记录需先迁移；v3 新增 control tier、
+route flags、Decision cycle、稳定 evidence refs 和 Verification role。
 
 ## 快速开始
 
@@ -107,6 +111,9 @@ bash scripts/install.sh --target both --scope user --upgrade
 7. 运行 `python3 loop_engineering/cli.py verify --root . --report-dir
    <报告目录>`（Windows 用 `py -3`）。L1/L2 默认使用会话临时目录，只有需要
    长期保留证据或 L3 时才写入项目目录。
+8. 冻结角色记录后运行 `python3 loop_engineering/cli.py check-records --dir
+   <记录目录>`（Windows 用 `py -3`），校验 Work Item、Artifact、Finding、
+   Verification、Decision 和 Iteration 的引用与版本 ancestry。
 
 任务分级：
 
@@ -158,7 +165,12 @@ Python 解释器。只配置你信任的本地命令。
 
 `ACCEPT` 要求：验收标准明确；必需检查有实际执行证据；没有未解决的
 `blocking`/`high` 问题；重要分歧已经按规则解决或升级。`BLOCKED` 与
-`NOT_RUN` 永远不算通过。默认最多返修 3 轮，达到上限后只能停止或升级。
+`NOT_RUN` 永远不算通过。L2/L3 还必须引用最终 Artifact 上状态为 `PASS`
+的 Reviewer Verification，单独的 Reviewer Finding 不能证明审查完成。
+每条验收标准还需最终 Artifact 上 role 为 `verifier` 的 PASS 证据；
+仅仓库内冻结迁移清单与整组记录摘要同时匹配的历史记录可省略 role；
+Producer 自验不能充当 Verifier。
+默认最多返修 3 轮，达到上限后只能停止或升级。
 如果同一失败指纹重复出现且 artifact 版本没有变化，立即停止或升级。
 
 ## 边界
@@ -166,8 +178,9 @@ Python 解释器。只配置你信任的本地命令。
 宿主负责实际启动模型子 Agent；本工具不绕过 Codex/Claude Code 调模型。
 Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。本提交的本地
 实测环境为 Windows 11 / Python 3.12；Windows 与 Ubuntu Linux 的 Python 3.8
-和 3.12 是 CI 目标，Ubuntu 固定为 22.04 以保留 Python 3.8 runner，CentOS 8
-当前未被 CI 覆盖。远端工作流实际执行前，这些环境不作为兼容性通过证据。
+和 3.12 是 CI 目标，Ubuntu 固定为 22.04 以保留 Python 3.8 runner；
+Rocky Linux 8 容器使用 Python 3.8 覆盖 CentOS 8 兼容路径。远端工作流
+实际执行前，这些环境不作为兼容性通过证据。
 
 ## 设计依据
 
@@ -186,4 +199,5 @@ v0.4 的任务分级、独立审查、上下文检查点和停机规则参考了
 
 首次 Claude Code 路由对照记录在
 `evals/2026-10-28-claude-code-route-pilot.md`。它只验证协议符合性和成本，
-不代表完整编码任务的提升。
+不代表完整编码任务的提升。Claude Code 适配器的本地验证路径使用
+`qwen3.7-plus`；默认 GLM 路径曾返回上游 `403`，不应当作已验证默认值。

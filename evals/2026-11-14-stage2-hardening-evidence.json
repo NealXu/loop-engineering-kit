@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "work_item_id": "WI-LE-STAGE2-20261114",
+  "artifact": {
+    "id": "A-LE-STAGE2",
+    "version": "4",
+    "file_count": 45,
+    "base": "c02f1f6"
+  },
+  "budget": {
+    "run": 3,
+    "project_default": 3
+  },
+  "acceptance_criteria": {
+    "AC-ANCESTRY": "check-records resolves record IDs, criteria, versions, Finding recurrence, Decision evidence, and Artifact/Iteration ancestry with schema validation.",
+    "AC-COMPAT": "The Bash installer and all platform-applicable tests pass in Rocky Linux 8; the Windows-only PowerShell installer test remains skipped there and is covered by the Windows job.",
+    "AC-MODEL": "The Claude Code adapter names the validated qwen3.7-plus path and records GLM 403 as a provider limitation.",
+    "AC-ACTIONS": "The CI workflow uses checkout@v5 and setup-python@v6 and completes without Node 20 deprecation warnings.",
+    "AC-REGRESSION": "All 53 tests, verification, source doctor, both installed doctors, compilation, and diff hygiene pass."
+  },
+  "findings": [
+    {
+      "id": "F-LINEAGE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-LINEAGE"]
+    },
+    {
+      "id": "F-COMPAT-SKIP",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-COMPAT"]
+    },
+    {
+      "id": "F-INSTALLED",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-INSTALLED"]
+    },
+    {
+      "id": "F-BUDGET",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-BUDGET"]
+    },
+    {
+      "id": "F-MEDIUM-RISK",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-RISK"]
+    },
+    {
+      "id": "F-MALFORMED",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-MALFORMED"]
+    },
+    {
+      "id": "F-FINAL-VERSION",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-FINAL-VERSION"]
+    },
+    {
+      "id": "F-PROTOCOL",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-PROTOCOL"]
+    },
+    {
+      "id": "F-CANONICAL",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-ANCESTRY"]
+    },
+    {
+      "id": "F-SCHEMA",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-SCHEMA"]
+    },
+    {
+      "id": "F-OUTPUT",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-OUTPUT"]
+    },
+    {
+      "id": "F-CI-EVIDENCE",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-ACTIONS"]
+    }
+  ],
+  "verifications": [
+    {
+      "id": "V-LINEAGE",
+      "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-INSTALLED",
+      "criterion_ids": ["AC-COMPAT", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-BUDGET",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-RISK",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-MALFORMED",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-FINAL-VERSION",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-PROTOCOL",
+      "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-ANCESTRY",
+      "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-SCHEMA",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-OUTPUT",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-COMPAT",
+      "criterion_ids": ["AC-COMPAT", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-MODEL",
+      "criterion_ids": ["AC-MODEL"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-ACTIONS",
+      "criterion_ids": ["AC-ACTIONS", "AC-COMPAT"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-REGRESSION",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS"
+    }
+  ],
+  "post_delivery_verification": {
+    "tests": "54/54",
+    "rocky_tests": "PASS: 53 tests, OK (skipped=1 Windows PowerShell)",
+    "verify": "PASS",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-v4-20261114-193405",
+    "check_records": "PASS",
+    "source_doctor": "PASS",
+    "installed_doctors": ["Codex PASS", "Claude PASS"],
+    "user_scope_backup_stamp": "20261114-194057",
+    "ci_baseline_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43587870598",
+    "ci_baseline_head": "136f42a4c05eb3f9402bc64d2815a2a1da54ed98",
+    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43591053938",
+    "ci_final_head": "530ad2c01da93523611fe1c78b059a09accda904",
+    "ci_final_status": "PASS",
+    "ci_jobs": [
+      "Ubuntu 22.04 Python 3.8 PASS",
+      "Ubuntu 22.04 Python 3.12 PASS",
+      "Windows Python 3.8 PASS",
+      "Windows Python 3.12 PASS",
+      "Rocky Linux 8 Python 3.8 PASS"
+    ],
+    "provider_default": "BLOCKED: upstream GLM 403",
+    "provider_validated": "qwen3.7-plus"
+  }
+}

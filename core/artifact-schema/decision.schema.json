@@ -8,6 +8,7 @@
     "schema_version",
     "id",
     "kind",
+    "cycle",
     "work_item_id",
     "artifact_versions",
     "decision",
@@ -17,7 +18,7 @@
     "approver"
   ],
   "properties": {
-    "schema_version": { "const": 2 },
+    "schema_version": { "const": 3 },
     "id": {
       "type": "string",
       "minLength": 1,
@@ -29,6 +30,7 @@
       "minLength": 1,
       "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
     },
+    "cycle": { "type": "integer", "minimum": 1 },
     "artifact_versions": {
       "type": "array",
       "minItems": 1,
@@ -39,6 +41,14 @@
     "evidence_refs": {
       "type": "array",
       "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+      }
+    },
+    "evidence_notes": {
+      "type": "array",
       "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     },
     "unresolved_disagreements": {
@@ -83,7 +93,12 @@
         "required": ["risk", "owner"],
         "properties": {
           "risk": { "type": "string", "minLength": 1, "pattern": "\\S" },
-          "owner": { "type": "string", "minLength": 1, "pattern": "\\S" }
+          "owner": { "type": "string", "minLength": 1, "pattern": "\\S" },
+          "finding_id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+          }
         }
       }
     },
@@ -137,6 +152,22 @@
             }
           }
         ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": { "enum": ["ACCEPT", "STOP", "ESCALATE"] }
+        },
+        "required": ["decision"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["next_state"] },
+            { "required": ["repair_kind"] }
+          ]
+        }
       }
     }
   ]

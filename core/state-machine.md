@@ -58,8 +58,10 @@ disagreement.
 ## Recovery
 
 The state and version identifiers are part of the records so a later run can
-resume from the last completed stage. Persistent runtime storage is a Stage 2
-capability; until implemented, the Controller records the same identifiers in
+resume from the last completed stage. When canonical records are frozen, run
+`python loop_engineering/cli.py check-records --dir <records-dir>` to resolve
+their references and Artifact/Iteration ancestry. Persistent runtime storage
+is not implemented yet; the Controller still records the same identifiers in
 the run report.
 
 Context compression is not recovery by itself. A resumed run needs the frozen

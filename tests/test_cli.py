@@ -5,6 +5,8 @@ import sys
 import tempfile
 import unittest
 
+import loop_engineering.cli as cli_module
+
 CLI = Path(__file__).resolve().parents[1] / "loop_engineering" / "cli.py"
 
 
@@ -13,7 +15,211 @@ def run_cli(*args):
                           text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
+def stage2_records():
+    artifact = {
+        "schema_version": 3,
+        "id": "A-1",
+        "kind": "artifact",
+        "artifact_type": "test",
+        "content": "candidate",
+        "source": "test",
+        "work_item_id": "WI-1",
+        "files": ["result.txt", "notes.txt"],
+    }
+    return {
+        "work-item.json": {
+            "schema_version": 3,
+            "id": "WI-1",
+            "kind": "work_item",
+            "goal": "resolve records",
+            "pack_id": "software-development",
+            "constraints": [],
+            "priority": "medium",
+            "risk_level": "medium",
+            "control_tier": "L2",
+            "route_flags": {
+                "trivial": False,
+                "ambiguous": False,
+                "irreversible": False,
+            },
+            "max_repair_iterations": 3,
+            "acceptance_criteria": {"AC-1": "result is verified"},
+            "open_questions": [],
+        },
+        "artifact-1.json": dict(artifact, version="1"),
+        "artifact-2.json": dict(artifact, version="2"),
+        "verification.json": {
+            "schema_version": 3,
+            "id": "V-1",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "2",
+            "criterion_ids": ["AC-1"],
+            "check": "result",
+            "method": "python -m unittest",
+            "status": "PASS",
+            "evidence": ["command exited 0"],
+            "limitations": [],
+            "role": "verifier",
+        },
+        "decision.json": {
+            "schema_version": 3,
+            "id": "D-1",
+            "kind": "decision",
+            "cycle": 2,
+            "work_item_id": "WI-1",
+            "artifact_versions": ["2"],
+            "decision": "ACCEPT",
+            "rationale": "verified",
+            "evidence_refs": ["V-1", "V-REVIEW"],
+            "unresolved_disagreements": [],
+            "approver": "controller",
+            "criteria_evidence": {
+                "AC-1": {"verification_ids": ["V-1"], "result": "PASS"}
+            },
+            "residual_risks": [],
+            "review_independence": "independent",
+        },
+        "verification-review.json": {
+            "schema_version": 3,
+            "id": "V-REVIEW",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "2",
+            "criterion_ids": ["AC-1"],
+            "role": "reviewer",
+            "check": "independent review",
+            "method": "review artifact",
+            "status": "PASS",
+            "evidence": ["review completed"],
+            "limitations": [],
+        },
+        "verification-repair-evidence.json": {
+            "schema_version": 3,
+            "id": "V-REPAIR-EVIDENCE",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "1",
+            "criterion_ids": ["AC-1"],
+            "role": "verifier",
+            "check": "repair finding",
+            "method": "inspect version 1",
+            "status": "PASS",
+            "evidence": ["finding reproduced on version 1"],
+            "limitations": [],
+        },
+        "decision-repair.json": {
+            "schema_version": 3,
+            "id": "D-REPAIR",
+            "kind": "decision",
+            "cycle": 1,
+            "work_item_id": "WI-1",
+            "artifact_versions": ["1"],
+            "decision": "REPAIR",
+            "rationale": "produce the next version",
+            "evidence_refs": ["V-REPAIR-EVIDENCE"],
+            "unresolved_disagreements": [],
+            "approver": "controller",
+            "next_state": "PRODUCE",
+            "repair_kind": "artifact",
+        },
+        "iterations/iteration-01.json": {
+            "schema_version": 3,
+            "id": "I-1",
+            "kind": "iteration",
+            "work_item_id": "WI-1",
+            "cycle": 1,
+            "input_versions": ["1"],
+            "output_versions": ["2"],
+            "changes": ["produced version 2"],
+            "result": "REPAIR",
+        },
+    }
+
+
+def write_records(root, records):
+    for path in root.rglob("*.json"):
+        path.unlink()
+    for record_name, value in records.items():
+        path = root / record_name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value), encoding="utf-8")
+
+
 class CliTests(unittest.TestCase):
+    def test_legacy_migration_manifest_metadata_is_enforced(self):
+        records = [
+            {"id": "V-1", "kind": "verification"},
+            {"id": "V-2", "kind": "verification", "role": "reviewer"},
+            {"id": "A-1", "kind": "artifact"},
+        ]
+        migration = {
+            "work_item_id": "WI-LEGACY",
+            "from_schema_version": 2,
+            "to_schema_version": 3,
+            "record_count": 3,
+            "records_sha256": cli_module.records_sha256(records),
+            "pre_migration_snapshot_retained": False,
+            "role_fields_present_before_rewrite": {
+                "V-2": "reviewer"
+            },
+            "roleless_verification_ids": ["V-1"],
+            "disclosure": "available state frozen",
+        }
+        manifest = {
+            "schema_version": 1,
+            "digest_algorithm": (
+                "SHA-256 over sorted compact JSON records joined by LF"),
+            "migrations": [migration],
+        }
+        original = cli_module.MIGRATION_MANIFEST
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t) / "v2-to-v3.json"
+            cli_module.MIGRATION_MANIFEST = path
+            try:
+                path.write_text(json.dumps(manifest), encoding="utf-8")
+                self.assertEqual(
+                    ({"V-1"}, None),
+                    cli_module.legacy_roleless_ids(records, "WI-LEGACY"))
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, record_count=0)
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "record_count",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, from_schema_version=999)
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "2 to 3",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, role_fields_present_before_rewrite={})
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "role disclosure",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, roleless_verification_ids=[])
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "roleless IDs",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+            finally:
+                cli_module.MIGRATION_MANIFEST = original
+
     def test_doctor(self):
         p = run_cli("doctor", "--root", CLI.parents[1])
         self.assertEqual(p.returncode, 0, p.stderr)
@@ -38,7 +244,7 @@ class CliTests(unittest.TestCase):
             data = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(data["$schema"], "https://json-schema.org/draft/2020-12/schema")
             self.assertEqual(data["type"], "object")
-            self.assertEqual(data["properties"]["schema_version"]["const"], 2)
+            self.assertEqual(data["properties"]["schema_version"]["const"], 3)
 
     def test_artifact_schema_requires_versioned_file_list(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "artifact.schema.json"
@@ -102,7 +308,9 @@ class CliTests(unittest.TestCase):
             "^[A-Za-z][A-Za-z0-9._-]*$")
         self.assertEqual(data["properties"]["rationale"]["pattern"], "\\S")
         self.assertEqual(
-            data["properties"]["evidence_refs"]["items"]["pattern"], "\\S")
+            data["properties"]["evidence_refs"]["items"]["pattern"],
+            "^[A-Za-z][A-Za-z0-9._-]*$")
+        self.assertIn("evidence_notes", data["properties"])
         self.assertEqual(accept_rule["then"]["properties"]["unresolved_disagreements"]["maxItems"], 0)
 
     def test_high_findings_cannot_be_accepted_risk(self):
@@ -198,7 +406,7 @@ class CliTests(unittest.TestCase):
 
         schema_readme = (root / "core" / "artifact-schema" / "README.md").read_text(
             encoding="utf-8")
-        self.assertIn("# Artifact Schema v2", schema_readme)
+        self.assertIn("# Artifact Schema v3", schema_readme)
         self.assertIn("criterion_id", schema_readme)
         self.assertIn("This is a breaking schema upgrade", schema_readme)
 
@@ -258,7 +466,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_enforces_prevention_gate(self):
         base = {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "F-1",
             "kind": "finding",
             "source_role": "reviewer",
@@ -274,7 +482,7 @@ class CliTests(unittest.TestCase):
         cases = [
             (base, 1, "prevention"),
             (dict(base, status="not_reproducible"), 1, "prevention"),
-            (dict(base, status="open"), 1, "open"),
+            (dict(base, status="open"), 0, "PASS"),
             (dict(base, id="", prevention={
                 "kind": "automatic_check",
                 "action": "add test",
@@ -449,7 +657,7 @@ class CliTests(unittest.TestCase):
             work_item = root / "work-item.json"
             artifact = root / "artifact.json"
             work_item.write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "WI-1",
                 "kind": "work_item",
                 "goal": "gate",
@@ -457,6 +665,12 @@ class CliTests(unittest.TestCase):
                 "constraints": [],
                 "priority": "medium",
                 "risk_level": "medium",
+                "control_tier": "L2",
+                "route_flags": {
+                    "trivial": False,
+                    "ambiguous": False,
+                    "irreversible": False
+                },
                 "max_repair_iterations": 3,
                 "acceptance_criteria": {
                     "AC-1": "gate works",
@@ -464,7 +678,7 @@ class CliTests(unittest.TestCase):
                 }
             }), encoding="utf-8")
             artifact.write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "A-1",
                 "kind": "artifact",
                 "artifact_type": "test",
@@ -475,7 +689,7 @@ class CliTests(unittest.TestCase):
                 "work_item_id": "WI-1"
             }), encoding="utf-8")
             (root / "V-1.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "V-1",
                 "kind": "verification",
                 "artifact_id": "A-1",
@@ -505,7 +719,7 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             path = Path(t) / "finding.json"
             path.write_text(
-                '{"schema_version": 2, "id": "F-1", "id": "F-2"}',
+                '{"schema_version": 3, "id": "F-1", "id": "F-2"}',
                 encoding="utf-8")
             p = run_cli("check-finding", "--input", path)
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
@@ -513,7 +727,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_escapes_id_in_failure_output(self):
         finding = {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "F-1\n[PASS] forged",
             "kind": "finding",
             "source_role": "reviewer",
@@ -545,7 +759,7 @@ class CliTests(unittest.TestCase):
         for separator in ("\n", "\u0085", "\u2028", "\u2029"):
             with self.subTest(separator=repr(separator)), tempfile.TemporaryDirectory() as t:
                 finding = {
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "F-1",
                     "kind": "finding",
                     "source_role": "reviewer",
@@ -575,6 +789,697 @@ class CliTests(unittest.TestCase):
             self.assertIn("ERROR:", p.stderr)
             self.assertNotIn("Traceback", p.stderr)
 
+    def test_check_records_resolves_complete_ancestry(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            for name, value in stage2_records().items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(value), encoding="utf-8")
+            p = run_cli("check-records", "--dir", root)
+            output = p.stdout + p.stderr
+            self.assertEqual(p.returncode, 0, output)
+            self.assertIn("[PASS] WI-1", output)
+            self.assertIn("records=9", output)
+        root = CLI.parents[1]
+        for path in (
+                root / "README.md",
+                root / ".agents" / "skills" / "loop-engineering" / "SKILL.md",
+                root / ".claude" / "skills" / "loop-engineering" / "SKILL.md",
+                root / "core" / "artifact-schema" / "README.md"):
+            text = " ".join(path.read_text(encoding="utf-8").split())
+            self.assertIn("check-records --dir", text)
+
+    def test_check_records_rejects_broken_references_and_ancestry(self):
+        cases = [
+            ("stale-verification", "verification.json",
+             lambda value: value.update(artifact_version="9"),
+             "artifact version"),
+            ("missing-output", "iterations/iteration-01.json",
+             lambda value: value.pop("output_versions"),
+             "output_versions"),
+            ("gap", "iterations/iteration-01.json",
+             lambda value: value.update(cycle=2),
+             "contiguous"),
+            ("missing-decision-evidence", "decision.json",
+             lambda value: value["criteria_evidence"]["AC-1"].update(
+                 verification_ids=["V-MISSING"]),
+             "V-MISSING"),
+            ("failed-proof", "verification.json",
+             lambda value: value.update(status="NOT_RUN"),
+             "not PASS"),
+            ("malformed-version", "verification.json",
+             lambda value: value.update(artifact_version=[]),
+             "must be string"),
+            ("decision-enum", "decision.json",
+             lambda value: value.update(decision="MAYBE"),
+             "decision schema"),
+            ("decision-cycle", "decision.json",
+             lambda value: value.pop("cycle"),
+             "decision schema"),
+            ("criterion-id", "work-item.json",
+             lambda value: value["acceptance_criteria"].update(
+                 {"bad criterion": value["acceptance_criteria"].pop("AC-1")}),
+             "schema"),
+            ("result-enum", "decision.json",
+             lambda value: value["criteria_evidence"]["AC-1"].update(
+                 result="FAIL"),
+             "must equal"),
+            ("accept-old-only", "decision.json",
+             lambda value: value.update(artifact_versions=["1"]),
+             "final Artifact version"),
+            ("accept-old-plus-final", "decision.json",
+             lambda value: value.update(artifact_versions=["1", "2"]),
+             "final Artifact version"),
+            ("open-question", "work-item.json",
+             lambda value: value.update(
+                 open_questions=["Which semantic applies?"]),
+             "open_questions"),
+            ("non-independent", "decision.json",
+             lambda value: value.update(review_independence="non_independent"),
+             "independent review"),
+            ("malformed-decision-version", "decision.json",
+             lambda value: value.update(artifact_versions=[[]]),
+             "decision schema"),
+            ("malformed-criterion-list", "verification.json",
+             lambda value: value.update(criterion_ids=None),
+             "verification schema"),
+            ("malformed-kind", "verification.json",
+             lambda value: value.update(kind=[]),
+             "kind must be a string"),
+            ("unknown-kind", "verification.json",
+             lambda value: value.update(kind="verificatoin"),
+             "unknown record kind"),
+            ("route-flag-type", "work-item.json",
+             lambda value: value["route_flags"].update(trivial="false"),
+             "work_item schema"),
+            ("terminal-repair-field", "decision.json",
+             lambda value: value.update(next_state="PRODUCE"),
+             "decision schema"),
+            ("accept-disagreement", "decision.json",
+             lambda value: value.update(unresolved_disagreements=["reviewer"]),
+             "decision schema"),
+        ]
+        for name, filename, mutate, marker in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
+                root = Path(t)
+                records = stage2_records()
+                mutate(records[filename])
+                for record_name, value in records.items():
+                    path = root / record_name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(json.dumps(value), encoding="utf-8")
+                p = run_cli("check-records", "--dir", root)
+                output = p.stdout + p.stderr
+                self.assertEqual(p.returncode, 1, output)
+                self.assertIn(marker, output)
+                self.assertNotIn("Traceback", p.stderr)
+
+    def test_check_records_escapes_record_ids_in_failure_output(self):
+        records = stage2_records()
+        records["finding.json"] = {
+            "schema_version": 3,
+            "id": "F-1",
+            "kind": "finding",
+            "source_role": "reviewer",
+            "severity": "high",
+            "target": "gate",
+            "claim": "bad recurrence",
+            "evidence": ["counterexample"],
+            "impact": "log injection",
+            "required_action": "escape output",
+            "criterion_ids": ["AC-1"],
+            "status": "open",
+            "recurrence_of": "F-MISSING\n[PASS] forged",
+        }
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            for record_name, value in records.items():
+                path = root / record_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(value), encoding="utf-8")
+            p = run_cli("check-records", "--dir", root)
+            output = p.stdout + p.stderr
+            self.assertEqual(p.returncode, 1, output)
+            self.assertFalse(any(
+                line.startswith("[PASS] forged")
+                for line in output.splitlines()[1:]))
+            self.assertNotIn("[PASS] forged", output)
+            self.assertIn("finding schema", output)
+
+    def test_check_records_enforces_lineage_budget_and_medium_risk(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["artifact-3.json"] = dict(
+                records["artifact-2.json"], version="3")
+            records["iterations/iteration-02.json"] = {
+                "schema_version": 3,
+                "id": "I-2",
+                "kind": "iteration",
+                "work_item_id": "WI-1",
+                "cycle": 2,
+                "input_versions": ["1"],
+                "output_versions": ["3"],
+                "changes": ["branch from v1"],
+                "result": "CONTINUE",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("current lineage", p.stderr)
+
+        for budget, expected in ((1, 0), (0, 1)):
+            with self.subTest(budget=budget):
+                with tempfile.TemporaryDirectory() as t:
+                    root = Path(t)
+                    records = stage2_records()
+                    records["work-item.json"]["max_repair_iterations"] = budget
+                    write_records(root, records)
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(
+                        p.returncode, expected, p.stdout + p.stderr)
+                    if expected:
+                        self.assertIn("max_repair_iterations", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["finding.json"] = {
+                "schema_version": 3,
+                "id": "F-MEDIUM",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "medium",
+                "target": "risk",
+                "claim": "bounded issue",
+                "evidence": ["observed"],
+                "impact": "limited",
+                "required_action": "accept with owner",
+                "criterion_ids": ["AC-1"],
+                "status": "accepted_risk",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("residual_risks", p.stderr)
+            records["decision.json"]["residual_risks"] = [{
+                "risk": "bounded issue",
+                "owner": "user",
+                "finding_id": "F-MEDIUM",
+            }]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"]["residual_risks"][0][
+                "finding_id"] = "F-MISSING"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("unknown Finding", p.stderr)
+
+    def test_check_records_validates_decision_history_and_evidence(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["iterations/iteration-01.json"].update(
+                cycle=1,
+                input_versions=["1"],
+                output_versions=[],
+                changes=["continue without a decision"],
+                result="CONTINUE",
+            )
+            records["iterations/iteration-02.json"] = {
+                "schema_version": 3,
+                "id": "I-2",
+                "kind": "iteration",
+                "work_item_id": "WI-1",
+                "cycle": 2,
+                "input_versions": ["1"],
+                "output_versions": ["2"],
+                "changes": ["produce version 2"],
+                "result": "REPAIR",
+            }
+            records["decision-repair.json"]["cycle"] = 2
+            records["decision.json"]["cycle"] = 3
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"]["cycle"] = 2
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("strictly increasing", p.stderr)
+            for status in ("FAIL", "BLOCKED", "NOT_RUN"):
+                records["verification-review.json"]["status"] = status
+                write_records(root, records)
+                p = run_cli("check-records", "--dir", root)
+                self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                self.assertIn("PASS Reviewer Verification", p.stderr)
+            records["verification-review.json"]["status"] = "PASS"
+
+            records["verification-review.json"]["artifact_version"] = "1"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("PASS Reviewer Verification", p.stderr)
+            records["verification-review.json"]["artifact_version"] = "2"
+
+            records["verification.json"]["role"] = "producer"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("Verifier Verification", p.stderr)
+            records["verification.json"].pop("role")
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("requires a final-version Verifier Verification role",
+                          p.stderr)
+            records["work-item.json"][
+                "legacy_roleless_verification_ids"] = ["V-1"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("legacy_roleless_verification_ids", p.stderr)
+            records["work-item.json"].pop(
+                "legacy_roleless_verification_ids")
+            records["verification.json"]["role"] = "verifier"
+
+            records["finding-review.json"] = {
+                "schema_version": 3,
+                "id": "F-REVIEW",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "review",
+                "claim": "reviewed an earlier artifact",
+                "evidence": ["historical review"],
+                "impact": "does not prove final-version review",
+                "required_action": "review the final artifact",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            records["decision.json"]["evidence_refs"] = ["V-1", "F-REVIEW"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("PASS Reviewer Verification", p.stderr)
+            records.pop("finding-review.json")
+            records["decision.json"]["evidence_refs"] = ["V-1", "V-REVIEW"]
+            write_records(root, records)
+            self.assertFalse((root / "finding-review.json").exists())
+
+        for result in ("REPAIR", "ACCEPT", "STOP", "ESCALATE"):
+            with self.subTest(undecided=result):
+                with tempfile.TemporaryDirectory() as t:
+                    root = Path(t)
+                    records = stage2_records()
+                    records.pop("decision-repair.json")
+                    records["iterations/iteration-01.json"]["result"] = result
+                    for record_name, value in records.items():
+                        path = root / record_name
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(json.dumps(value), encoding="utf-8")
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                    self.assertIn("same-cycle Decision", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["decision.json"].update(
+                repair_kind="artifact", next_state="PRODUCE")
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("decision schema", p.stderr)
+            records["decision.json"].pop("repair_kind")
+            records["decision.json"].pop("next_state")
+
+            records["decision-repair.json"]["evidence_refs"] = ["V-1"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("future Artifact version", p.stderr)
+            records["decision-repair.json"]["evidence_refs"] = [
+                "V-REPAIR-EVIDENCE"]
+
+            records["work-item.json"]["risk_level"] = "low"
+            records["decision.json"]["review_independence"] = "non_independent"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("independent review", p.stderr)
+            records["work-item.json"]["risk_level"] = "medium"
+            records["decision.json"]["review_independence"] = "independent"
+
+            records["iterations/iteration-02.json"] = {
+                "schema_version": 3,
+                "id": "I-2",
+                "kind": "iteration",
+                "work_item_id": "WI-1",
+                "cycle": 3,
+                "input_versions": ["2"],
+                "output_versions": [],
+                "changes": ["after accept"],
+                "result": "CONTINUE",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("final terminal Decision", p.stderr)
+            records.pop("iterations/iteration-02.json")
+
+            records["iterations/iteration-01.json"]["result"] = "ACCEPT"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("same-cycle Decision", p.stderr)
+            records["iterations/iteration-01.json"]["result"] = "REPAIR"
+
+            records["decision-repair.json"]["artifact_versions"] = ["2"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("input_versions", p.stderr)
+            records["decision-repair.json"]["artifact_versions"] = ["1"]
+
+            records["decision.json"]["cycle"] = 3
+            records["decision-stop.json"] = {
+                "schema_version": 3,
+                "id": "D-STOP",
+                "kind": "decision",
+                "cycle": 2,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["2"],
+                "decision": "STOP",
+                "rationale": "terminal",
+                "evidence_refs": ["V-1"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("terminal Decision", p.stderr)
+            records.pop("decision-stop.json")
+            records["decision.json"]["cycle"] = 2
+
+            records["decision-repair.json"].update(
+                next_state="VERIFY", repair_kind="evidence")
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("must not produce", p.stderr)
+            records["decision-repair.json"].update(
+                next_state="PRODUCE", repair_kind="artifact")
+
+            records["decision.json"]["evidence_refs"] = ["V-MISSING"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("evidence_ref", p.stderr)
+
+            records["decision.json"]["evidence_refs"] = ["V-1"]
+            records["finding-high.json"] = {
+                "schema_version": 3,
+                "id": "F-HIGH",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "regression",
+                "claim": "missing proof",
+                "evidence": ["counterexample"],
+                "impact": "cannot close",
+                "required_action": "bind proof",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "keep proof",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-MISSING"],
+                },
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("V-MISSING", p.stderr)
+
+            records.pop("finding-high.json")
+            records["finding-base.json"] = {
+                "schema_version": 3,
+                "id": "F-BASE",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "base",
+                "claim": "base finding",
+                "evidence": ["prior"],
+                "impact": "minor",
+                "required_action": "track",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+            }
+            records["finding-recurrence.json"] = {
+                "schema_version": 3,
+                "id": "F-RECUR",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "recurrence",
+                "claim": "repeated",
+                "evidence": ["again"],
+                "impact": "minor",
+                "required_action": "prove",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+                "recurrence_of": "F-BASE",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "guard",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-MISSING"],
+                },
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("V-MISSING", p.stderr)
+
+            records.pop("finding-base.json")
+            records.pop("finding-recurrence.json")
+            records["finding-conflict.json"] = {
+                "schema_version": 3,
+                "id": "V-1",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "conflict",
+                "claim": "duplicate ID",
+                "evidence": ["same ID"],
+                "impact": "ambiguous refs",
+                "required_action": "use unique IDs",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("cross-record ID conflict", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records.pop("artifact-2.json")
+            records.pop("iterations/iteration-01.json")
+            records.pop("decision-repair.json")
+            records["verification.json"]["artifact_version"] = "1"
+            records["verification-review.json"]["artifact_version"] = "1"
+            records["decision.json"] = {
+                "schema_version": 3,
+                "id": "D-STOP",
+                "kind": "decision",
+                "cycle": 1,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["1"],
+                "decision": "STOP",
+                "rationale": "terminal",
+                "evidence_refs": ["V-1"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+            }
+            records["work-item.json"]["open_questions"] = [
+                "A material question may justify stopping."
+            ]
+            records["finding-high.json"] = {
+                "schema_version": 3,
+                "id": "F-HIGH",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "STOP regression",
+                "claim": "The STOP path must preserve open questions.",
+                "evidence": ["The finding is closed before STOP."],
+                "impact": "A false rejection would destroy the true state.",
+                "required_action": "Keep the regression proof bound.",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "Keep the open-question check in ACCEPT only.",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-HIGH"],
+                },
+            }
+            records["verification-high.json"] = {
+                "schema_version": 3,
+                "id": "V-HIGH",
+                "kind": "verification",
+                "artifact_id": "A-1",
+                "artifact_version": "1",
+                "finding_id": "F-HIGH",
+                "criterion_ids": ["AC-1"],
+                "role": "verifier",
+                "check": "STOP regression",
+                "method": "run check-records",
+                "status": "PASS",
+                "evidence": ["the STOP state preserves open questions"],
+                "limitations": [],
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision-accept.json"] = {
+                "schema_version": 3,
+                "id": "D-LATE",
+                "kind": "decision",
+                "cycle": 2,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["1"],
+                "decision": "ACCEPT",
+                "rationale": "late accept",
+                "evidence_refs": ["V-1"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+                "criteria_evidence": {
+                    "AC-1": {
+                        "verification_ids": ["V-1"],
+                        "result": "PASS",
+                    },
+                },
+                "residual_risks": [],
+                "review_independence": "independent",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("terminal Decision", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records.pop("artifact-2.json")
+            records.pop("iterations/iteration-01.json")
+            records.pop("decision-repair.json")
+            records["verification.json"]["artifact_version"] = "1"
+            records["verification-review.json"]["artifact_version"] = "1"
+            records["finding-open.json"] = {
+                "schema_version": 3,
+                "id": "F-OPEN",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "active blocker",
+                "claim": "the blocker is not closed",
+                "evidence": ["counterexample"],
+                "impact": "acceptance must wait",
+                "required_action": "repair before accept",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            records["decision.json"] = {
+                "schema_version": 3,
+                "id": "D-STOP",
+                "kind": "decision",
+                "cycle": 1,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["1"],
+                "decision": "STOP",
+                "rationale": "blocker remains open",
+                "evidence_refs": ["V-1", "F-OPEN"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"].update({
+                "decision": "ACCEPT",
+                "rationale": "invalid accept",
+                "criteria_evidence": {
+                    "AC-1": {
+                        "verification_ids": ["V-1"],
+                        "result": "PASS",
+                    },
+                },
+                "residual_risks": [],
+                "review_independence": "independent",
+            })
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("open high/blocking", p.stderr)
+
+    def test_check_records_blocks_l3_and_uses_route_flags(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["work-item.json"]["risk_level"] = "high"
+            records["work-item.json"]["control_tier"] = "L3"
+            records["work-item.json"]["route_flags"]["irreversible"] = True
+            records["decision.json"]["approver"] = "human-reviewer"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+            self.assertIn("[BLOCKED]", p.stderr)
+
+        for flag, tier, expected in (
+                ("ambiguous", "L1", 1),
+                ("irreversible", "L2", 1)):
+            with self.subTest(flag=flag, tier=tier):
+                with tempfile.TemporaryDirectory() as t:
+                    root = Path(t)
+                    records = stage2_records()
+                    records["work-item.json"]["risk_level"] = "low"
+                    records["work-item.json"]["control_tier"] = tier
+                    records["work-item.json"]["route_flags"][flag] = True
+                    write_records(root, records)
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(
+                        p.returncode, expected, p.stdout + p.stderr)
+                    self.assertIn("control_tier", p.stderr)
+
+    def test_iteration_schema_supports_explicit_ancestry(self):
+        path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertIn("output_versions", data["properties"])
+
+    def test_claude_adapter_documents_validated_model_path(self):
+        text = (CLI.parents[1] / "adapters" / "claude-code"
+                / "README.md").read_text(encoding="utf-8")
+        self.assertIn("qwen3.7-plus", text)
+        self.assertIn("--model qwen3.7-plus", text)
+        self.assertIn("403", text)
+
     def test_check_finding_resolves_regression_evidence(self):
         cases = [
             ("missing", ["V-MISSING"], None, "1", ["AC-1"], ["executed"],
@@ -592,8 +1497,6 @@ class CliTests(unittest.TestCase):
              "finding_id"),
             ("unrelated-criterion", ["V-1"], "PASS", "1", ["AC-OTHER"],
              ["executed"], "does not cover"),
-            ("open-question", ["V-1"], "PASS", "1", ["AC-1"], ["executed"],
-             "open_questions"),
         ]
         for (name, ids, status, verification_version, criterion_ids,
              evidence, marker) in cases:
@@ -603,7 +1506,7 @@ class CliTests(unittest.TestCase):
                 artifact = root / "artifact.json"
                 finding = root / "finding.json"
                 work_item.write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "WI-1",
                     "kind": "work_item",
                     "goal": "gate",
@@ -611,6 +1514,12 @@ class CliTests(unittest.TestCase):
                     "constraints": [],
                     "priority": "medium",
                     "risk_level": "medium",
+                    "control_tier": "L2",
+                    "route_flags": {
+                        "trivial": False,
+                        "ambiguous": False,
+                        "irreversible": False
+                    },
                     "max_repair_iterations": 3,
                     "acceptance_criteria": {
                         "AC-1": "gate works",
@@ -622,7 +1531,7 @@ class CliTests(unittest.TestCase):
                     )
                 }), encoding="utf-8")
                 artifact.write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "A-1",
                     "kind": "artifact",
                     "artifact_type": "test",
@@ -633,7 +1542,7 @@ class CliTests(unittest.TestCase):
                     "work_item_id": "WI-1"
                 }), encoding="utf-8")
                 finding.write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "F-1",
                     "kind": "finding",
                     "source_role": "reviewer",
@@ -654,7 +1563,7 @@ class CliTests(unittest.TestCase):
                 }), encoding="utf-8")
                 if name != "missing":
                     (root / "verification-V-1.json").write_text(json.dumps({
-                        "schema_version": 2,
+                        "schema_version": 3,
                         "id": "V-1",
                         "kind": "verification",
                         "artifact_id": "A-1",
@@ -677,7 +1586,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_requires_resolution_context(self):
         finding = {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "F-1",
             "kind": "finding",
             "source_role": "reviewer",
@@ -705,7 +1614,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_rejects_malformed_regression_verification(self):
         malformed = [
-            {
+            ({
                 "id": "V-1",
                 "artifact_id": "A-1",
                 "artifact_version": "1",
@@ -713,9 +1622,9 @@ class CliTests(unittest.TestCase):
                 "status": "PASS",
                 "evidence": ["executed"],
                 "limitations": [None]
-            },
-            {
-                "schema_version": 2,
+            }, None),
+            ({
+                "schema_version": 3,
                 "id": "V-1",
                 "kind": "verification",
                 "artifact_id": "A-1",
@@ -727,13 +1636,27 @@ class CliTests(unittest.TestCase):
                 "evidence": ["executed"],
                 "limitations": [],
                 "unexpected": True
-            },
+            }, None),
+            ({
+                "schema_version": 3,
+                "id": "V-1",
+                "kind": "verification",
+                "role": "attacker",
+                "artifact_id": "A-1",
+                "artifact_version": "1",
+                "criterion_ids": ["AC-1"],
+                "check": "gate",
+                "method": "run",
+                "status": "PASS",
+                "evidence": ["executed"],
+                "limitations": []
+            }, "role"),
         ]
-        for index, verification in enumerate(malformed):
+        for index, (verification, marker) in enumerate(malformed):
             with self.subTest(index=index), tempfile.TemporaryDirectory() as t:
                 root = Path(t)
                 (root / "work-item.json").write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "WI-1",
                     "kind": "work_item",
                     "goal": "gate",
@@ -741,11 +1664,17 @@ class CliTests(unittest.TestCase):
                     "constraints": [],
                     "priority": "medium",
                     "risk_level": "medium",
+                    "control_tier": "L2",
+                    "route_flags": {
+                        "trivial": False,
+                        "ambiguous": False,
+                        "irreversible": False
+                    },
                     "max_repair_iterations": 3,
                     "acceptance_criteria": {"AC-1": "gate works"}
                 }), encoding="utf-8")
                 (root / "artifact.json").write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "A-1",
                     "kind": "artifact",
                     "artifact_type": "test",
@@ -756,7 +1685,7 @@ class CliTests(unittest.TestCase):
                     "work_item_id": "WI-1"
                 }), encoding="utf-8")
                 (root / "finding.json").write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "F-1",
                     "kind": "finding",
                     "source_role": "reviewer",
@@ -784,22 +1713,30 @@ class CliTests(unittest.TestCase):
                     "--verifications-dir", root)
                 self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
                 self.assertIn("Verification", p.stderr)
+                if marker is not None:
+                    self.assertIn(marker, p.stderr)
 
     def test_check_finding_rejects_malformed_acceptance_context(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             (root / "work-item.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "WI-1",
                 "kind": "work_item",
                 "acceptance_criteria": {"AC-1": "gate works"},
+                "control_tier": "L2",
+                "route_flags": {
+                    "trivial": False,
+                    "ambiguous": False,
+                    "irreversible": False
+                },
                 "max_repair_iterations": -1,
                 "priority": [],
                 "risk_level": {},
                 "open_questions": "material ambiguity"
             }), encoding="utf-8")
             (root / "artifact.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "A-1",
                 "kind": "artifact",
                 "artifact_type": "test",
@@ -810,7 +1747,7 @@ class CliTests(unittest.TestCase):
                 "work_item_id": "WI-1"
             }), encoding="utf-8")
             (root / "finding.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "F-1",
                 "kind": "finding",
                 "source_role": "reviewer",
@@ -830,7 +1767,7 @@ class CliTests(unittest.TestCase):
                 }
             }), encoding="utf-8")
             (root / "verification-V-1.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "V-1",
                 "kind": "verification",
                 "artifact_id": "A-1",
@@ -869,7 +1806,7 @@ class CliTests(unittest.TestCase):
     def test_release_identity_matches_breaking_schema(self):
         readme = (CLI.parents[1] / "README.md").read_text(encoding="utf-8")
         self.assertTrue(readme.startswith(
-            "# Universal Work Loop Engine Kit v0.4.0"))
+            "# Universal Work Loop Engine Kit v0.5.0"))
 
     def test_source_review_eval_is_traceable(self):
         path = CLI.parents[1] / "evals" / "2026-11-13-source-review-loop.md"
@@ -937,6 +1874,11 @@ class CliTests(unittest.TestCase):
         self.assertIn('"3.8"', text)
         self.assertIn('"3.12"', text)
         self.assertIn("python -m unittest discover -s tests -v", text)
+        self.assertIn("rocky8:", text)
+        self.assertIn("rockylinux:8", text)
+        self.assertIn("python3.8 -m unittest discover -s tests -v", text)
+        self.assertIn("actions/checkout@v5", text)
+        self.assertIn("actions/setup-python@v6", text)
 
     def test_arbiter_docs_require_finding_gate(self):
         root = CLI.parents[1]

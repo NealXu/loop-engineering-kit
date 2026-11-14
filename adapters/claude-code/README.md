@@ -26,5 +26,22 @@ Run `python <installed-skill-root>/loop_engineering/cli.py doctor --mode
 installed --root <installed-skill-root>` to validate the installed Claude
 Skill independently of a source checkout.
 
+## Validated model path
+
+For the local CCR setup, Claude Code `2.1.267` was verified with
+`qwen3.7-plus`. Pass the prompt through stdin and select the model explicitly:
+
+```powershell
+$prompt | ccr default-claude-code cli -- -p --model qwen3.7-plus `
+  --agent verifier --permission-mode auto `
+  --allowedTools "Read,Grep,Glob,Bash" `
+  --no-session-persistence
+```
+
+The `opencode/glm-5.3-flash` default returned an upstream `403` during the
+same validation window. Treat that as a provider availability issue rather
+than evidence that the adapter or Skill is broken; use the validated Qwen path
+until the provider is healthy.
+
 The adapter does not grant extra authority. Destructive, production-impacting,
 credential-related, and irreversible actions still require explicit approval.

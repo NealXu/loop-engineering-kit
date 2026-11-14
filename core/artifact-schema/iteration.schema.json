@@ -15,7 +15,7 @@
     "result"
   ],
   "properties": {
-    "schema_version": { "const": 2 },
+    "schema_version": { "const": 3 },
     "id": {
       "type": "string",
       "minLength": 1,
@@ -29,6 +29,10 @@
     },
     "cycle": { "type": "integer", "minimum": 1 },
     "input_versions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
+    },
+    "output_versions": {
       "type": "array",
       "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     },
