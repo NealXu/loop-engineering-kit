@@ -187,9 +187,9 @@
     "user_scope_backup_stamp": "20261114-191201",
     "ci_baseline_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43587870598",
     "ci_baseline_head": "136f42a4c05eb3f9402bc64d2815a2a1da54ed98",
-    "ci_final_run": "PENDING",
-    "ci_final_head": "PENDING",
-    "ci_final_status": "PENDING: repair round 3 not yet pushed",
+    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43590957847",
+    "ci_final_head": "4f83e28bdf7854b4f4a1a322481f9e6a5e3c23a4",
+    "ci_final_status": "PASS",
     "ci_jobs": [
       "Ubuntu 22.04 Python 3.8 PASS",
       "Ubuntu 22.04 Python 3.12 PASS",

@@ -50,7 +50,8 @@
 - GitHub Actions baseline `43587870598`: five jobs PASS at `136f42a`.
 - Previous repair run `43589797769`: five jobs PASS at `4c82040`, including Rocky
   Linux 8 and all Python 3.8/3.12 targets.
-- Repair round 3 is pending its own pushed matrix and is not marked PASS yet.
+- Repair round 3 run `43590957847`: five jobs PASS at `4f83e28`, including
+  Python 3.8 compatibility and Rocky Linux 8.
 - The same remote run uses the upgraded Actions and emits no Node 20
   deprecation warning.
 - Rocky Linux 8 installs Python 3.8.17 and runs the same full suite.
