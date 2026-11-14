@@ -18,7 +18,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ "$SCOPE" == "user" ]]; then CODEX_ROOT="$HOME/.codex"; CODEX_SKILLS="$HOME/.agents/skills"; CLAUDE_ROOT="$HOME/.claude"; else CODEX_ROOT="$PROJECT_ROOT/.codex"; CODEX_SKILLS="$PROJECT_ROOT/.agents/skills"; CLAUDE_ROOT="$PROJECT_ROOT/.claude"; fi
 copy_tree_safe() {
   local src="$1" dst="$2" file rel target
-  while IFS= read -r -d '' file; do
+  local files=()
+  shopt -s globstar nullglob dotglob
+  files=("$src"/**/*)
+  for file in "${files[@]}"; do
+    [[ -f "$file" ]] || continue
+    [[ "$file" == */__pycache__/* || "$file" == *.pyc ]] && continue
     rel="${file#"$src"/}"; target="$dst/$rel"
     if [[ -e "$target" ]]; then
       if [[ "$UPGRADE" -eq 0 ]]; then echo "Skipped existing file: $target"; continue; fi
@@ -26,7 +31,7 @@ copy_tree_safe() {
       echo "Backed up: $target.bak-$BACKUP_STAMP"
     fi
     mkdir -p "$(dirname "$target")"; cp -f "$file" "$target"; echo "Installed: $target"
-  done < <(find "$src" -type f ! -path '*/__pycache__/*' ! -name '*.pyc' -print0)
+  done
 }
 retire_legacy_file() {
   local path="$1" backup
