@@ -8,20 +8,7 @@ Loop Engineering Kit 是给 AI 编程 Agent 用的轻量控制层。它按任务
 
 ## 全景图
 
-```mermaid
-flowchart TB
-    HOST["Codex / Claude Code 宿主"] --> GOAL["用户目标 + 项目约束"]
-    GOAL --> ROUTE["按风险路由<br/>L0 / L1 / L2 / L3"]
-    ROUTE --> ROLES["按路由选择角色<br/>Producer · Verifier · Reviewer<br/>Challenger · Arbiter"]
-    ROUTE --> PACK["领域工作包<br/>软件开发 / 架构设计"]
-    ROLES --> LOOP["证据闭环<br/>定义 → 生产<br/>验证 · 审查 · 挑战<br/>汇总 → 决策"]
-    PACK --> LOOP
-    LOOP --> CLI["确定性辅助<br/>doctor · verify<br/>check-finding"]
-    CLI --> GATE{"证据门禁"}
-    GATE -->|ACCEPT| ART["版本化交付物 + 验收证据"]
-    GATE -->|REPAIR| LOOP
-    GATE -->|ESCALATE / STOP| HUMAN["人工升级或停机"]
-```
+![Loop Engineering Kit 全景图](docs/assets/loop-engineering-overview.zh-CN.png)
 
 一句话：**用风险控制投入，用实际检查替代口头完成，用明确门禁决定交付。**
 

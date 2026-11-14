@@ -10,20 +10,7 @@ design shows how the same protocol applies to non-code work.
 
 ## At a glance
 
-```mermaid
-flowchart TB
-    HOST["Codex or Claude Code host"] --> GOAL["User goal + project constraints"]
-    GOAL --> ROUTE["Risk-based route<br/>L0 / L1 / L2 / L3"]
-    ROUTE --> ROLES["Roles selected by route<br/>Producer · Verifier · Reviewer<br/>Challenger · Arbiter"]
-    ROUTE --> PACK["Domain workflow pack<br/>software development<br/>architecture design"]
-    ROLES --> LOOP["Evidence loop<br/>Define → Produce<br/>Verify · Review · Challenge<br/>Reconcile → Decide"]
-    PACK --> LOOP
-    LOOP --> CLI["Deterministic helpers<br/>doctor · verify<br/>check-finding"]
-    CLI --> GATE{"Evidence gate"}
-    GATE -->|ACCEPT| ART["Versioned artifact + acceptance evidence"]
-    GATE -->|REPAIR| LOOP
-    GATE -->|ESCALATE / STOP| HUMAN["Human escalation or stop"]
-```
+![Loop Engineering Kit architecture overview](docs/assets/loop-engineering-overview.en.png)
 
 In one sentence: **spend effort in proportion to risk, replace claimed
 completion with executed evidence, and use an explicit gate to decide what
