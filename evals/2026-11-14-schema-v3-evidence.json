@@ -3,13 +3,13 @@
   "work_item_id": "WI-LE-SCHEMA-V3-20261114",
   "artifact": {
     "id": "A-LE-SCHEMA-V3",
-    "version": "2",
+    "version": "3",
     "file_count": 49,
     "base": "c02f1f6",
     "previous_head": "7cf0af6",
-    "code_head": "f0d34048cffa09bc1025c53979538f5c84b10a51",
-    "diff_git_blob": "90f350958539768e7440048cee088428532b8bc4",
-    "diff_hash_command": "git diff --binary c02f1f6..f0d3404 | git hash-object --stdin"
+    "code_head": "c7349a0f612421bcbe2a1c35dac9eeff03e55e45",
+    "diff_git_blob": "0e47126ee68c10d8af3e7333dc22a0cec5da780d",
+    "diff_hash_command": "git diff --binary c02f1f6..c7349a0 | git hash-object --stdin"
   },
   "budget": {
     "run": 3,
@@ -71,6 +71,20 @@
       "status": "resolved",
       "prevention_kind": "structure",
       "regression_verification_ids": ["V-DIFF-PROVENANCE"]
+    },
+    {
+      "id": "F-STALE-TEST-RECORDS",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-STALE-TEST-V3"]
+    },
+    {
+      "id": "F-STOP-TEST-PATH",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-STOP-TEST-PATH-V3"]
     }
   ],
   "verifications": [
@@ -114,7 +128,7 @@
       "id": "V-CI",
       "criterion_ids": ["AC-CI", "AC-REGRESSION"],
       "status": "PASS",
-      "evidence": "Run 43603083989 passed all five jobs on Artifact head f0d3404."
+      "evidence": "Run 43604359219 passed all five jobs on Artifact head c7349a0."
     },
     {
       "id": "V-VERIFIER-GATE",
@@ -133,20 +147,32 @@
       "criterion_ids": ["AC-CI", "AC-REGRESSION"],
       "status": "PASS",
       "evidence": "The exact diff blob hash command and value are recorded for reproduction."
+    },
+    {
+      "id": "V-STALE-TEST-V3",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Every record rewrite clears stale JSON files; a removed finding is asserted absent."
+    },
+    {
+      "id": "V-STOP-TEST-PATH-V3",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "STOP with open_questions and a resolved high Finding regression passes; ACCEPT still rejects open_questions."
     }
   ],
   "post_delivery_verification": {
     "tests": "56/56",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-repair2-20261114-220515",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-repair3-20261114-221949",
     "check_records": "PASS with 29 migrated v3 records; 9/9 Finding gates PASS",
     "external_schema": "PowerShell Test-Json: 6 valid accepted, 6 invalid rejected",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "installed_cli_hash_match": true,
     "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
     "user_scope_backup_stamp": "20261114-220743",
-    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43603083989",
-    "ci_artifact_head": "f0d34048cffa09bc1025c53979538f5c84b10a51",
+    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43604359219",
+    "ci_artifact_head": "c7349a0f612421bcbe2a1c35dac9eeff03e55e45",
     "ci_artifact_status": "PASS (5/5 jobs)",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"
