@@ -42,8 +42,8 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- The final control-tier repair is pending its pushed matrix and is not
-  counted as PASS.
+- Final control-tier run `43596786133`: five jobs PASS at `b31d877`,
+  including Rocky Linux 8 and all Python 3.8/3.12 targets.
 
 ## Residual Risks
 
