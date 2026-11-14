@@ -615,6 +615,19 @@ def records_errors(records):
     if not schema_valid:
         return errors
 
+    global_ids = {}
+    for kind, kind_records in groups.items():
+        if kind == "artifact":
+            continue
+        for record in kind_records:
+            record_id = record.get("id")
+            if record_id in global_ids:
+                errors.append(
+                    "cross-record ID conflict {}: {} and {}".format(
+                        record_id, global_ids[record_id], kind))
+            else:
+                global_ids[record_id] = kind
+
     work_items = groups.get("work_item", [])
     if len(work_items) != 1:
         errors.append("records must contain exactly one Work Item")
@@ -755,13 +768,7 @@ def records_errors(records):
              if artifact.get("version") == final_version),
             None)
     for finding_id, finding in findings.items():
-        recurrence = finding.get("recurrence_of")
-        closed_gate = (
-            finding.get("status") in {"resolved", "not_reproducible"}
-            and (
-                finding.get("severity") in {"high", "blocking"}
-                or isinstance(recurrence, str)))
-        if closed_gate and final_artifact is not None:
+        if final_artifact is not None:
             errors.extend(verification_errors(
                 finding, work_item, final_artifact,
                 list(verifications.values())))
@@ -789,6 +796,15 @@ def records_errors(records):
             and isinstance(final_decision.get("cycle"), int)
             and final_decision.get("cycle") != max(decision_cycles)):
         errors.append("final ACCEPT Decision must be the last cycle")
+    iterations_by_cycle = {
+        iteration.get("cycle"): iteration
+        for iteration in groups.get("iteration", [])
+        if isinstance(iteration.get("cycle"), int)}
+    repair_decisions = {
+        decision.get("cycle"): decision
+        for decision in decisions
+        if (decision.get("decision") == "REPAIR"
+            and isinstance(decision.get("cycle"), int))}
     for decision in decisions:
         if decision.get("work_item_id") != work_item_id:
             errors.append("Decision work_item_id does not match Work Item")
@@ -898,6 +914,35 @@ def records_errors(records):
             for field in ("next_state", "repair_kind"):
                 if not isinstance(decision.get(field), str):
                     errors.append("REPAIR requires {}".format(field))
+            iteration = iterations_by_cycle.get(decision.get("cycle"))
+            if iteration is None:
+                errors.append("REPAIR requires an Iteration in the same cycle")
+            repair_kind = decision.get("repair_kind")
+            next_state = decision.get("next_state")
+            produced = iteration.get("output_versions") if iteration else []
+            if repair_kind == "artifact":
+                if next_state != "PRODUCE":
+                    errors.append(
+                        "artifact REPAIR requires next_state PRODUCE")
+                if not produced:
+                    errors.append(
+                        "artifact REPAIR requires a new Artifact version")
+            elif repair_kind == "evidence":
+                if next_state != "VERIFY":
+                    errors.append(
+                        "evidence REPAIR requires next_state VERIFY")
+                if produced:
+                    errors.append(
+                        "evidence REPAIR must not produce an Artifact version")
+
+    for iteration in groups.get("iteration", []):
+        produced = iteration.get("output_versions")
+        if not isinstance(produced, list) or not produced:
+            continue
+        repair = repair_decisions.get(iteration.get("cycle"))
+        if repair is None or repair.get("repair_kind") != "artifact":
+            errors.append(
+                "Artifact-producing Iteration requires an artifact REPAIR")
 
     return errors
 

@@ -20,6 +20,11 @@ its history.
   Closed high/blocking/recurring Findings resolve their prevention evidence
   through `check-records`.
 - `F-TEST-COUNT`: current evidence uses the exact 55-test count.
+- `F-REPAIR-LINKAGE`: REPAIR state transitions must match whether the same-cycle
+  Iteration produces a new Artifact version.
+- `F-OPEN-RECURRENCE`: prevention and recurrence evidence resolves in every
+  Finding status.
+- `F-ID-COLLISION`: stable IDs are unique across non-Artifact record types.
 
 ## Verification
 
@@ -30,8 +35,7 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final CI `43592182723`: five jobs PASS at `836712b`, including Rocky Linux 8
-  and all Python 3.8/3.12 targets.
+- Follow-up repair 2 is pending its pushed matrix and is not counted as PASS.
 
 ## Residual Risks
 

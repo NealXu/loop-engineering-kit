@@ -3,7 +3,7 @@
   "work_item_id": "WI-LE-STAGE2-FOLLOWUP-20261114",
   "artifact": {
     "id": "A-LE-STAGE2-FOLLOWUP",
-    "version": "2",
+    "version": "3",
     "file_count": 47,
     "base": "c02f1f6"
   },
@@ -19,6 +19,27 @@
     "AC-REGRESSION": "The current full suite, verification, doctors, compilation, and diff hygiene pass with the exact recorded test count."
   },
   "findings": [
+    {
+      "id": "F-REPAIR-LINKAGE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-DECISION-HISTORY"]
+    },
+    {
+      "id": "F-OPEN-RECURRENCE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-EVIDENCE-REFS"]
+    },
+    {
+      "id": "F-ID-COLLISION",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-EVIDENCE-REFS"]
+    },
     {
       "id": "F-DECISION-HISTORY",
       "severity": "high",
@@ -80,13 +101,13 @@
     "tests": "55/55",
     "rocky_tests": "55 tests, OK (skipped=1 Windows PowerShell expected)",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v2-20261114-195123",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v4-20261114-200646",
     "check_records": "PASS with 15 canonical records and two ordered Decisions",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "user_scope_backup_stamp": "20261114-195310",
-    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43592182723",
-    "ci_final_head": "836712b8e42f6edcff9bfaa4689ae9eb2d8e03bd",
-    "ci_final_status": "PASS",
+    "ci_final_run": "PENDING",
+    "ci_final_head": "PENDING",
+    "ci_final_status": "PENDING: follow-up repair 2 not yet pushed",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"
   }

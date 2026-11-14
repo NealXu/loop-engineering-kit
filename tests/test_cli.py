@@ -57,6 +57,7 @@ def stage2_records():
             "schema_version": 2,
             "id": "D-1",
             "kind": "decision",
+            "cycle": 2,
             "work_item_id": "WI-1",
             "artifact_versions": ["2"],
             "decision": "ACCEPT",
@@ -69,6 +70,21 @@ def stage2_records():
             },
             "residual_risks": [],
             "review_independence": "independent",
+        },
+        "decision-repair.json": {
+            "schema_version": 2,
+            "id": "D-REPAIR",
+            "kind": "decision",
+            "cycle": 1,
+            "work_item_id": "WI-1",
+            "artifact_versions": ["1"],
+            "decision": "REPAIR",
+            "rationale": "produce the next version",
+            "evidence_refs": ["V-1"],
+            "unresolved_disagreements": [],
+            "approver": "controller",
+            "next_state": "PRODUCE",
+            "repair_kind": "artifact",
         },
         "iterations/iteration-01.json": {
             "schema_version": 2,
@@ -659,7 +675,7 @@ class CliTests(unittest.TestCase):
             output = p.stdout + p.stderr
             self.assertEqual(p.returncode, 0, output)
             self.assertIn("[PASS] WI-1", output)
-            self.assertIn("records=6", output)
+            self.assertIn("records=7", output)
         root = CLI.parents[1]
         for path in (
                 root / "README.md",
@@ -852,25 +868,18 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             records = stage2_records()
-            records["decision.json"]["cycle"] = 2
-            records["decision-repair.json"] = {
-                "schema_version": 2,
-                "id": "D-REPAIR",
-                "kind": "decision",
-                "cycle": 1,
-                "work_item_id": "WI-1",
-                "artifact_versions": ["1"],
-                "decision": "REPAIR",
-                "rationale": "reproduce again",
-                "evidence_refs": ["V-1"],
-                "unresolved_disagreements": [],
-                "approver": "controller",
-                "next_state": "VERIFY",
-                "repair_kind": "evidence",
-            }
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            records["decision-repair.json"].update(
+                next_state="VERIFY", repair_kind="evidence")
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("must not produce", p.stderr)
+            records["decision-repair.json"].update(
+                next_state="PRODUCE", repair_kind="artifact")
 
             records["decision.json"]["evidence_refs"] = ["V-MISSING"]
             write_records(root, records)
@@ -903,6 +912,68 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("V-MISSING", p.stderr)
+
+            records.pop("finding-high.json")
+            records["finding-base.json"] = {
+                "schema_version": 2,
+                "id": "F-BASE",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "base",
+                "claim": "base finding",
+                "evidence": ["prior"],
+                "impact": "minor",
+                "required_action": "track",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+            }
+            records["finding-recurrence.json"] = {
+                "schema_version": 2,
+                "id": "F-RECUR",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "recurrence",
+                "claim": "repeated",
+                "evidence": ["again"],
+                "impact": "minor",
+                "required_action": "prove",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+                "recurrence_of": "F-BASE",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "guard",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-MISSING"],
+                },
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("V-MISSING", p.stderr)
+
+            records.pop("finding-base.json")
+            records.pop("finding-recurrence.json")
+            records["finding-conflict.json"] = {
+                "schema_version": 2,
+                "id": "V-1",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "conflict",
+                "claim": "duplicate ID",
+                "evidence": ["same ID"],
+                "impact": "ambiguous refs",
+                "required_action": "use unique IDs",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("cross-record ID conflict", p.stderr)
 
     def test_iteration_schema_supports_explicit_ancestry(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"
