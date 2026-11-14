@@ -709,6 +709,13 @@ class CliTests(unittest.TestCase):
         data = json.loads(path.read_text(encoding="utf-8"))
         self.assertIn("output_versions", data["properties"])
 
+    def test_claude_adapter_documents_validated_model_path(self):
+        text = (CLI.parents[1] / "adapters" / "claude-code"
+                / "README.md").read_text(encoding="utf-8")
+        self.assertIn("qwen3.7-plus", text)
+        self.assertIn("--model qwen3.7-plus", text)
+        self.assertIn("403", text)
+
     def test_check_finding_resolves_regression_evidence(self):
         cases = [
             ("missing", ["V-MISSING"], None, "1", ["AC-1"], ["executed"],
@@ -1074,6 +1081,8 @@ class CliTests(unittest.TestCase):
         self.assertIn("rocky8:", text)
         self.assertIn("rockylinux:8", text)
         self.assertIn("python3.8 -m unittest discover -s tests -v", text)
+        self.assertIn("actions/checkout@v5", text)
+        self.assertIn("actions/setup-python@v6", text)
 
     def test_arbiter_docs_require_finding_gate(self):
         root = CLI.parents[1]
