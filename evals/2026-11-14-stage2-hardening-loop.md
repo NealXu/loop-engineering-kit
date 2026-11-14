@@ -43,8 +43,8 @@
   `loop-engineering-stage2-v3b-20261114-192204`.
 - Source and Codex/Claude installed doctors: PASS
 - GitHub Actions baseline `43587870598`: five jobs PASS at `136f42a`.
-- The final repair commit is awaiting its own pushed matrix; it is not counted
-  as PASS until that follow-up run succeeds.
+- Final repair run `43589797769`: five jobs PASS at `4c82040`, including Rocky
+  Linux 8 and all Python 3.8/3.12 targets.
 - The same remote run uses the upgraded Actions and emits no Node 20
   deprecation warning.
 - Rocky Linux 8 installs Python 3.8.17 and runs the same full suite.

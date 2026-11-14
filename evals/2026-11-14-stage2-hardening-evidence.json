@@ -119,7 +119,9 @@
     "user_scope_backup_stamp": "20261114-191201",
     "ci_baseline_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43587870598",
     "ci_baseline_head": "136f42a4c05eb3f9402bc64d2815a2a1da54ed98",
-    "ci_final_status": "PENDING: repair commit must be pushed and observed",
+    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43589797769",
+    "ci_final_head": "4c82040768e094c44cd78d4cda8a3db85c71975a",
+    "ci_final_status": "PASS",
     "ci_jobs": [
       "Ubuntu 22.04 Python 3.8 PASS",
       "Ubuntu 22.04 Python 3.12 PASS",
