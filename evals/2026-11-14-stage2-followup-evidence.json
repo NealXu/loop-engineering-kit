@@ -183,8 +183,8 @@
     "check_records": "PASS with 27 canonical records and two ordered Decisions",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "user_scope_backup_stamp": "20261114-211824",
-    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43599142485",
-    "ci_final_head": "c60134af9cfd664625a03f21c01e7e1d3902d164",
+    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43599293483",
+    "ci_final_head": "a8ae0b60bcecad0cc4df6b5152452c623dac8b6c",
     "ci_final_status": "PASS",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"

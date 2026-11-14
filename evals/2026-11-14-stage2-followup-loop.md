@@ -43,7 +43,7 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final authorization run `43599142485`: five jobs PASS at `c60134a`,
+- Final authorization run `43599293483`: five jobs PASS at `a8ae0b6`,
   including Rocky Linux 8 and all Python 3.8/3.12 targets.
 
 ## Residual Risks
