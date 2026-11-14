@@ -133,6 +133,22 @@ def legacy_roleless_ids(records, work_item_id):
             return set(), "migration manifest roleless ids are invalid"
         if migration.get("records_sha256") != records_sha256(records):
             return set(), "legacy migration record digest mismatch"
+        actual_roles = {
+            record.get("id"): record.get("role")
+            for record in records
+            if record.get("kind") == "verification"
+            and record.get("role") is not None
+        }
+        if roles != actual_roles:
+            return set(), "migration manifest role disclosure does not match"
+        actual_roleless = {
+            record.get("id")
+            for record in records
+            if record.get("kind") == "verification"
+            and record.get("role") is None
+        }
+        if set(ids) != actual_roleless:
+            return set(), "migration manifest roleless IDs do not match"
         return set(ids), None
     return set(), None
 
@@ -960,6 +976,10 @@ def records_errors(records):
             errors.append(
                 "Iteration result must match same-cycle Decision")
     for decision in decisions:
+        cycle = decision.get("cycle")
+        if (isinstance(cycle, bool) or not isinstance(cycle, int)
+                or cycle < 1):
+            errors.append("Decision cycle must be a positive integer")
         if decision.get("work_item_id") != work_item_id:
             errors.append("Decision work_item_id does not match Work Item")
         versions = decision.get("artifact_versions")

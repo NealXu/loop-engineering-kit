@@ -148,15 +148,21 @@ def write_records(root, records):
 
 class CliTests(unittest.TestCase):
     def test_legacy_migration_manifest_metadata_is_enforced(self):
-        records = [{"id": "V-1", "kind": "verification"}]
+        records = [
+            {"id": "V-1", "kind": "verification"},
+            {"id": "V-2", "kind": "verification", "role": "reviewer"},
+            {"id": "A-1", "kind": "artifact"},
+        ]
         migration = {
             "work_item_id": "WI-LEGACY",
             "from_schema_version": 2,
             "to_schema_version": 3,
-            "record_count": 1,
+            "record_count": 3,
             "records_sha256": cli_module.records_sha256(records),
             "pre_migration_snapshot_retained": False,
-            "role_fields_present_before_rewrite": {},
+            "role_fields_present_before_rewrite": {
+                "V-2": "reviewer"
+            },
             "roleless_verification_ids": ["V-1"],
             "disclosure": "available state frozen",
         }
@@ -191,6 +197,24 @@ class CliTests(unittest.TestCase):
                 path.write_text(json.dumps(invalid), encoding="utf-8")
                 self.assertIn(
                     "2 to 3",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, role_fields_present_before_rewrite={})
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "role disclosure",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, roleless_verification_ids=[])
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "roleless IDs",
                     cli_module.legacy_roleless_ids(
                         records, "WI-LEGACY")[1])
             finally:
@@ -809,6 +833,9 @@ class CliTests(unittest.TestCase):
              "must be string"),
             ("decision-enum", "decision.json",
              lambda value: value.update(decision="MAYBE"),
+             "decision schema"),
+            ("decision-cycle", "decision.json",
+             lambda value: value.pop("cycle"),
              "decision schema"),
             ("criterion-id", "work-item.json",
              lambda value: value["acceptance_criteria"].update(

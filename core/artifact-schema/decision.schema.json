@@ -8,6 +8,7 @@
     "schema_version",
     "id",
     "kind",
+    "cycle",
     "work_item_id",
     "artifact_versions",
     "decision",
