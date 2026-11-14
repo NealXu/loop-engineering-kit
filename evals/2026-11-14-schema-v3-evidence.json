@@ -3,12 +3,13 @@
   "work_item_id": "WI-LE-SCHEMA-V3-20261114",
   "artifact": {
     "id": "A-LE-SCHEMA-V3",
-    "version": "1",
-    "file_count": 47,
+    "version": "2",
+    "file_count": 49,
     "base": "c02f1f6",
     "previous_head": "7cf0af6",
-    "code_head": "aeb31a5c54a60600ba18f4e695a5da06f4d179b0",
-    "diff_sha256": "7a3a1f7881b85f5dc433185d2ef0bc5340053fd7aba61a0bbc01aeff350a5d52"
+    "code_head": "f0d34048cffa09bc1025c53979538f5c84b10a51",
+    "diff_git_blob": "90f350958539768e7440048cee088428532b8bc4",
+    "diff_hash_command": "git diff --binary c02f1f6..f0d3404 | git hash-object --stdin"
   },
   "budget": {
     "run": 3,
@@ -49,6 +50,27 @@
       "status": "resolved",
       "prevention_kind": "structure",
       "regression_verification_ids": ["V-CI"]
+    },
+    {
+      "id": "F-VERIFIER-ROLE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-VERIFIER-GATE"]
+    },
+    {
+      "id": "F-STOP-OPEN-QUESTIONS",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-STOP-STATE"]
+    },
+    {
+      "id": "F-DIFF-HASH",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-DIFF-PROVENANCE"]
     }
   ],
   "verifications": [
@@ -92,21 +114,39 @@
       "id": "V-CI",
       "criterion_ids": ["AC-CI", "AC-REGRESSION"],
       "status": "PASS",
-      "evidence": "Run 43601812408 passed all five jobs on Artifact head aeb31a5."
+      "evidence": "Run 43603083989 passed all five jobs on Artifact head f0d3404."
+    },
+    {
+      "id": "V-VERIFIER-GATE",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Each accepted criterion rejects a producer-only Verifier path."
+    },
+    {
+      "id": "V-STOP-STATE",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "A final STOP keeps valid open_questions, while ACCEPT still rejects them."
+    },
+    {
+      "id": "V-DIFF-PROVENANCE",
+      "criterion_ids": ["AC-CI", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "The exact diff blob hash command and value are recorded for reproduction."
     }
   ],
   "post_delivery_verification": {
     "tests": "56/56",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-final-20261114-214948",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-repair2-20261114-220515",
     "check_records": "PASS with 29 migrated v3 records; 9/9 Finding gates PASS",
     "external_schema": "PowerShell Test-Json: 6 valid accepted, 6 invalid rejected",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "installed_cli_hash_match": true,
     "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
-    "user_scope_backup_stamp": "20261114-214813",
-    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43601812408",
-    "ci_artifact_head": "aeb31a5c54a60600ba18f4e695a5da06f4d179b0",
+    "user_scope_backup_stamp": "20261114-220743",
+    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43603083989",
+    "ci_artifact_head": "f0d34048cffa09bc1025c53979538f5c84b10a51",
     "ci_artifact_status": "PASS (5/5 jobs)",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"

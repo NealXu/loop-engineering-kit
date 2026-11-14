@@ -3,7 +3,7 @@
 ## Scope
 
 - Work Item: `WI-LE-SCHEMA-V3-20261114`
-- Artifact: `A-LE-SCHEMA-V3` version `1`
+- Artifact: `A-LE-SCHEMA-V3` version `2`
 - Base: `c02f1f6`; previous head: `7cf0af6`
 - Repair budget: `3`
 
@@ -22,6 +22,12 @@ Reviewer-evidence gate.
 - `F-ARTIFACT-PROVENANCE`: the previous terminal Artifact v2 remains frozen;
   this work uses a new Work Item and Artifact so local and CI evidence target
   the actual current content.
+- `F-VERIFIER-ROLE`: every accepted criterion needs final-version Verifier
+  evidence; a Producer Verification cannot self-certify the gate.
+- `F-STOP-OPEN-QUESTIONS`: a final STOP may preserve unresolved questions;
+  only ACCEPT rejects them.
+- `F-DIFF-HASH`: provenance uses Git's raw diff blob instead of PowerShell's
+  newline-normalized text.
 
 ## Verification
 
@@ -32,10 +38,11 @@ Reviewer-evidence gate.
 - External Schema engine: 6 valid samples accepted, 6 invalid samples rejected
 - Source and both installed CLI copies: identical SHA-256; installed doctors
   and real Codex/Claude checks PASS
-- Final PowerShell User Scope backup stamp: `20261114-214813`
-- Artifact code head `aeb31a5`; cumulative diff SHA-256
-  `7a3a1f7881b85f5dc433185d2ef0bc5340053fd7aba61a0bbc01aeff350a5d52`
-- CI run `43601812408`: 5/5 jobs PASS at `aeb31a5`, including Rocky Linux 8
+- Final PowerShell User Scope backup stamp: `20261114-220743`
+- Artifact code head `f0d3404`; cumulative diff blob
+  `90f350958539768e7440048cee088428532b8bc4` from
+  `git diff --binary c02f1f6..f0d3404 | git hash-object --stdin`
+- CI run `43603083989`: 5/5 jobs PASS at `f0d3404`, including Rocky Linux 8
   and all Python 3.8/3.12 targets
 
 ## Residual Risks
