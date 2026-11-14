@@ -473,19 +473,7 @@ def doctor(root, mode="kit"):
                 name, "present" if (root / name).exists() else "missing"))
         print("Kit: not checked in project mode")
         return 0
-    config_present = (root / ".loop-engineering.json").exists()
-    print("Config: {}".format("present" if config_present else "missing"))
-    if config_present:
-        try:
-            load_verify_config(root / ".loop-engineering.json")
-        except ValueError as exc:
-            print("ERROR: {}".format(exc))
-            return 1
-        print("Config validation: PASS")
-    missing = [] if config_present else [".loop-engineering.json"]
-    for name in (
-        "AGENTS.md",
-        "CLAUDE.md",
+    common_paths = (
         "core/protocol.md",
         "core/state-machine.md",
         "core/decision-policy.md",
@@ -507,28 +495,51 @@ def doctor(root, mode="kit"):
         "packs/software-development/pack.md",
         "packs/software-development/verification-skill.md",
         "packs/architecture-design/pack.md",
-        ".agents/skills/loop-engineering/SKILL.md",
-        ".claude/skills/loop-engineering/SKILL.md",
-        ".codex/agents/producer.toml",
-        ".codex/agents/verifier.toml",
-        ".codex/agents/reviewer.toml",
-        ".codex/agents/challenger.toml",
-        ".codex/agents/arbiter.toml",
-        ".claude/agents/producer.md",
-        ".claude/agents/verifier.md",
-        ".claude/agents/reviewer.md",
-        ".claude/agents/challenger.md",
-        ".claude/agents/arbiter.md",
-        "adapters/codex/README.md",
-        "adapters/claude-code/README.md",
         "loop_engineering/cli.py",
-    ):
-        present = (root / name).exists()
+    )
+    if mode == "installed":
+        print("Config: not used in installed mode")
+        required_paths = ("SKILL.md",) + common_paths
+        missing = []
+        missing_label = "installed path(s)"
+    else:
+        config_present = (root / ".loop-engineering.json").exists()
+        print("Config: {}".format("present" if config_present else "missing"))
+        if config_present:
+            try:
+                load_verify_config(root / ".loop-engineering.json")
+            except ValueError as exc:
+                print("ERROR: {}".format(exc))
+                return 1
+            print("Config validation: PASS")
+        missing = [] if config_present else [".loop-engineering.json"]
+        required_paths = (
+            "AGENTS.md",
+            "CLAUDE.md",
+        ) + common_paths + (
+            ".agents/skills/loop-engineering/SKILL.md",
+            ".claude/skills/loop-engineering/SKILL.md",
+            ".codex/agents/producer.toml",
+            ".codex/agents/verifier.toml",
+            ".codex/agents/reviewer.toml",
+            ".codex/agents/challenger.toml",
+            ".codex/agents/arbiter.toml",
+            ".claude/agents/producer.md",
+            ".claude/agents/verifier.md",
+            ".claude/agents/reviewer.md",
+            ".claude/agents/challenger.md",
+            ".claude/agents/arbiter.md",
+            "adapters/codex/README.md",
+            "adapters/claude-code/README.md",
+        )
+        missing_label = "required kit path(s)"
+    for name in required_paths:
+        present = (root / name).is_file()
         print("{}: {}".format(name, "present" if present else "missing"))
         if not present:
             missing.append(name)
     if missing:
-        print("ERROR: {} required kit path(s) missing".format(len(missing)))
+        print("ERROR: {} {} missing".format(len(missing), missing_label))
         return 1
     if sys.version_info < (3, 8):
         print("WARNING: Python 3.8+ recommended")
@@ -679,7 +690,7 @@ def main():
     subs = p.add_subparsers(dest="command", required=True)
     d = subs.add_parser("doctor")
     d.add_argument("--root", default=".")
-    d.add_argument("--mode", choices=("kit", "project"), default="kit")
+    d.add_argument("--mode", choices=("kit", "project", "installed"), default="kit")
     v = subs.add_parser("verify")
     v.add_argument("--root", default=".")
     v.add_argument("--config", default=None)

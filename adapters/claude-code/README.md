@@ -22,6 +22,9 @@ The user-level installation includes `loop_engineering/cli.py` beside the
 Skill. Use `route` before work and `doctor --mode project --root <project>` /
 `verify --root <project> --report-dir <dir>` when a project configuration
 exists.
+Run `python <installed-skill-root>/loop_engineering/cli.py doctor --mode
+installed --root <installed-skill-root>` to validate the installed Claude
+Skill independently of a source checkout.
 
 The adapter does not grant extra authority. Destructive, production-impacting,
 credential-related, and irreversible actions still require explicit approval.

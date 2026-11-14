@@ -21,6 +21,9 @@ evidence without the Producer's rationale.
 The installed Skill includes `loop_engineering/cli.py` for `route`, `doctor`,
 and `verify`; pass the target project through `--root` and choose evidence
 persistence explicitly with `--report-dir` for project checks.
+Run `python <installed-skill-root>/loop_engineering/cli.py doctor --mode
+installed --root <installed-skill-root>` to validate a User or Project Scope
+installation without source-repository paths.
 
 The adapter does not grant extra authority. Destructive, production-impacting,
 credential-related, and irreversible actions still require explicit approval.

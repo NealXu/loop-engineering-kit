@@ -34,7 +34,7 @@ py -3 -m unittest discover -s tests -v
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Target Both -Scope User
 ```
 
-CentOS 8 / Linux：
+Ubuntu Linux CI target（命令如下；兼容性尚未作为本提交的本地验收证据）：
 
 ```bash
 python3 loop_engineering/cli.py doctor
@@ -45,6 +45,16 @@ bash scripts/install.sh --target both --scope user
 `doctor` 默认检查当前 Kit 是否完整。在普通目标项目中检查可选配置时使用
 `--mode project`：缺少 `.loop-engineering.json` 不算失败，存在但格式或检查项
 无效则失败。
+
+安装完成后，对安装副本使用 `--mode installed` 自检，不再要求源码仓库布局：
+
+```powershell
+python "$HOME\.agents\skills\loop-engineering\loop_engineering\cli.py" `
+  doctor --mode installed --root "$HOME\.agents\skills\loop-engineering"
+```
+
+Claude 安装路径同理，将根目录换成
+`"$HOME\.claude\skills\loop-engineering"`。
 
 默认用户级安装五个角色和自包含的 `loop-engineering` Skill。安装器会复制
 `core/`、`roles/`、`workflows/`、`packs/`、`loop_engineering/`，遇到已有
@@ -74,9 +84,9 @@ bash scripts/install.sh --target both --scope user --upgrade
    挑战、汇总和决策。
 6. 代码域可将 `.loop-engineering.example.json` 复制为项目根目录
    `.loop-engineering.json`，配置确定性检查。
-7. 运行 `python3 loop_engineering/cli.py verify --root .`（Windows 用
-   `py -3`）时显式传 `--report-dir <报告目录>`。L1/L2 默认使用会话临时目录，
-   只有需要长期保留证据或 L3 时才写入项目目录。
+7. 运行 `python3 loop_engineering/cli.py verify --root . --report-dir
+   <报告目录>`（Windows 用 `py -3`）。L1/L2 默认使用会话临时目录，只有需要
+   长期保留证据或 L3 时才写入项目目录。
 
 任务分级：
 
@@ -134,8 +144,10 @@ Python 解释器。只配置你信任的本地命令。
 ## 边界
 
 宿主负责实际启动模型子 Agent；本工具不绕过 Codex/Claude Code 调模型。
-Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。CentOS 8
-建议使用组织批准的 Python 3.8+。
+Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。本提交的本地
+实测环境为 Windows 11 / Python 3.12；Windows 与 Ubuntu Linux 的 Python 3.8
+和 3.12 是 CI 目标，CentOS 8 当前未被 CI 覆盖。远端工作流实际执行前，这些
+环境不作为兼容性通过证据。
 
 ## 设计依据
 

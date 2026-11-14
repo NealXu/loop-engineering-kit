@@ -11,6 +11,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class InstallerTests(unittest.TestCase):
     def assert_install_upgrade(self, command):
+        def assert_installed_doctor(skill_dir):
+            p = subprocess.run([
+                sys.executable, str(skill_dir / "loop_engineering" / "cli.py"),
+                "doctor", "--mode", "installed", "--root", str(skill_dir),
+            ], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertIn(
+                "packs/software-development/verification-skill.md: present",
+                p.stdout)
+
         with tempfile.TemporaryDirectory() as t:
             target = Path(t)
             legacy = target / ".codex" / "agents" / "implementer.toml"
@@ -34,6 +44,10 @@ class InstallerTests(unittest.TestCase):
             self.assertTrue((target / ".claude" / "skills" / "loop-engineering"
                              / "packs" / "software-development"
                              / "verification-skill.md").exists())
+            assert_installed_doctor(
+                target / ".agents" / "skills" / "loop-engineering")
+            assert_installed_doctor(
+                target / ".claude" / "skills" / "loop-engineering")
             self.assertTrue(legacy.exists())
 
             marker = "local marker"
@@ -47,6 +61,7 @@ class InstallerTests(unittest.TestCase):
                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.assertEqual(upgraded.returncode, 0, upgraded.stdout + upgraded.stderr)
             self.assertNotEqual(skill.read_text(encoding="utf-8"), marker)
+            assert_installed_doctor(skill.parent)
             self.assertTrue(list(skill.parent.glob("SKILL.md.bak-*")))
             self.assertFalse(legacy.exists())
             self.assertTrue(list(legacy.parent.glob("implementer.toml.bak-*")))

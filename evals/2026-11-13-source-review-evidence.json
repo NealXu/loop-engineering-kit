@@ -3,8 +3,8 @@
   "work_item_id": "WI-LE-SOURCES-20261113",
   "artifact": {
     "id": "A-LE-SOURCES",
-    "version": "23",
-    "file_count": 40
+    "version": "27",
+    "file_count": 41
   },
   "budget": {
     "run": 50,
@@ -12,11 +12,11 @@
     "authorization": "继续直到最终独立门禁通过，到达“全部完成”"
   },
   "acceptance_criteria": {
-    "AC-CONTRACT": "Role records, evidence reports, record depth, and semantic gates are consistent.",
-    "AC-GUARD": "High, blocking, and recurring findings have executable prevention and matching regression evidence.",
-    "AC-VERIFY-SKILL": "The verification-skill template is installed and checked.",
-    "AC-CRITERIA-ID": "Schema v2 records use stable criterion IDs and deterministic context validation.",
-    "AC-REGRESSION": "Tests, doctor, configured verification, compilation, and diff checks pass."
+    "AC-CONTRACT": "compact/full/audited role-record boundaries, verify evidence reports, and the semantic ambiguity gate are consistent.",
+    "AC-GUARD": "Repeated, high, or blocking findings prefer structure over automatic_check over skill_rule over human_review and require regression evidence.",
+    "AC-VERIFY-SKILL": "The software pack supplies a verification-skill template and includes it in doctor and installer completeness checks.",
+    "AC-CRITERIA-ID": "All six schemas use v2; acceptance criteria are ID-keyed, Verification carries criterion_ids, Decision maps criterion_id to verification_ids, and both hosts are aligned.",
+    "AC-REGRESSION": "Existing behavior does not regress; tests, doctor, verify, compile, and diff checks pass."
   },
   "findings": [
     {
@@ -104,10 +104,11 @@
     }
   ],
   "iterations": {
-    "count": 22,
-    "cycles": "1-22"
+    "count": 26,
+    "cycles": "1-26"
   },
   "files": [
+    ".github/workflows/tests.yml",
     ".agents/skills/loop-engineering/SKILL.md",
     ".claude/agents/arbiter.md",
     ".claude/agents/producer.md",
@@ -148,5 +149,59 @@
     "tests/test_install.py",
     "workflows/continuous-improvement/workflow.md",
     "workflows/iterative-delivery/workflow.md"
-  ]
+  ],
+  "post_delivery_verification": {
+    "updated_files": [
+      ".github/workflows/tests.yml",
+      ".agents/skills/loop-engineering/SKILL.md",
+      ".claude/skills/loop-engineering/SKILL.md",
+      "README.md",
+      "adapters/claude-code/README.md",
+      "adapters/codex/README.md",
+      "evals/2026-11-13-source-review-evidence.json",
+      "evals/2026-11-13-source-review-loop.md",
+      "loop_engineering/cli.py",
+      "tests/test_cli.py",
+      "tests/test_install.py"
+    ],
+    "external_json_schema": {
+      "engine": "PowerShell Test-Json 7.6.9",
+      "status": "PASS",
+      "valid_records": 6,
+      "invalid_cases_rejected": 6
+    },
+    "codex_subagent": {
+      "status": "PASS",
+      "tests": "48/48",
+      "doctor": "PASS",
+      "finding_gate": "PASS",
+      "environment": "Windows 11, Python 3.12.10"
+    },
+    "claude_code": {
+      "version": "2.1.267",
+      "project_verifier": "CLAUDE_VERIFY_PASS",
+      "user_verifier": "CLAUDE_USER_VERIFY_PASS",
+      "provider_default": "BLOCKED: 403 All target providers failed",
+      "provider_validated": "qwen3.7-plus"
+    },
+    "user_scope_install": {
+      "status": "PASS",
+      "targets": [
+        "Codex",
+        "Claude"
+      ],
+      "installed_doctor_mode": "installed",
+      "installed_doctor_exit": 0,
+      "directory_as_file_rejected": true,
+      "backup_stamp": "20261114-100538",
+      "manager": "scripts/install.ps1"
+    },
+    "cross_environment": {
+      "windows_powershell": "PASS",
+      "bash_installer": "PASS in current harness",
+      "python_3_8": "NOT_RUN locally; CI matrix added",
+      "centos_8": "NOT_RUN",
+      "ci_matrix": "NOT_RUN until pushed"
+    }
+  }
 }

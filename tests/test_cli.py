@@ -243,6 +243,18 @@ class CliTests(unittest.TestCase):
             text = " ".join(path.read_text(encoding="utf-8").split())
             self.assertIn("A persistence request does not override compact",
                           text)
+        self.assertIn(
+            "verify --root . --report-dir",
+            (root / "README.md").read_text(encoding="utf-8"))
+        installed_docs = skills + [
+            root / "adapters" / "codex" / "README.md",
+            root / "adapters" / "claude-code" / "README.md",
+        ]
+        for path in installed_docs:
+            text = " ".join(path.read_text(encoding="utf-8").split())
+            self.assertIn(
+                "python <installed-skill-root>/loop_engineering/cli.py "
+                "doctor --mode installed", text)
 
     def test_check_finding_enforces_prevention_gate(self):
         base = {
@@ -884,6 +896,43 @@ class CliTests(unittest.TestCase):
             {"F-CONTRACT", "F-GUARD", "F-OUTPUT"})
         self.assertTrue(all(
             item["status"] == "PASS" for item in data["verifications"]))
+        post = data["post_delivery_verification"]
+        self.assertEqual(post["external_json_schema"]["status"], "PASS")
+        self.assertEqual(post["codex_subagent"]["status"], "PASS")
+        self.assertEqual(post["claude_code"]["project_verifier"],
+                         "CLAUDE_VERIFY_PASS")
+        self.assertEqual(post["claude_code"]["user_verifier"],
+                         "CLAUDE_USER_VERIFY_PASS")
+        self.assertEqual(post["user_scope_install"]["status"], "PASS")
+
+    def test_source_review_evidence_matches_acceptance_contract(self):
+        root = CLI.parents[1]
+        evidence = json.loads((
+            root / "evals" / "2026-11-13-source-review-evidence.json"
+        ).read_text(encoding="utf-8"))
+        expected = {
+            "AC-CONTRACT": "compact/full/audited role-record boundaries, verify evidence reports, and the semantic ambiguity gate are consistent.",
+            "AC-GUARD": "Repeated, high, or blocking findings prefer structure over automatic_check over skill_rule over human_review and require regression evidence.",
+            "AC-VERIFY-SKILL": "The software pack supplies a verification-skill template and includes it in doctor and installer completeness checks.",
+            "AC-CRITERIA-ID": "All six schemas use v2; acceptance criteria are ID-keyed, Verification carries criterion_ids, Decision maps criterion_id to verification_ids, and both hosts are aligned.",
+            "AC-REGRESSION": "Existing behavior does not regress; tests, doctor, verify, compile, and diff checks pass.",
+        }
+        self.assertEqual(evidence["acceptance_criteria"], expected)
+        self.assertEqual(
+            evidence["post_delivery_verification"]["codex_subagent"]["tests"],
+            "48/48")
+        report = (root / "evals" / "2026-11-13-source-review-loop.md").read_text(
+            encoding="utf-8")
+        self.assertNotIn("44 tests", report)
+
+    def test_ci_workflow_covers_supported_python_matrix(self):
+        path = CLI.parents[1] / ".github" / "workflows" / "tests.yml"
+        text = path.read_text(encoding="utf-8")
+        self.assertIn("ubuntu-latest", text)
+        self.assertIn("windows-latest", text)
+        self.assertIn('"3.8"', text)
+        self.assertIn('"3.12"', text)
+        self.assertIn("python -m unittest discover -s tests -v", text)
 
     def test_arbiter_docs_require_finding_gate(self):
         root = CLI.parents[1]
@@ -920,6 +969,20 @@ class CliTests(unittest.TestCase):
             p = run_cli("doctor", "--root", root, "--mode", "project")
             self.assertEqual(p.returncode, 1)
             self.assertIn("non-empty commands array", p.stdout)
+
+    def test_doctor_installed_mode_rejects_missing_layout(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = run_cli("doctor", "--root", t, "--mode", "installed")
+            self.assertEqual(p.returncode, 1)
+            self.assertIn("installed path(s) missing", p.stdout)
+
+    def test_doctor_installed_mode_rejects_directory_as_file(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            (root / "SKILL.md").mkdir()
+            p = run_cli("doctor", "--root", root, "--mode", "installed")
+            self.assertEqual(p.returncode, 1)
+            self.assertIn("SKILL.md: missing", p.stdout)
 
     def test_loop_docs_carry_tracking_and_repair_fields(self):
         root = CLI.parents[1]

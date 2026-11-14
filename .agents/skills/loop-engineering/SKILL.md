@@ -10,6 +10,9 @@ task; do not start every role for every request.
 Locate the kit root before starting. In this repository it is the ancestor
 containing `core/` and `loop_engineering/cli.py`; in an installed package those
 paths are emitted beside this `SKILL.md`.
+For an installed copy, verify it from its own root with
+`python <installed-skill-root>/loop_engineering/cli.py doctor --mode installed
+--root <installed-skill-root>`.
 
 1. **Route:** classify the work as L0-L3 from expected file count, risk,
    ambiguity, and irreversibility. From the kit root, use

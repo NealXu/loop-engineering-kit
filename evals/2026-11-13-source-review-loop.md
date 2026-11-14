@@ -23,7 +23,7 @@ project.
 - Repair budget: `50` is a controller-managed safety ceiling for the user's
   instruction to continue through the final independent gate, not a numeric
   value requested by the user. The tracked project default remains `3`.
-- Session records: `artifacts/loop-engineering/review-WI-LE-SOURCES-20261113/`
+- Session records: `$env:TEMP\loop-engineering-session-WI-LE-SOURCES-20261113`
 
 Acceptance criteria:
 
@@ -68,10 +68,10 @@ deployment, publication, or credential-related actions.
 
 ## Repair History
 
-Artifact versions 2 through 23 each have a session Iteration record under
-`artifacts/loop-engineering/review-WI-LE-SOURCES-20261113/iterations/`.
+Artifact versions 2 through 27 each have a session Iteration record under
+`$env:TEMP\loop-engineering-session-WI-LE-SOURCES-20261113\iterations`.
 Each record identifies the input version, targeted findings, changes, and
-continue result. The final gate covers version 23.
+continue result. The final gate covers version 27.
 
 ## Actual Findings
 
@@ -81,21 +81,36 @@ The review defects that drove the prevention work are recorded for this session 
 - `finding-F-GUARD.json` with `V-FINDING-GUARD`
 - `finding-F-OUTPUT.json` with `V-FINDING-OUTPUT`
 
-Each regression Verification is `PASS`, targets `A-LE-SOURCES` version 23,
+Each regression Verification is `PASS`, targets `A-LE-SOURCES` version 27,
 contains a matching `finding_id`, and covers the relevant criterion. The
 Arbiter path is:
 
 ```text
+SESSION_RECORDS=%TEMP%\loop-engineering-session-WI-LE-SOURCES-20261113
 python loop_engineering/cli.py check-finding --input <finding> \
-  --work-item artifacts/loop-engineering/review-WI-LE-SOURCES-20261113/work-item.json \
-  --artifact artifacts/loop-engineering/review-WI-LE-SOURCES-20261113/artifact.json \
-  --verifications-dir artifacts/loop-engineering/review-WI-LE-SOURCES-20261113
+  --work-item %SESSION_RECORDS%\work-item.json \
+  --artifact %SESSION_RECORDS%\artifact.json \
+  --verifications-dir %SESSION_RECORDS%
 ```
+
+## Post-Delivery Verification
+
+- External JSON Schema engine: PowerShell `Test-Json` accepted six valid records
+  and rejected six invalid cases.
+- Codex subagent: 48 tests, `doctor`, and the three actual Finding gates passed.
+- Claude Code `2.1.267`: both project and User Scope verifier sessions returned
+  `CLAUDE_VERIFY_PASS`; the validated model was `qwen3.7-plus`.
+- The default CCR `opencode/glm-5.3-flash` route remained blocked by an upstream
+  403, so it is recorded as an environment limitation rather than a pass.
+- Real User Scope installation succeeded for both hosts with timestamped
+  backups. The installed `doctor --mode installed` exits `0` for Codex and
+  Claude copies.
+- CI targets Python 3.8 and 3.12 on Ubuntu and Windows. CentOS 8 is not covered
+  by CI, and these non-Windows targets were not executed locally.
 
 ## Limitations
 
-- Live Codex and Claude subagent sessions are not replayed.
-- No third-party JSON Schema engine is installed; the repository uses its
-  standard-library contract checks and review.
-- Installer tests use temporary targets rather than a real user profile.
+- Python 3.8, Ubuntu/CentOS 8, and the remote CI workflow have not executed.
+- The default GLM provider remains blocked; the validated Claude path uses
+  `qwen3.7-plus`.
 - Stage 2 cross-record ancestry and reference resolution remain deferred.
