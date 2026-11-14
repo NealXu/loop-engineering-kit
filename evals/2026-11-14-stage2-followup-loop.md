@@ -25,6 +25,11 @@ its history.
 - `F-OPEN-RECURRENCE`: prevention and recurrence evidence resolves in every
   Finding status.
 - `F-ID-COLLISION`: stable IDs are unique across non-Artifact record types.
+- `F-TERMINAL`: only one terminal ACCEPT/STOP/ESCALATE is allowed and it must
+  be last; Iteration.result matches the same-cycle Decision.
+- `F-REPAIR-VERSION`: artifact REPAIR names the pre-repair input version.
+- `F-RISK-ID` and `F-MALFORMED-KIND`: dangling risk references and non-string
+  record kinds fail with structured diagnostics.
 
 ## Verification
 
@@ -35,8 +40,8 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final follow-up run `43594319219`: five jobs PASS at `21e45f2`, including
-  Rocky Linux 8 and all Python 3.8/3.12 targets.
+- The final terminal/risk repair is pending its pushed matrix and is not
+  counted as PASS.
 
 ## Residual Risks
 

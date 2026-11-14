@@ -597,6 +597,10 @@ def records_errors(records):
     schema_valid = True
     for record in records:
         kind = record.get("kind")
+        if not isinstance(kind, str):
+            errors.append("record kind must be a string")
+            schema_valid = False
+            continue
         if kind in {
                 "work_item", "artifact", "finding", "verification",
                 "decision", "iteration"}:
@@ -785,13 +789,14 @@ def records_errors(records):
                     range(1, len(decisions) + 1))):
             errors.append(
                 "multiple Decisions require contiguous cycles from 1")
-    accepted_decisions = [
+    terminal_decisions = [
         decision for decision in decisions
-        if decision.get("decision") == "ACCEPT"]
-    if len(accepted_decisions) != 1:
-        errors.append("records must contain exactly one ACCEPT Decision")
-    final_decision = accepted_decisions[0] if len(
-        accepted_decisions) == 1 else None
+        if decision.get("decision") in {"ACCEPT", "STOP", "ESCALATE"}]
+    if len(terminal_decisions) != 1:
+        errors.append(
+            "records must contain exactly one final ACCEPT/STOP/ESCALATE Decision")
+    final_decision = terminal_decisions[0] if len(
+        terminal_decisions) == 1 else None
     if (final_decision is not None and decision_cycles
             and isinstance(final_decision.get("cycle"), int)
             and final_decision.get("cycle") != max(decision_cycles)):
@@ -815,6 +820,16 @@ def records_errors(records):
         for decision in decisions
         if (decision.get("decision") == "REPAIR"
             and isinstance(decision.get("cycle"), int))}
+    decisions_by_cycle = {
+        decision.get("cycle"): decision
+        for decision in decisions
+        if isinstance(decision.get("cycle"), int)}
+    for iteration in groups.get("iteration", []):
+        decision = decisions_by_cycle.get(iteration.get("cycle"))
+        if (decision is not None
+                and iteration.get("result") != decision.get("decision")):
+            errors.append(
+                "Iteration result must match same-cycle Decision")
     for decision in decisions:
         if decision.get("work_item_id") != work_item_id:
             errors.append("Decision work_item_id does not match Work Item")
@@ -835,7 +850,7 @@ def records_errors(records):
                     errors.append(
                         "Decision evidence_ref {} does not resolve".format(
                             json.dumps(ref, ensure_ascii=True)))
-        if decision is final_decision:
+        if decision is final_decision and decision.get("decision") == "ACCEPT":
             if work_item.get("open_questions"):
                 errors.append("open_questions block ACCEPT")
             risk_level = work_item.get("risk_level")
@@ -881,6 +896,13 @@ def records_errors(records):
                 errors.append(
                     "accepted medium Findings require residual_risks: {}".format(
                         _quoted_names(sorted(missing_risks))))
+            for risk in decision.get("residual_risks", []):
+                finding_id = risk.get("finding_id") if isinstance(
+                    risk, dict) else None
+                if finding_id is not None and finding_id not in findings:
+                    errors.append(
+                        "residual risk references unknown Finding {}".format(
+                            json.dumps(finding_id, ensure_ascii=True)))
             if set(evidence_map) != set(criteria):
                 errors.append("Decision criteria_evidence must match Work Item criteria")
             for criterion_id, evidence in evidence_map.items():
@@ -973,9 +995,11 @@ def check_records(directory):
     try:
         for path in sorted(root.rglob("*.json")):
             record = load_json(path)
-            if record.get("kind") in {
+            kind = record.get("kind")
+            if (not isinstance(kind, str)
+                    or kind in {
                     "work_item", "artifact", "finding", "verification",
-                    "decision", "iteration"}:
+                    "decision", "iteration"}):
                 records.append(record)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)

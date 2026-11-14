@@ -95,7 +95,7 @@ def stage2_records():
             "input_versions": ["1"],
             "output_versions": ["2"],
             "changes": ["produced version 2"],
-            "result": "CONTINUE",
+            "result": "REPAIR",
         },
     }
 
@@ -739,6 +739,9 @@ class CliTests(unittest.TestCase):
             ("malformed-criterion-list", "verification.json",
              lambda value: value.update(criterion_ids=None),
              "verification schema"),
+            ("malformed-kind", "verification.json",
+             lambda value: value.update(kind=[]),
+             "kind must be a string"),
         ]
         for name, filename, mutate, marker in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
@@ -857,6 +860,12 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"]["residual_risks"][0][
+                "finding_id"] = "F-MISSING"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("unknown Finding", p.stderr)
 
     def test_check_records_validates_decision_history_and_evidence(self):
         def write_records(root, records):
@@ -871,6 +880,13 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            records["iterations/iteration-01.json"]["result"] = "ACCEPT"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("same-cycle Decision", p.stderr)
+            records["iterations/iteration-01.json"]["result"] = "REPAIR"
 
             records["decision-repair.json"]["artifact_versions"] = ["2"]
             write_records(root, records)
@@ -1002,6 +1018,55 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("cross-record ID conflict", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records.pop("artifact-2.json")
+            records.pop("iterations/iteration-01.json")
+            records.pop("decision-repair.json")
+            records["verification.json"]["artifact_version"] = "1"
+            records["decision.json"] = {
+                "schema_version": 2,
+                "id": "D-STOP",
+                "kind": "decision",
+                "cycle": 1,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["1"],
+                "decision": "STOP",
+                "rationale": "terminal",
+                "evidence_refs": ["V-1"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision-accept.json"] = {
+                "schema_version": 2,
+                "id": "D-LATE",
+                "kind": "decision",
+                "cycle": 2,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["1"],
+                "decision": "ACCEPT",
+                "rationale": "late accept",
+                "evidence_refs": ["V-1"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+                "criteria_evidence": {
+                    "AC-1": {
+                        "verification_ids": ["V-1"],
+                        "result": "PASS",
+                    },
+                },
+                "residual_risks": [],
+                "review_independence": "independent",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("terminal Decision", p.stderr)
 
     def test_iteration_schema_supports_explicit_ancestry(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"
