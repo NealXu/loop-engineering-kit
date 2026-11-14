@@ -893,9 +893,14 @@ class CliTests(unittest.TestCase):
         self.assertEqual(data["budget"]["project_default"], 3)
         self.assertEqual(
             {item["id"] for item in data["findings"]},
-            {"F-CONTRACT", "F-GUARD", "F-OUTPUT"})
+            {"F-CI", "F-CONTRACT", "F-GUARD", "F-OUTPUT"})
+        results = {item["id"]: item for item in data["verifications"]}
+        self.assertEqual(results.pop("V-CI-MATRIX")["status"], "NOT_RUN")
         self.assertTrue(all(
-            item["status"] == "PASS" for item in data["verifications"]))
+            item["status"] == "PASS" for item in results.values()))
+        ci_finding = next(
+            item for item in data["findings"] if item["id"] == "F-CI")
+        self.assertEqual(ci_finding["status"], "open")
         post = data["post_delivery_verification"]
         self.assertEqual(post["external_json_schema"]["status"], "PASS")
         self.assertEqual(post["codex_subagent"]["status"], "PASS")
@@ -928,7 +933,8 @@ class CliTests(unittest.TestCase):
     def test_ci_workflow_covers_supported_python_matrix(self):
         path = CLI.parents[1] / ".github" / "workflows" / "tests.yml"
         text = path.read_text(encoding="utf-8")
-        self.assertIn("ubuntu-latest", text)
+        self.assertIn("ubuntu-22.04", text)
+        self.assertNotIn("ubuntu-latest", text)
         self.assertIn("windows-latest", text)
         self.assertIn('"3.8"', text)
         self.assertIn('"3.12"', text)

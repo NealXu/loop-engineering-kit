@@ -3,7 +3,7 @@
   "work_item_id": "WI-LE-SOURCES-20261113",
   "artifact": {
     "id": "A-LE-SOURCES",
-    "version": "27",
+    "version": "29",
     "file_count": 41
   },
   "budget": {
@@ -19,6 +19,14 @@
     "AC-REGRESSION": "Existing behavior does not regress; tests, doctor, verify, compile, and diff checks pass."
   },
   "findings": [
+    {
+      "id": "F-CI",
+      "severity": "high",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "open",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-CI-MATRIX"]
+    },
     {
       "id": "F-CONTRACT",
       "severity": "high",
@@ -45,6 +53,13 @@
     }
   ],
   "verifications": [
+    {
+      "id": "V-CI-MATRIX",
+      "finding_id": "F-CI",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "NOT_RUN",
+      "method": "python -m unittest tests.test_cli.CliTests.test_ci_workflow_covers_supported_python_matrix -v"
+    },
     {
       "id": "V-CONTRACT",
       "criterion_ids": ["AC-CONTRACT"],
@@ -104,8 +119,8 @@
     }
   ],
   "iterations": {
-    "count": 26,
-    "cycles": "1-26"
+    "count": 28,
+    "cycles": "1-28"
   },
   "files": [
     ".github/workflows/tests.yml",
@@ -193,7 +208,7 @@
       "installed_doctor_mode": "installed",
       "installed_doctor_exit": 0,
       "directory_as_file_rejected": true,
-      "backup_stamp": "20261114-100538",
+      "backup_stamp": "20261114-101921",
       "manager": "scripts/install.ps1"
     },
     "cross_environment": {
@@ -201,7 +216,7 @@
       "bash_installer": "PASS in current harness",
       "python_3_8": "NOT_RUN locally; CI matrix added",
       "centos_8": "NOT_RUN",
-      "ci_matrix": "NOT_RUN until pushed"
+      "ci_matrix": "v27 run 43545443764 passed both 3.12 jobs and exposed missing Python 3.8 on ubuntu-latest (Ubuntu 26.04); v29 pins ubuntu-22.04 and awaits the final pushed run"
     }
   }
 }

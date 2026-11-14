@@ -68,22 +68,24 @@ deployment, publication, or credential-related actions.
 
 ## Repair History
 
-Artifact versions 2 through 27 each have a session Iteration record under
+Artifact versions 2 through 29 each have a session Iteration record under
 `$env:TEMP\loop-engineering-session-WI-LE-SOURCES-20261113\iterations`.
 Each record identifies the input version, targeted findings, changes, and
-continue result. The final gate covers version 27.
+continue result. The final gate covers version 29.
 
 ## Actual Findings
 
 The review defects that drove the prevention work are recorded for this session as:
 
+- `finding-F-CI.json` with `V-CI-MATRIX`
 - `finding-F-CONTRACT.json` with `V-FINDING-CONTRACT`
 - `finding-F-GUARD.json` with `V-FINDING-GUARD`
 - `finding-F-OUTPUT.json` with `V-FINDING-OUTPUT`
 
-Each regression Verification is `PASS`, targets `A-LE-SOURCES` version 27,
+Each resolved regression Verification is `PASS`, targets `A-LE-SOURCES` version 29,
 contains a matching `finding_id`, and covers the relevant criterion. The
-Arbiter path is:
+`F-CI` verification remains `NOT_RUN` in the pre-push snapshot; it can close
+only after the pushed Ubuntu Python 3.8 job succeeds. The Arbiter path is:
 
 ```text
 SESSION_RECORDS=%TEMP%\loop-engineering-session-WI-LE-SOURCES-20261113
@@ -97,7 +99,8 @@ python loop_engineering/cli.py check-finding --input <finding> \
 
 - External JSON Schema engine: PowerShell `Test-Json` accepted six valid records
   and rejected six invalid cases.
-- Codex subagent: 48 tests, `doctor`, and the three actual Finding gates passed.
+- Codex subagent: 48 tests, `doctor`, and the three resolved Finding gates
+  passed. The fourth, `F-CI`, was exercised and correctly remained open.
 - Claude Code `2.1.267`: both project and User Scope verifier sessions returned
   `CLAUDE_VERIFY_PASS`; the validated model was `qwen3.7-plus`.
 - The default CCR `opencode/glm-5.3-flash` route remained blocked by an upstream
@@ -105,12 +108,16 @@ python loop_engineering/cli.py check-finding --input <finding> \
 - Real User Scope installation succeeded for both hosts with timestamped
   backups. The installed `doctor --mode installed` exits `0` for Codex and
   Claude copies.
-- CI targets Python 3.8 and 3.12 on Ubuntu and Windows. CentOS 8 is not covered
-  by CI, and these non-Windows targets were not executed locally.
+- The v27 CI run passed both Python 3.12 jobs but failed Python 3.8 on Ubuntu
+  because `ubuntu-latest` resolved to Ubuntu 26.04 without that runtime. v29
+  pins Ubuntu 22.04 and adds a regression assertion; its pushed run is pending.
+- CI targets Python 3.8 and 3.12 on Ubuntu 22.04 and Windows. CentOS 8 is not
+  covered by CI, and these non-Windows targets were not executed locally.
 
 ## Limitations
 
-- Python 3.8, Ubuntu/CentOS 8, and the remote CI workflow have not executed.
+- The v29 remote CI workflow has not executed yet; Python 3.8, Ubuntu, and
+  CentOS 8 have not executed locally.
 - The default GLM provider remains blocked; the validated Claude path uses
   `qwen3.7-plus`.
 - Stage 2 cross-record ancestry and reference resolution remain deferred.

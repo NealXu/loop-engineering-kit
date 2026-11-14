@@ -34,7 +34,7 @@ py -3 -m unittest discover -s tests -v
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Target Both -Scope User
 ```
 
-Ubuntu Linux CI target（命令如下；兼容性尚未作为本提交的本地验收证据）：
+Ubuntu 22.04 Linux CI target（命令如下；兼容性尚未作为本提交的本地验收证据）：
 
 ```bash
 python3 loop_engineering/cli.py doctor
@@ -146,8 +146,8 @@ Python 解释器。只配置你信任的本地命令。
 宿主负责实际启动模型子 Agent；本工具不绕过 Codex/Claude Code 调模型。
 Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。本提交的本地
 实测环境为 Windows 11 / Python 3.12；Windows 与 Ubuntu Linux 的 Python 3.8
-和 3.12 是 CI 目标，CentOS 8 当前未被 CI 覆盖。远端工作流实际执行前，这些
-环境不作为兼容性通过证据。
+和 3.12 是 CI 目标，Ubuntu 固定为 22.04 以保留 Python 3.8 runner，CentOS 8
+当前未被 CI 覆盖。远端工作流实际执行前，这些环境不作为兼容性通过证据。
 
 ## 设计依据
 
