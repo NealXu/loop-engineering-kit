@@ -105,9 +105,9 @@
     "check_records": "PASS with 15 canonical records and two ordered Decisions",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "user_scope_backup_stamp": "20261114-201918",
-    "ci_final_run": "PENDING",
-    "ci_final_head": "PENDING",
-    "ci_final_status": "PENDING: final follow-up repair not yet pushed",
+    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43594319219",
+    "ci_final_head": "21e45f2e3afd5b2f5bf1ff1f92fb5a0c9850f86e",
+    "ci_final_status": "PASS",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"
   }

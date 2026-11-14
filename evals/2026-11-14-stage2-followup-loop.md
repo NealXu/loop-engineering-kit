@@ -35,8 +35,8 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final follow-up repair is pending its pushed matrix and is not counted as
-  PASS.
+- Final follow-up run `43594319219`: five jobs PASS at `21e45f2`, including
+  Rocky Linux 8 and all Python 3.8/3.12 targets.
 
 ## Residual Risks
 
