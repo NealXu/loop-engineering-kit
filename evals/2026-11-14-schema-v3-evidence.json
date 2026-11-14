@@ -3,13 +3,13 @@
   "work_item_id": "WI-LE-SCHEMA-V3-20261114",
   "artifact": {
     "id": "A-LE-SCHEMA-V3",
-    "version": "6",
+    "version": "7",
     "file_count": 50,
     "base": "c02f1f6",
     "previous_head": "7cf0af6",
-    "code_head": "74e2c592bb4525fea983ff2f8adebb4caf7fc97d",
-    "diff_git_blob": "b125fc80bfb04adcad03858ae51293613c83e6cb",
-    "diff_hash_command": "git diff --binary c02f1f6..74e2c59 | git hash-object --stdin"
+    "code_head": "ade727350a311667d40db6d44d34c2482a4069ea",
+    "diff_git_blob": "91cf27e1249871204557effe8b3ef2a772fee467",
+    "diff_hash_command": "git diff --binary c02f1f6..ade7273 | git hash-object --stdin"
   },
   "budget": {
     "run": 3,
@@ -127,6 +127,13 @@
       "status": "resolved",
       "prevention_kind": "structure",
       "regression_verification_ids": ["V-MIGRATION-DIGEST"]
+    },
+    {
+      "id": "F-MANIFEST-METADATA",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-MANIFEST-METADATA"]
     }
   ],
   "verifications": [
@@ -170,7 +177,7 @@
       "id": "V-CI",
       "criterion_ids": ["AC-CI", "AC-REGRESSION"],
       "status": "PASS",
-      "evidence": "Run 43608192970 passed all five jobs on Artifact head 74e2c59."
+      "evidence": "Run 43609980117 passed all five jobs on Artifact head ade7273."
     },
     {
       "id": "V-VERIFIER-GATE",
@@ -237,20 +244,26 @@
       "criterion_ids": ["AC-MIGRATION"],
       "status": "PASS",
       "evidence": "Manifest digest db0609f7... matches the exact 29-record canonical set; altered or new sessions do not qualify."
+    },
+    {
+      "id": "V-MANIFEST-METADATA",
+      "criterion_ids": ["AC-MIGRATION", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Manifest schema_version, 2-to-3 direction, record_count, digest, role disclosure, snapshot flag, and roleless IDs are enforced."
     }
   ],
   "post_delivery_verification": {
-    "tests": "56/56",
+    "tests": "57/57",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-frozen-20261114-230347",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-manifest-final-20261114-232317",
     "check_records": "PASS with 29 migrated v3 records; 9/9 Finding gates PASS; exact-digest legacy manifest",
     "external_schema": "PowerShell Test-Json: 6 valid accepted, 6 invalid rejected",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "installed_cli_hash_match": true,
     "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
-    "user_scope_backup_stamp": "20261114-230608",
-    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43608192970",
-    "ci_artifact_head": "74e2c592bb4525fea983ff2f8adebb4caf7fc97d",
+    "user_scope_backup_stamp": "20261114-232553",
+    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43609980117",
+    "ci_artifact_head": "ade727350a311667d40db6d44d34c2482a4069ea",
     "ci_artifact_status": "PASS (5/5 jobs)",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"
