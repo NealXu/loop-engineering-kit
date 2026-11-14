@@ -872,6 +872,34 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
+            records["decision-repair.json"]["artifact_versions"] = ["2"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("input_versions", p.stderr)
+            records["decision-repair.json"]["artifact_versions"] = ["1"]
+
+            records["decision.json"]["cycle"] = 3
+            records["decision-stop.json"] = {
+                "schema_version": 2,
+                "id": "D-STOP",
+                "kind": "decision",
+                "cycle": 2,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["2"],
+                "decision": "STOP",
+                "rationale": "terminal",
+                "evidence_refs": ["V-1"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("terminal Decision", p.stderr)
+            records.pop("decision-stop.json")
+            records["decision.json"]["cycle"] = 2
+
             records["decision-repair.json"].update(
                 next_state="VERIFY", repair_kind="evidence")
             write_records(root, records)

@@ -796,6 +796,16 @@ def records_errors(records):
             and isinstance(final_decision.get("cycle"), int)
             and final_decision.get("cycle") != max(decision_cycles)):
         errors.append("final ACCEPT Decision must be the last cycle")
+    if decision_cycles:
+        ordered_decisions = sorted(
+            decisions,
+            key=lambda item: item.get("cycle", 0)
+            if isinstance(item.get("cycle"), int) else 0)
+        for index, decision in enumerate(ordered_decisions[:-1]):
+            if decision.get("decision") in {"STOP", "ESCALATE"}:
+                errors.append(
+                    "terminal Decision cannot have a later Decision")
+                break
     iterations_by_cycle = {
         iteration.get("cycle"): iteration
         for iteration in groups.get("iteration", [])
@@ -927,6 +937,12 @@ def records_errors(records):
                 if not produced:
                     errors.append(
                         "artifact REPAIR requires a new Artifact version")
+                if iteration is not None:
+                    inputs = iteration.get("input_versions")
+                    if not isinstance(inputs, list) or sorted(inputs) != sorted(
+                            versions):
+                        errors.append(
+                            "artifact REPAIR versions must match Iteration input_versions")
             elif repair_kind == "evidence":
                 if next_state != "VERIFY":
                     errors.append(

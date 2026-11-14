@@ -3,7 +3,7 @@
   "work_item_id": "WI-LE-STAGE2-FOLLOWUP-20261114",
   "artifact": {
     "id": "A-LE-STAGE2-FOLLOWUP",
-    "version": "3",
+    "version": "2",
     "file_count": 47,
     "base": "c02f1f6"
   },
@@ -101,13 +101,13 @@
     "tests": "55/55",
     "rocky_tests": "55 tests, OK (skipped=1 Windows PowerShell expected)",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v4-20261114-200646",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v5-20261114-201933",
     "check_records": "PASS with 15 canonical records and two ordered Decisions",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
-    "user_scope_backup_stamp": "20261114-195310",
-    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43593280961",
-    "ci_final_head": "ac770371874f870eccef72a1e8e7f61abceb58b1",
-    "ci_final_status": "PASS",
+    "user_scope_backup_stamp": "20261114-201918",
+    "ci_final_run": "PENDING",
+    "ci_final_head": "PENDING",
+    "ci_final_status": "PENDING: final follow-up repair not yet pushed",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"
   }
