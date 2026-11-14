@@ -3,7 +3,7 @@
   "work_item_id": "WI-LE-STAGE2-20261114",
   "artifact": {
     "id": "A-LE-STAGE2",
-    "version": "3",
+    "version": "4",
     "file_count": 45,
     "base": "c02f1f6"
   },
@@ -13,12 +13,54 @@
   },
   "acceptance_criteria": {
     "AC-ANCESTRY": "check-records resolves record IDs, criteria, versions, Finding recurrence, Decision evidence, and Artifact/Iteration ancestry with schema validation.",
-    "AC-COMPAT": "The Bash installer and full suite pass in a Rocky Linux 8 container with Python 3.8.",
+    "AC-COMPAT": "The Bash installer and all platform-applicable tests pass in Rocky Linux 8; the Windows-only PowerShell installer test remains skipped there and is covered by the Windows job.",
     "AC-MODEL": "The Claude Code adapter names the validated qwen3.7-plus path and records GLM 403 as a provider limitation.",
     "AC-ACTIONS": "The CI workflow uses checkout@v5 and setup-python@v6 and completes without Node 20 deprecation warnings.",
     "AC-REGRESSION": "All 53 tests, verification, source doctor, both installed doctors, compilation, and diff hygiene pass."
   },
   "findings": [
+    {
+      "id": "F-LINEAGE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-LINEAGE"]
+    },
+    {
+      "id": "F-COMPAT-SKIP",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-COMPAT"]
+    },
+    {
+      "id": "F-INSTALLED",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-INSTALLED"]
+    },
+    {
+      "id": "F-BUDGET",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-BUDGET"]
+    },
+    {
+      "id": "F-MEDIUM-RISK",
+      "severity": "high",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-RISK"]
+    },
+    {
+      "id": "F-MALFORMED",
+      "severity": "medium",
+      "status": "resolved",
+      "prevention": "structure",
+      "regression_verification_ids": ["V-MALFORMED"]
+    },
     {
       "id": "F-FINAL-VERSION",
       "severity": "high",
@@ -63,6 +105,31 @@
     }
   ],
   "verifications": [
+    {
+      "id": "V-LINEAGE",
+      "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-INSTALLED",
+      "criterion_ids": ["AC-COMPAT", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-BUDGET",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-RISK",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
+    {
+      "id": "V-MALFORMED",
+      "criterion_ids": ["AC-ANCESTRY"],
+      "status": "PASS"
+    },
     {
       "id": "V-FINAL-VERSION",
       "criterion_ids": ["AC-ANCESTRY"],
@@ -110,18 +177,19 @@
     }
   ],
   "post_delivery_verification": {
-    "tests": "53/53",
+    "tests": "54/54",
+    "rocky_tests": "PASS: 53 tests, OK (skipped=1 Windows PowerShell)",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-v3b-20261114-192204",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-v4-20261114-193405",
     "check_records": "PASS",
     "source_doctor": "PASS",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "user_scope_backup_stamp": "20261114-191201",
     "ci_baseline_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43587870598",
     "ci_baseline_head": "136f42a4c05eb3f9402bc64d2815a2a1da54ed98",
-    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43589797769",
-    "ci_final_head": "4c82040768e094c44cd78d4cda8a3db85c71975a",
-    "ci_final_status": "PASS",
+    "ci_final_run": "PENDING",
+    "ci_final_head": "PENDING",
+    "ci_final_status": "PENDING: repair round 3 not yet pushed",
     "ci_jobs": [
       "Ubuntu 22.04 Python 3.8 PASS",
       "Ubuntu 22.04 Python 3.12 PASS",

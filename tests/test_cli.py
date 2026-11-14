@@ -687,7 +687,7 @@ class CliTests(unittest.TestCase):
              "not PASS"),
             ("malformed-version", "verification.json",
              lambda value: value.update(artifact_version=[]),
-             "must be strings"),
+             "must be string"),
             ("decision-enum", "decision.json",
              lambda value: value.update(decision="MAYBE"),
              "decision schema"),
@@ -715,6 +715,12 @@ class CliTests(unittest.TestCase):
             ("l3-controller", "work-item.json",
              lambda value: value.update(risk_level="high"),
              "human approval"),
+            ("malformed-decision-version", "decision.json",
+             lambda value: value.update(artifact_versions=[[]]),
+             "decision schema"),
+            ("malformed-criterion-list", "verification.json",
+             lambda value: value.update(criterion_ids=None),
+             "verification schema"),
         ]
         for name, filename, mutate, marker in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
@@ -760,7 +766,78 @@ class CliTests(unittest.TestCase):
             self.assertFalse(any(
                 line.startswith("[PASS] forged")
                 for line in output.splitlines()[1:]))
-            self.assertIn("\\n[PASS] forged", output)
+            self.assertNotIn("[PASS] forged", output)
+            self.assertIn("finding schema", output)
+
+    def test_check_records_enforces_lineage_budget_and_medium_risk(self):
+        def write_records(root, records):
+            for record_name, value in records.items():
+                path = root / record_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(value), encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["artifact-3.json"] = dict(
+                records["artifact-2.json"], version="3")
+            records["iterations/iteration-02.json"] = {
+                "schema_version": 2,
+                "id": "I-2",
+                "kind": "iteration",
+                "work_item_id": "WI-1",
+                "cycle": 2,
+                "input_versions": ["1"],
+                "output_versions": ["3"],
+                "changes": ["branch from v1"],
+                "result": "CONTINUE",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("current lineage", p.stderr)
+
+        for budget, expected in ((1, 0), (0, 1)):
+            with (self.subTest(budget=budget),
+                  tempfile.TemporaryDirectory() as t):
+                root = Path(t)
+                records = stage2_records()
+                records["work-item.json"]["max_repair_iterations"] = budget
+                write_records(root, records)
+                p = run_cli("check-records", "--dir", root)
+                self.assertEqual(p.returncode, expected, p.stdout + p.stderr)
+                if expected:
+                    self.assertIn("max_repair_iterations", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["finding.json"] = {
+                "schema_version": 2,
+                "id": "F-MEDIUM",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "medium",
+                "target": "risk",
+                "claim": "bounded issue",
+                "evidence": ["observed"],
+                "impact": "limited",
+                "required_action": "accept with owner",
+                "criterion_ids": ["AC-1"],
+                "status": "accepted_risk",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("residual_risks", p.stderr)
+            records["decision.json"]["residual_risks"] = [{
+                "risk": "bounded issue",
+                "owner": "user",
+                "finding_id": "F-MEDIUM",
+            }]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
     def test_iteration_schema_supports_explicit_ancestry(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"

@@ -12,8 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 class InstallerTests(unittest.TestCase):
     def assert_install_upgrade(self, command):
         def assert_installed_doctor(skill_dir):
+            installed_cli = skill_dir / "loop_engineering" / "cli.py"
+            self.assertEqual(
+                installed_cli.read_bytes(),
+                (ROOT / "loop_engineering" / "cli.py").read_bytes())
             p = subprocess.run([
-                sys.executable, str(skill_dir / "loop_engineering" / "cli.py"),
+                sys.executable, str(installed_cli),
                 "doctor", "--mode", "installed", "--root", str(skill_dir),
             ], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)

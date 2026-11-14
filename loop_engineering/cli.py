@@ -525,9 +525,76 @@ def check_finding(path, work_item_path=None, artifact_path=None,
     return 0
 
 
+def iteration_lineage(iterations, artifact_versions, max_repair_iterations,
+                      work_item_id):
+    errors = []
+    cycles = []
+    declared_outputs = set()
+    for iteration in iterations:
+        if iteration.get("work_item_id") != work_item_id:
+            errors.append("Iteration work_item_id does not match Work Item")
+        cycle = iteration.get("cycle")
+        if isinstance(cycle, int) and not isinstance(cycle, bool) and cycle > 0:
+            cycles.append(cycle)
+        else:
+            errors.append("Iteration cycle must be a positive integer")
+        inputs = iteration.get("input_versions")
+        if (not isinstance(inputs, list) or not inputs or not all(
+                isinstance(item, str) and item.strip() for item in inputs)):
+            errors.append("Iteration input_versions must be a non-empty array")
+        elif len(inputs) != len(set(inputs)):
+            errors.append("Iteration input_versions must be unique")
+        produced = iteration.get("output_versions")
+        if not isinstance(produced, list) or not all(
+                isinstance(item, str) and item.strip() for item in produced):
+            errors.append("Iteration output_versions must be an array")
+        elif len(produced) != len(set(produced)):
+            errors.append("Iteration output_versions must be unique")
+        else:
+            declared_outputs.update(produced)
+    if cycles:
+        if sorted(cycles) != list(range(1, len(cycles) + 1)):
+            errors.append("Iteration cycles must be contiguous from 1")
+    initial = artifact_versions - declared_outputs
+    if len(initial) != 1:
+        errors.append("Artifact lineage must start with exactly one version")
+        return set(), errors
+    current = set(initial)
+    repairs = 0
+    ordered = sorted(
+        iterations,
+        key=lambda item: item.get("cycle", 0)
+        if isinstance(item.get("cycle"), int) else 0)
+    for iteration in ordered:
+        inputs = iteration.get("input_versions")
+        if isinstance(inputs, list) and set(inputs) != current:
+            errors.append("Iteration inputs must match the current lineage")
+        produced = iteration.get("output_versions")
+        if not isinstance(produced, list) or not produced:
+            continue
+        repairs += 1
+        if len(produced) != 1:
+            errors.append("Artifact repair Iteration must produce one version")
+        valid_outputs = {
+            version for version in produced
+            if isinstance(version, str) and version in artifact_versions}
+        unknown = set(produced) - valid_outputs
+        if unknown:
+            errors.append("Iteration output versions not found: {}".format(
+                _quoted_names(sorted(unknown))))
+        if valid_outputs & current:
+            errors.append("Iteration output version already exists in lineage")
+        if valid_outputs:
+            current = valid_outputs
+    if repairs > max_repair_iterations:
+        errors.append("Artifact repairs exceed max_repair_iterations")
+    return current, errors
+
+
 def records_errors(records):
     errors = []
     groups = {}
+    schema_valid = True
     for record in records:
         kind = record.get("kind")
         if kind in {
@@ -538,9 +605,15 @@ def records_errors(records):
                 schema = load_json(SCHEMA_ROOT / SCHEMA_FILES[kind])
             except ValueError as exc:
                 errors.append("{} schema unavailable: {}".format(kind, exc))
+                schema_valid = False
             else:
-                errors.extend("{} schema: {}".format(kind, error)
-                              for error in schema_errors(record, schema))
+                record_schema_errors = schema_errors(record, schema)
+                if record_schema_errors:
+                    schema_valid = False
+                    errors.extend("{} schema: {}".format(kind, error)
+                                  for error in record_schema_errors)
+    if not schema_valid:
+        return errors
 
     work_items = groups.get("work_item", [])
     if len(work_items) != 1:
@@ -630,6 +703,13 @@ def records_errors(records):
                 break
             current = recurrence
 
+    final_versions, lineage_errors = iteration_lineage(
+        groups.get("iteration", []),
+        artifact_versions,
+        work_item.get("max_repair_iterations", 0),
+        work_item_id)
+    errors.extend(lineage_errors)
+
     verifications = {}
     for verification in groups.get("verification", []):
         verification_id = verification.get("id")
@@ -670,24 +750,6 @@ def records_errors(records):
     decisions = groups.get("decision", [])
     if len(decisions) != 1:
         errors.append("records must contain exactly one Decision")
-    final_versions = set(artifact_versions)
-    declared_outputs = set()
-    for iteration in groups.get("iteration", []):
-        produced = iteration.get("output_versions")
-        if isinstance(produced, list):
-            declared_outputs.update(
-                version for version in produced if isinstance(version, str))
-    lineage_final = artifact_versions - declared_outputs
-    ordered_iterations = sorted(
-        groups.get("iteration", []),
-        key=lambda item: item.get("cycle", 0)
-        if isinstance(item.get("cycle"), int) else 0)
-    for iteration in ordered_iterations:
-        produced = iteration.get("output_versions")
-        if isinstance(produced, list) and produced:
-            lineage_final = {
-                version for version in produced
-                if isinstance(version, str) and version in artifact_versions}
     for decision in decisions:
         if decision.get("work_item_id") != work_item_id:
             errors.append("Decision work_item_id does not match Work Item")
@@ -726,14 +788,27 @@ def records_errors(records):
             if not isinstance(evidence_map, dict):
                 errors.append("ACCEPT requires criteria_evidence")
                 evidence_map = {}
-            if len(lineage_final) != 1:
+            if len(final_versions) != 1:
                 errors.append("Decision requires one final Artifact version")
                 final_version = None
             else:
-                final_version = next(iter(lineage_final))
+                final_version = next(iter(final_versions))
                 if set(versions) != {final_version}:
                     errors.append(
                         "Decision must accept the final Artifact version")
+            medium_risks = [
+                finding_id for finding_id, finding in findings.items()
+                if finding.get("severity") == "medium"
+                and finding.get("status") in {"open", "accepted_risk"}]
+            risk_finding_ids = {
+                risk.get("finding_id")
+                for risk in decision.get("residual_risks", [])
+                if isinstance(risk, dict)}
+            missing_risks = set(medium_risks) - risk_finding_ids
+            if missing_risks:
+                errors.append(
+                    "accepted medium Findings require residual_risks: {}".format(
+                        _quoted_names(sorted(missing_risks))))
             if set(evidence_map) != set(criteria):
                 errors.append("Decision criteria_evidence must match Work Item criteria")
             for criterion_id, evidence in evidence_map.items():
@@ -778,77 +853,6 @@ def records_errors(records):
                 if not isinstance(decision.get(field), str):
                     errors.append("REPAIR requires {}".format(field))
 
-    iterations = groups.get("iteration", [])
-    cycles = []
-    outputs = set()
-    for iteration in iterations:
-        cycle = iteration.get("cycle")
-        if not isinstance(cycle, int) or isinstance(cycle, bool) or cycle < 1:
-            errors.append("Iteration cycle must be a positive integer")
-        else:
-            cycles.append(cycle)
-        if iteration.get("work_item_id") != work_item_id:
-            errors.append("Iteration work_item_id does not match Work Item")
-        inputs = iteration.get("input_versions")
-        inputs_valid = (
-            isinstance(inputs, list) and bool(inputs) and all(
-                isinstance(item, str) and item.strip() for item in inputs)
-        )
-        if not inputs_valid:
-            errors.append("Iteration input_versions must be a non-empty array")
-        produced = iteration.get("output_versions")
-        produced_valid = (
-            isinstance(produced, list) and all(
-                isinstance(item, str) and item.strip() for item in produced)
-        )
-        if not produced_valid:
-            errors.append("Iteration output_versions must be an array")
-            produced = []
-        if len(produced) != len(set(produced)):
-            errors.append("Iteration output_versions must be unique")
-        outputs.update(produced)
-    if cycles:
-        expected = list(range(1, len(cycles) + 1))
-        if sorted(cycles) != expected:
-            errors.append("Iteration cycles must be contiguous from 1")
-
-    initial_versions = artifact_versions - outputs
-    if len(initial_versions) != 1:
-        errors.append("Artifact lineage must start with exactly one version")
-    available = set(initial_versions)
-    for iteration in sorted(
-            iterations, key=lambda item: item.get("cycle", 0)
-            if isinstance(item.get("cycle"), int) else 0):
-        inputs = iteration.get("input_versions")
-        if not isinstance(inputs, list):
-            inputs = []
-        for version in inputs:
-            if not isinstance(version, str):
-                continue
-            if version not in available:
-                errors.append(
-                    "Iteration input version {} is not available".format(
-                        json.dumps(version, ensure_ascii=True)))
-        produced = iteration.get("output_versions")
-        if not isinstance(produced, list):
-            produced = []
-        for version in produced:
-            if not isinstance(version, str):
-                continue
-            if version not in artifact_versions:
-                errors.append(
-                    "Iteration output version {} not found".format(
-                        json.dumps(version, ensure_ascii=True)))
-            elif version in available:
-                errors.append(
-                    "Iteration output version {} already exists".format(
-                        json.dumps(version, ensure_ascii=True)))
-            else:
-                available.add(version)
-    missing_history = artifact_versions - available
-    if missing_history:
-        errors.append("Artifact versions missing Iteration ancestry: {}".format(
-            _quoted_names(sorted(missing_history))))
     return errors
 
 

@@ -13,8 +13,9 @@
 
 - `AC-ANCESTRY`: `check-records` resolves stable IDs, criteria, versions,
   Finding recurrence, Decision evidence, and Artifact/Iteration ancestry.
-- `AC-COMPAT`: the Bash installer and full suite pass in Rocky Linux 8 with
-  Python 3.8.
+- `AC-COMPAT`: the Bash installer and all platform-applicable tests pass in
+  Rocky Linux 8. The Windows-only PowerShell installer test is skipped there
+  and covered by the Windows CI job.
 - `AC-MODEL`: Claude Code documentation names `qwen3.7-plus` as the validated
   local path and records the GLM 403 as a provider limitation.
 - `AC-ACTIONS`: CI uses `checkout@v5` and `setup-python@v6` without Node 20
@@ -29,6 +30,9 @@
   and explicit Iteration `output_versions`.
 - ACCEPT must target the final lineage version; open questions, non-independent
   L2 review, and controller-only L3 approval are rejected.
+- Record ancestry must be a single continuous chain within the Work Item repair
+  budget; medium accepted risks require a corresponding residual risk.
+- Schema-invalid records fail before custom traversal, preventing tracebacks.
 - Replaced the Bash installer's `find` dependency with Bash globstar recursion,
   allowing the Rocky Linux 8 minimal image to execute the installer test.
 - Added Rocky Linux 8 + Python 3.8 to CI.
@@ -38,13 +42,15 @@
 
 ## Verification
 
-- Local suite: `53/53 OK`
+- Local suite: `54/54 OK`
+- Rocky Linux 8: `53 tests`, `OK (skipped=1: Windows PowerShell)`
 - Configured verify: PASS with project repair budget `3` and latest report
   `loop-engineering-stage2-v3b-20261114-192204`.
 - Source and Codex/Claude installed doctors: PASS
 - GitHub Actions baseline `43587870598`: five jobs PASS at `136f42a`.
-- Final repair run `43589797769`: five jobs PASS at `4c82040`, including Rocky
+- Previous repair run `43589797769`: five jobs PASS at `4c82040`, including Rocky
   Linux 8 and all Python 3.8/3.12 targets.
+- Repair round 3 is pending its own pushed matrix and is not marked PASS yet.
 - The same remote run uses the upgraded Actions and emits no Node 20
   deprecation warning.
 - Rocky Linux 8 installs Python 3.8.17 and runs the same full suite.
