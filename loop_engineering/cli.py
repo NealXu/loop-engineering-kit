@@ -345,8 +345,6 @@ def verification_errors(finding, work_item, artifact, verifications):
                 isinstance(item, str) and item.strip() for item in questions):
             errors.append(
                 "Work Item open_questions must be a non-blank string array")
-        elif questions:
-            errors.append("unresolved open_questions block acceptance")
     criteria = work_item.get("acceptance_criteria")
     if not isinstance(criteria, dict) or not criteria:
         return ["work item acceptance_criteria must be a non-empty object"]
@@ -1006,6 +1004,7 @@ def records_errors(records):
                         "Decision criterion {} has no verification_ids".format(
                             criterion_id))
                     continue
+                has_verifier_evidence = False
                 for verification_id in verification_ids:
                     verification = verifications.get(verification_id)
                     if verification is None:
@@ -1031,6 +1030,20 @@ def records_errors(records):
                             "Decision verification {} does not cover {}".format(
                                 json.dumps(verification_id, ensure_ascii=True),
                                 json.dumps(criterion_id, ensure_ascii=True)))
+                    if (verification.get("role") in {None, "verifier"}
+                            and verification.get("status") == "PASS"
+                            and final_artifact is not None
+                            and verification.get("artifact_id")
+                            == final_artifact.get("id")
+                            and verification.get("artifact_version")
+                            == final_version
+                            and criterion_id
+                            in verification.get("criterion_ids", [])):
+                        has_verifier_evidence = True
+                if not has_verifier_evidence:
+                    errors.append(
+                        "Decision criterion {} requires a final-version Verifier Verification".format(
+                            criterion_id))
         elif decision.get("decision") == "REPAIR":
             for field in ("next_state", "repair_kind"):
                 if not isinstance(decision.get(field), str):

@@ -42,6 +42,9 @@ Finding id and scans JSON records by `kind`, not by filename prefix.
 L2/L3 ACCEPT requires a referenced `role: reviewer` Verification with `PASS`
 status on the final Artifact id/version; a reviewer Finding alone is not proof
 that the review completed.
+Each accepted criterion also needs a final-version Verification whose role is
+`verifier` (or omitted for migrated legacy evidence). A `producer` Verification
+cannot serve as the Verifier gate.
 
 This is a breaking schema upgrade. The repository ships only version 3
 schemas. Version 1 and 2 records need external migration before validation;

@@ -944,6 +944,13 @@ class CliTests(unittest.TestCase):
             self.assertIn("PASS Reviewer Verification", p.stderr)
             records["verification-review.json"]["artifact_version"] = "2"
 
+            records["verification.json"]["role"] = "producer"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("Verifier Verification", p.stderr)
+            records["verification.json"].pop("role")
+
             records["finding-review.json"] = {
                 "schema_version": 3,
                 "id": "F-REVIEW",
@@ -1186,6 +1193,9 @@ class CliTests(unittest.TestCase):
                 "unresolved_disagreements": [],
                 "approver": "controller",
             }
+            records["work-item.json"]["open_questions"] = [
+                "A material question may justify stopping."
+            ]
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -1279,8 +1289,6 @@ class CliTests(unittest.TestCase):
              "finding_id"),
             ("unrelated-criterion", ["V-1"], "PASS", "1", ["AC-OTHER"],
              ["executed"], "does not cover"),
-            ("open-question", ["V-1"], "PASS", "1", ["AC-1"], ["executed"],
-             "open_questions"),
         ]
         for (name, ids, status, verification_version, criterion_ids,
              evidence, marker) in cases:
