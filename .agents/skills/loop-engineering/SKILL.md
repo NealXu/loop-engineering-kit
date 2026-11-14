@@ -61,6 +61,10 @@ For an installed copy, verify it from its own root with
    `none`, `compact`, and `full` unless persistent evidence is requested. Use
    an explicit project report directory for `audited`. Link each Verification
    to the tested Artifact id/version and covered `criterion_ids`.
+   After frozen canonical records exist, run
+   `python loop_engineering/cli.py check-records --dir <records-dir>` to
+   resolve record IDs, criteria, versions, Finding recurrences, and
+   Artifact/Iteration ancestry.
    For money, numeric aggregation, security, or data-loss logic, add at least
    one boundary or aggregate check beyond the visible happy-path tests.
 5. **Review and challenge:** use only the roles selected by the route. For L2+,
@@ -83,8 +87,8 @@ For an installed copy, verify it from its own root with
    blocking, or recurring Finding.
 8. **Repair:** if required, use the pack workflow and send named findings to the
    Producer. Create an Iteration with the same `work_item_id`, input versions,
-   and changes. Create a new Artifact version or perform evidence-only checks
-   and rerun affected checks. Stop at the iteration limit.
+   `output_versions`, and changes. Create a new Artifact version or perform
+   evidence-only checks and rerun affected checks. Stop at the iteration limit.
    Before repairing, update the run brief with the failing check, changed
    artifact versions, evidence, open findings, and next action. Do not delete
    the original evidence.

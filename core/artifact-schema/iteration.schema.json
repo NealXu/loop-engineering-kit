@@ -32,6 +32,10 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     },
+    "output_versions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
+    },
     "changes": {
       "type": "array",
       "items": { "type": "string", "minLength": 1, "pattern": "\\S" }

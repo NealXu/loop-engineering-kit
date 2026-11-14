@@ -13,10 +13,11 @@
 - `packs/`：软件开发和架构设计两个领域包；软件包包含可执行验证技能模板。
 - `.codex/`、`.claude/`、`adapters/`：Codex 与 Claude Code 的角色映射。
 - `loop_engineering/cli.py`：无第三方依赖的任务分级、环境检查和确定性
-  验证报告工具；`check-finding` 在 Arbiter 接受前校验 prevention 门禁。
+  验证报告工具；`check-finding` 校验 prevention 门禁，`check-records`
+  解析跨记录引用和 Artifact/Iteration ancestry。
 
-阶段 2（持久化运行时、检查点、恢复和人工审批）和阶段 3（指标、版本注册、
-自动改进候选）尚未实现，当前文档不会把它们描述成已有能力。
+阶段 2 的确定性记录解析已实现；持久化存储、自动恢复和人工审批运行时仍未
+实现。阶段 3（指标、版本注册、自动改进候选）也尚未实现。
 
 ## 快速开始
 
@@ -87,6 +88,9 @@ bash scripts/install.sh --target both --scope user --upgrade
 7. 运行 `python3 loop_engineering/cli.py verify --root . --report-dir
    <报告目录>`（Windows 用 `py -3`）。L1/L2 默认使用会话临时目录，只有需要
    长期保留证据或 L3 时才写入项目目录。
+8. 冻结角色记录后运行 `python3 loop_engineering/cli.py check-records --dir
+   <记录目录>`（Windows 用 `py -3`），校验 Work Item、Artifact、Finding、
+   Verification、Decision 和 Iteration 的引用与版本 ancestry。
 
 任务分级：
 
@@ -146,8 +150,9 @@ Python 解释器。只配置你信任的本地命令。
 宿主负责实际启动模型子 Agent；本工具不绕过 Codex/Claude Code 调模型。
 Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。本提交的本地
 实测环境为 Windows 11 / Python 3.12；Windows 与 Ubuntu Linux 的 Python 3.8
-和 3.12 是 CI 目标，Ubuntu 固定为 22.04 以保留 Python 3.8 runner，CentOS 8
-当前未被 CI 覆盖。远端工作流实际执行前，这些环境不作为兼容性通过证据。
+和 3.12 是 CI 目标，Ubuntu 固定为 22.04 以保留 Python 3.8 runner；
+Rocky Linux 8.10 容器使用 Python 3.8 覆盖 CentOS 8 兼容路径。远端工作流
+实际执行前，这些环境不作为兼容性通过证据。
 
 ## 设计依据
 

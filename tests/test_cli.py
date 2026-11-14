@@ -13,6 +13,77 @@ def run_cli(*args):
                           text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
+def stage2_records():
+    artifact = {
+        "schema_version": 2,
+        "id": "A-1",
+        "kind": "artifact",
+        "artifact_type": "test",
+        "content": "candidate",
+        "source": "test",
+        "work_item_id": "WI-1",
+        "files": ["result.txt"],
+    }
+    return {
+        "work-item.json": {
+            "schema_version": 2,
+            "id": "WI-1",
+            "kind": "work_item",
+            "goal": "resolve records",
+            "pack_id": "software-development",
+            "constraints": [],
+            "priority": "medium",
+            "risk_level": "medium",
+            "max_repair_iterations": 3,
+            "acceptance_criteria": {"AC-1": "result is verified"},
+            "open_questions": [],
+        },
+        "artifact-1.json": dict(artifact, version="1"),
+        "artifact-2.json": dict(artifact, version="2"),
+        "verification.json": {
+            "schema_version": 2,
+            "id": "V-1",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "2",
+            "criterion_ids": ["AC-1"],
+            "check": "result",
+            "method": "python -m unittest",
+            "status": "PASS",
+            "evidence": ["command exited 0"],
+            "limitations": [],
+        },
+        "decision.json": {
+            "schema_version": 2,
+            "id": "D-1",
+            "kind": "decision",
+            "work_item_id": "WI-1",
+            "artifact_versions": ["2"],
+            "decision": "ACCEPT",
+            "rationale": "verified",
+            "evidence_refs": ["V-1"],
+            "unresolved_disagreements": [],
+            "approver": "controller",
+            "criteria_evidence": {
+                "AC-1": {"verification_ids": ["V-1"], "result": "PASS"}
+            },
+            "residual_risks": [],
+            "review_independence": "independent",
+        },
+        "iterations/iteration-01.json": {
+            "schema_version": 2,
+            "id": "I-1",
+            "kind": "iteration",
+            "work_item_id": "WI-1",
+            "cycle": 1,
+            "input_versions": ["1"],
+            "output_versions": ["2"],
+            "changes": ["produced version 2"],
+            "result": "CONTINUE",
+        },
+    }
+
+
 class CliTests(unittest.TestCase):
     def test_doctor(self):
         p = run_cli("doctor", "--root", CLI.parents[1])
@@ -575,6 +646,69 @@ class CliTests(unittest.TestCase):
             self.assertIn("ERROR:", p.stderr)
             self.assertNotIn("Traceback", p.stderr)
 
+    def test_check_records_resolves_complete_ancestry(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            for name, value in stage2_records().items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(value), encoding="utf-8")
+            p = run_cli("check-records", "--dir", root)
+            output = p.stdout + p.stderr
+            self.assertEqual(p.returncode, 0, output)
+            self.assertIn("[PASS] WI-1", output)
+            self.assertIn("records=6", output)
+        root = CLI.parents[1]
+        for path in (
+                root / "README.md",
+                root / ".agents" / "skills" / "loop-engineering" / "SKILL.md",
+                root / ".claude" / "skills" / "loop-engineering" / "SKILL.md",
+                root / "core" / "artifact-schema" / "README.md"):
+            text = " ".join(path.read_text(encoding="utf-8").split())
+            self.assertIn("check-records --dir", text)
+
+    def test_check_records_rejects_broken_references_and_ancestry(self):
+        cases = [
+            ("stale-verification", "verification.json",
+             lambda value: value.update(artifact_version="9"),
+             "artifact version"),
+            ("missing-output", "iterations/iteration-01.json",
+             lambda value: value.pop("output_versions"),
+             "output_versions"),
+            ("gap", "iterations/iteration-01.json",
+             lambda value: value.update(cycle=2),
+             "contiguous"),
+            ("missing-decision-evidence", "decision.json",
+             lambda value: value["criteria_evidence"]["AC-1"].update(
+                 verification_ids=["V-MISSING"]),
+             "V-MISSING"),
+            ("failed-proof", "verification.json",
+             lambda value: value.update(status="NOT_RUN"),
+             "not PASS"),
+            ("malformed-version", "verification.json",
+             lambda value: value.update(artifact_version=[]),
+             "must be strings"),
+        ]
+        for name, filename, mutate, marker in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
+                root = Path(t)
+                records = stage2_records()
+                mutate(records[filename])
+                for record_name, value in records.items():
+                    path = root / record_name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(json.dumps(value), encoding="utf-8")
+                p = run_cli("check-records", "--dir", root)
+                output = p.stdout + p.stderr
+                self.assertEqual(p.returncode, 1, output)
+                self.assertIn(marker, output)
+                self.assertNotIn("Traceback", p.stderr)
+
+    def test_iteration_schema_supports_explicit_ancestry(self):
+        path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        self.assertIn("output_versions", data["properties"])
+
     def test_check_finding_resolves_regression_evidence(self):
         cases = [
             ("missing", ["V-MISSING"], None, "1", ["AC-1"], ["executed"],
@@ -937,6 +1071,9 @@ class CliTests(unittest.TestCase):
         self.assertIn('"3.8"', text)
         self.assertIn('"3.12"', text)
         self.assertIn("python -m unittest discover -s tests -v", text)
+        self.assertIn("rocky8:", text)
+        self.assertIn("rockylinux:8.10", text)
+        self.assertIn("python3.8 -m unittest discover -s tests -v", text)
 
     def test_arbiter_docs_require_finding_gate(self):
         root = CLI.parents[1]

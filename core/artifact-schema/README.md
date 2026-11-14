@@ -38,9 +38,12 @@ Finding id and scans JSON records by `kind`, not by filename prefix.
 
 This is a breaking schema upgrade. The repository ships only version 2
 schemas; version 1 records need external migration before validation. There is
-no automatic migration in Stage 1. General cross-record reference resolution
-remains part of the Stage 2 runtime; `check-finding` resolves the regression
-Verification IDs required by high, blocking, and recurring findings.
+no automatic migration.
 
-The current Stage 1 contract supports schema-aware tools and manual integration.
-Automatic schema validation and durable storage belong to the Stage 2 runtime.
+Iteration records may include `output_versions`; Stage 2 record checks require
+it so Artifact ancestry is explicit. Run
+`python loop_engineering/cli.py check-records --dir <records-dir>` over frozen
+records to resolve IDs, criteria, versions, Finding recurrences, Decisions, and
+Iteration ancestry. `check-finding` remains the focused regression-evidence
+gate for high, blocking, and recurring Findings. Persistent storage, automatic
+migration, and durable runtime recovery remain deferred.

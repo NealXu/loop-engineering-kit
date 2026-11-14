@@ -447,6 +447,315 @@ def check_finding(path, work_item_path=None, artifact_path=None,
     return 0
 
 
+def records_errors(records):
+    errors = []
+    groups = {}
+    for record in records:
+        kind = record.get("kind")
+        if kind in {
+                "work_item", "artifact", "finding", "verification",
+                "decision", "iteration"}:
+            groups.setdefault(kind, []).append(record)
+
+    work_items = groups.get("work_item", [])
+    if len(work_items) != 1:
+        errors.append("records must contain exactly one Work Item")
+        return errors
+    work_item = work_items[0]
+    work_item_id = work_item.get("id")
+    criteria = work_item.get("acceptance_criteria")
+    if not isinstance(work_item_id, str) or not STABLE_ID.fullmatch(work_item_id):
+        errors.append("Work Item id must be a stable ID")
+    if not isinstance(criteria, dict) or not criteria:
+        errors.append("Work Item acceptance_criteria must be a non-empty object")
+        criteria = {}
+
+    for kind in ("finding", "verification", "decision", "iteration"):
+        seen = set()
+        for record in groups.get(kind, []):
+            record_id = record.get("id")
+            if not isinstance(record_id, str) or not STABLE_ID.fullmatch(record_id):
+                errors.append("{} id must be a stable ID".format(kind))
+                continue
+            if record_id in seen:
+                errors.append("duplicate {} id: {}".format(kind, record_id))
+            seen.add(record_id)
+
+    artifacts = groups.get("artifact", [])
+    if not artifacts:
+        errors.append("records must contain at least one Artifact")
+    artifact_keys = set()
+    artifact_ids = set()
+    artifact_versions = set()
+    for artifact in artifacts:
+        artifact_id = artifact.get("id")
+        version = artifact.get("version")
+        if artifact.get("work_item_id") != work_item_id:
+            errors.append("Artifact work_item_id does not match Work Item")
+        if not isinstance(artifact_id, str) or not STABLE_ID.fullmatch(artifact_id):
+            errors.append("Artifact id must be a stable ID")
+            continue
+        if not isinstance(version, str) or not version.strip():
+            errors.append("Artifact version must be non-blank")
+            continue
+        key = (artifact_id, version)
+        if key in artifact_keys:
+            errors.append("duplicate Artifact id/version: {}/{}".format(
+                artifact_id, version))
+        artifact_keys.add(key)
+        artifact_ids.add(artifact_id)
+        artifact_versions.add(version)
+    if len(artifact_ids) != 1:
+        errors.append("Stage 2 record checks require one Artifact lineage")
+
+    findings = {}
+    finding_criteria = set(criteria)
+    for finding in groups.get("finding", []):
+        finding_id = finding.get("id")
+        if isinstance(finding_id, str):
+            findings[finding_id] = finding
+        ids = finding.get("criterion_ids")
+        if (not isinstance(ids, list)
+                or not all(isinstance(item, str) for item in ids)):
+            errors.append("Finding criterion_ids must be a string array")
+        else:
+            unknown = set(ids) - finding_criteria
+            if unknown:
+                errors.append("Finding references unknown criteria: {}".format(
+                    _quoted_names(sorted(unknown))))
+
+    for finding_id in findings:
+        current = finding_id
+        seen = set()
+        while current in findings:
+            if current in seen:
+                errors.append("Finding recurrence cycle detected at {}".format(
+                    finding_id))
+                break
+            seen.add(current)
+            recurrence = findings[current].get("recurrence_of")
+            if recurrence is None:
+                break
+            if not isinstance(recurrence, str):
+                errors.append("Finding recurrence_of must be a stable ID")
+                break
+            if recurrence not in findings:
+                errors.append("Finding recurrence target not found: {}".format(
+                    recurrence))
+                break
+            current = recurrence
+
+    verifications = {}
+    for verification in groups.get("verification", []):
+        verification_id = verification.get("id")
+        if isinstance(verification_id, str):
+            verifications[verification_id] = verification
+        artifact_id = verification.get("artifact_id")
+        artifact_version = verification.get("artifact_version")
+        if (not isinstance(artifact_id, str)
+                or not isinstance(artifact_version, str)):
+            errors.append("Verification artifact id/version must be strings")
+        elif (artifact_id, artifact_version) not in artifact_keys:
+            errors.append("Verification {} artifact version {} not found".format(
+                verification_id,
+                json.dumps(artifact_version, ensure_ascii=True)))
+        ids = verification.get("criterion_ids")
+        if (not isinstance(ids, list)
+                or not all(isinstance(item, str) for item in ids)):
+            errors.append("Verification criterion_ids must be a string array")
+        else:
+            unknown = set(ids) - finding_criteria
+            if unknown:
+                errors.append("Verification references unknown criteria: {}".format(
+                    _quoted_names(sorted(unknown))))
+        finding_id = verification.get("finding_id")
+        if finding_id is not None and finding_id not in findings:
+            errors.append("Verification {} references unknown Finding".format(
+                verification_id))
+        if verification.get("status") not in {
+                "PASS", "FAIL", "BLOCKED", "NOT_RUN"}:
+            errors.append("Verification {} has invalid status".format(
+                verification_id))
+        evidence = verification.get("evidence")
+        if not isinstance(evidence, list) or not evidence or not all(
+                isinstance(item, str) and item.strip() for item in evidence):
+            errors.append("Verification {} has no executed evidence".format(
+                verification_id))
+
+    decisions = groups.get("decision", [])
+    if len(decisions) != 1:
+        errors.append("records must contain exactly one Decision")
+    final_versions = set(artifact_versions)
+    for decision in decisions:
+        if decision.get("work_item_id") != work_item_id:
+            errors.append("Decision work_item_id does not match Work Item")
+        versions = decision.get("artifact_versions")
+        if not isinstance(versions, list) or not versions:
+            errors.append("Decision artifact_versions must be non-empty")
+            versions = []
+        for version in versions:
+            if not isinstance(version, str):
+                errors.append("Decision artifact versions must be strings")
+            elif version not in final_versions:
+                errors.append("Decision artifact version {} not found".format(
+                    json.dumps(version, ensure_ascii=True)))
+        if decision.get("decision") == "ACCEPT":
+            if decision.get("unresolved_disagreements"):
+                errors.append("unresolved disagreements block ACCEPT")
+            if any(
+                    finding.get("status") == "open"
+                    and finding.get("severity") in {"high", "blocking"}
+                    for finding in findings.values()):
+                errors.append("open high/blocking finding blocks ACCEPT")
+            evidence_map = decision.get("criteria_evidence")
+            if not isinstance(evidence_map, dict):
+                errors.append("ACCEPT requires criteria_evidence")
+                evidence_map = {}
+            if set(evidence_map) != set(criteria):
+                errors.append("Decision criteria_evidence must match Work Item criteria")
+            for criterion_id, evidence in evidence_map.items():
+                verification_ids = evidence.get("verification_ids") if isinstance(
+                    evidence, dict) else None
+                if (not isinstance(verification_ids, list)
+                        or not verification_ids
+                        or not all(
+                            isinstance(item, str)
+                            for item in verification_ids)):
+                    errors.append(
+                        "Decision criterion {} has no verification_ids".format(
+                            criterion_id))
+                    continue
+                for verification_id in verification_ids:
+                    verification = verifications.get(verification_id)
+                    if verification is None:
+                        errors.append(
+                            "Decision verification {} not found".format(
+                                json.dumps(verification_id, ensure_ascii=True)))
+                        continue
+                    if verification.get("status") != "PASS":
+                        errors.append(
+                            "Decision verification {} is not PASS".format(
+                                json.dumps(verification_id, ensure_ascii=True)))
+                    if verification.get("artifact_version") not in versions:
+                        errors.append(
+                            "Decision verification {} has stale artifact version".format(
+                                json.dumps(verification_id, ensure_ascii=True)))
+                    if criterion_id not in verification.get("criterion_ids", []):
+                        errors.append(
+                            "Decision verification {} does not cover {}".format(
+                                json.dumps(verification_id, ensure_ascii=True),
+                                json.dumps(criterion_id, ensure_ascii=True)))
+        elif decision.get("decision") == "REPAIR":
+            for field in ("next_state", "repair_kind"):
+                if not isinstance(decision.get(field), str):
+                    errors.append("REPAIR requires {}".format(field))
+
+    iterations = groups.get("iteration", [])
+    cycles = []
+    outputs = set()
+    for iteration in iterations:
+        cycle = iteration.get("cycle")
+        if not isinstance(cycle, int) or isinstance(cycle, bool) or cycle < 1:
+            errors.append("Iteration cycle must be a positive integer")
+        else:
+            cycles.append(cycle)
+        if iteration.get("work_item_id") != work_item_id:
+            errors.append("Iteration work_item_id does not match Work Item")
+        inputs = iteration.get("input_versions")
+        inputs_valid = (
+            isinstance(inputs, list) and bool(inputs) and all(
+                isinstance(item, str) and item.strip() for item in inputs)
+        )
+        if not inputs_valid:
+            errors.append("Iteration input_versions must be a non-empty array")
+        produced = iteration.get("output_versions")
+        produced_valid = (
+            isinstance(produced, list) and all(
+                isinstance(item, str) and item.strip() for item in produced)
+        )
+        if not produced_valid:
+            errors.append("Iteration output_versions must be an array")
+            produced = []
+        if len(produced) != len(set(produced)):
+            errors.append("Iteration output_versions must be unique")
+        outputs.update(produced)
+    if cycles:
+        expected = list(range(1, len(cycles) + 1))
+        if sorted(cycles) != expected:
+            errors.append("Iteration cycles must be contiguous from 1")
+
+    initial_versions = artifact_versions - outputs
+    if len(initial_versions) != 1:
+        errors.append("Artifact lineage must start with exactly one version")
+    available = set(initial_versions)
+    for iteration in sorted(
+            iterations, key=lambda item: item.get("cycle", 0)
+            if isinstance(item.get("cycle"), int) else 0):
+        inputs = iteration.get("input_versions")
+        if not isinstance(inputs, list):
+            inputs = []
+        for version in inputs:
+            if not isinstance(version, str):
+                continue
+            if version not in available:
+                errors.append(
+                    "Iteration input version {} is not available".format(
+                        json.dumps(version, ensure_ascii=True)))
+        produced = iteration.get("output_versions")
+        if not isinstance(produced, list):
+            produced = []
+        for version in produced:
+            if not isinstance(version, str):
+                continue
+            if version not in artifact_versions:
+                errors.append(
+                    "Iteration output version {} not found".format(
+                        json.dumps(version, ensure_ascii=True)))
+            elif version in available:
+                errors.append(
+                    "Iteration output version {} already exists".format(
+                        json.dumps(version, ensure_ascii=True)))
+            else:
+                available.add(version)
+    missing_history = artifact_versions - available
+    if missing_history:
+        errors.append("Artifact versions missing Iteration ancestry: {}".format(
+            _quoted_names(sorted(missing_history))))
+    return errors
+
+
+def check_records(directory):
+    root = Path(directory)
+    if not root.is_dir():
+        print("ERROR: Records directory not found: {}".format(root),
+              file=sys.stderr)
+        return 2
+    records = []
+    try:
+        for path in sorted(root.rglob("*.json")):
+            record = load_json(path)
+            if record.get("kind") in {
+                    "work_item", "artifact", "finding", "verification",
+                    "decision", "iteration"}:
+                records.append(record)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = records_errors(records)
+    if errors:
+        print("[FAIL] records", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(error), file=sys.stderr)
+        return 1
+    work_item = next(x for x in records if x.get("kind") == "work_item")
+    print("[PASS] {} records={} artifacts={} cycles={}".format(
+        work_item["id"],
+        len(records),
+        sum(x.get("kind") == "artifact" for x in records),
+        sum(x.get("kind") == "iteration" for x in records)))
+    return 0
+
+
 def doctor(root, mode="kit"):
     root = Path(root).resolve()
     print("Loop Engineering Kit doctor")
@@ -709,6 +1018,8 @@ def main():
     cf.add_argument("--work-item", default=None)
     cf.add_argument("--artifact", default=None)
     cf.add_argument("--verifications-dir", default=None)
+    cr = subs.add_parser("check-records")
+    cr.add_argument("--dir", required=True)
     r = subs.add_parser("report")
     r.add_argument("--input", required=True)
     r.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -732,6 +1043,8 @@ def main():
     if a.command == "check-finding":
         return check_finding(
             a.input, a.work_item, a.artifact, a.verifications_dir)
+    if a.command == "check-records":
+        return check_records(a.dir)
     try:
         data = load_json(a.input)
     except ValueError as exc:

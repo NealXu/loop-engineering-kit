@@ -26,3 +26,16 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Run tests
         run: python -m unittest discover -s tests -v
+
+  rocky8:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests in Rocky Linux 8
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            rockylinux:8.10 \
+            bash -lc 'dnf -y install python38 && python3.8 -m unittest discover -s tests -v'
