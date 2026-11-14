@@ -92,7 +92,7 @@
     "check_records": "PASS",
     "source_doctor": "PASS",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
-    "user_scope_backup_stamp": "20261114-185712",
+    "user_scope_backup_stamp": "20261114-191201",
     "ci_baseline_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43587870598",
     "ci_baseline_head": "136f42a4c05eb3f9402bc64d2815a2a1da54ed98",
     "ci_final_status": "PENDING: repair commit must be pushed and observed",
