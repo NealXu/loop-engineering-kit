@@ -747,9 +747,48 @@ def records_errors(records):
             errors.append("Verification {} has no executed evidence".format(
                 verification_id))
 
+    final_artifact = None
+    if len(final_versions) == 1:
+        final_version = next(iter(final_versions))
+        final_artifact = next(
+            (artifact for artifact in artifacts
+             if artifact.get("version") == final_version),
+            None)
+    for finding_id, finding in findings.items():
+        recurrence = finding.get("recurrence_of")
+        closed_gate = (
+            finding.get("status") in {"resolved", "not_reproducible"}
+            and (
+                finding.get("severity") in {"high", "blocking"}
+                or isinstance(recurrence, str)))
+        if closed_gate and final_artifact is not None:
+            errors.extend(verification_errors(
+                finding, work_item, final_artifact,
+                list(verifications.values())))
+
     decisions = groups.get("decision", [])
-    if len(decisions) != 1:
-        errors.append("records must contain exactly one Decision")
+    if not decisions:
+        errors.append("records must contain at least one Decision")
+    decision_cycles = [
+        decision.get("cycle") for decision in decisions
+        if isinstance(decision.get("cycle"), int)]
+    if len(decisions) > 1:
+        if (len(decision_cycles) != len(decisions)
+                or sorted(decision_cycles) != list(
+                    range(1, len(decisions) + 1))):
+            errors.append(
+                "multiple Decisions require contiguous cycles from 1")
+    accepted_decisions = [
+        decision for decision in decisions
+        if decision.get("decision") == "ACCEPT"]
+    if len(accepted_decisions) != 1:
+        errors.append("records must contain exactly one ACCEPT Decision")
+    final_decision = accepted_decisions[0] if len(
+        accepted_decisions) == 1 else None
+    if (final_decision is not None and decision_cycles
+            and isinstance(final_decision.get("cycle"), int)
+            and final_decision.get("cycle") != max(decision_cycles)):
+        errors.append("final ACCEPT Decision must be the last cycle")
     for decision in decisions:
         if decision.get("work_item_id") != work_item_id:
             errors.append("Decision work_item_id does not match Work Item")
@@ -760,10 +799,17 @@ def records_errors(records):
         for version in versions:
             if not isinstance(version, str):
                 errors.append("Decision artifact versions must be strings")
-            elif version not in final_versions:
+            elif version not in artifact_versions:
                 errors.append("Decision artifact version {} not found".format(
                     json.dumps(version, ensure_ascii=True)))
-        if decision.get("decision") == "ACCEPT":
+        refs = decision.get("evidence_refs")
+        if isinstance(refs, list):
+            for ref in refs:
+                if ref not in findings and ref not in verifications:
+                    errors.append(
+                        "Decision evidence_ref {} does not resolve".format(
+                            json.dumps(ref, ensure_ascii=True)))
+        if decision is final_decision:
             if work_item.get("open_questions"):
                 errors.append("open_questions block ACCEPT")
             risk_level = work_item.get("risk_level")

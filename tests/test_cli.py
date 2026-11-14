@@ -173,7 +173,9 @@ class CliTests(unittest.TestCase):
             "^[A-Za-z][A-Za-z0-9._-]*$")
         self.assertEqual(data["properties"]["rationale"]["pattern"], "\\S")
         self.assertEqual(
-            data["properties"]["evidence_refs"]["items"]["pattern"], "\\S")
+            data["properties"]["evidence_refs"]["items"]["pattern"],
+            "^[A-Za-z][A-Za-z0-9._-]*$")
+        self.assertIn("evidence_notes", data["properties"])
         self.assertEqual(accept_rule["then"]["properties"]["unresolved_disagreements"]["maxItems"], 0)
 
     def test_high_findings_cannot_be_accepted_risk(self):
@@ -839,6 +841,68 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+    def test_check_records_validates_decision_history_and_evidence(self):
+        def write_records(root, records):
+            for record_name, value in records.items():
+                path = root / record_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(value), encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["decision.json"]["cycle"] = 2
+            records["decision-repair.json"] = {
+                "schema_version": 2,
+                "id": "D-REPAIR",
+                "kind": "decision",
+                "cycle": 1,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["1"],
+                "decision": "REPAIR",
+                "rationale": "reproduce again",
+                "evidence_refs": ["V-1"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+                "next_state": "VERIFY",
+                "repair_kind": "evidence",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            records["decision.json"]["evidence_refs"] = ["V-MISSING"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("evidence_ref", p.stderr)
+
+            records["decision.json"]["evidence_refs"] = ["V-1"]
+            records["finding-high.json"] = {
+                "schema_version": 2,
+                "id": "F-HIGH",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "regression",
+                "claim": "missing proof",
+                "evidence": ["counterexample"],
+                "impact": "cannot close",
+                "required_action": "bind proof",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "keep proof",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-MISSING"],
+                },
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("V-MISSING", p.stderr)
 
     def test_iteration_schema_supports_explicit_ancestry(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"

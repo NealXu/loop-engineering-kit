@@ -22,6 +22,10 @@ Every Verification lists one or more `criterion_ids`, and an accepting Decision
 maps each
 `criterion_id` key to passing `verification_ids`. This removes the v1 practice
 of matching criteria by copied prose and prevents duplicate criterion entries.
+Decision `evidence_refs` contain stable Finding or Verification IDs; use the
+optional `evidence_notes` array for file paths, URLs, and prose. A repaired run
+may retain multiple Decisions ordered by `cycle`, with exactly one final ACCEPT
+for the final Artifact version.
 
 A resolved `high` or `blocking` Finding includes a `prevention` object with
 `kind`, `action`, and `evidence`. The kinds are ordered `structure`,
