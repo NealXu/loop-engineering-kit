@@ -24,24 +24,40 @@ paths are emitted beside this `SKILL.md`.
      read the full protocol, create JSON records, or print a role report.
    - `compact`: read project instructions and only the selected pack. State the
      goal, acceptance criteria, and repair budget in three lines, produce,
-     verify, and decide. Do not create JSON records or narrate roles unless the
-     project explicitly requires them.
-   - `full`: continue through the complete loop below, but keep role records
-     in-session unless the project has a Loop configuration or asks for files.
+     verify, and decide. Skip formal Work Item, Artifact, Finding, Verification,
+     Decision, and Iteration records; keep the brief and check outcomes
+     in-session. Do not narrate roles unless the project explicitly requires it.
+   - `full`: continue through the complete loop below. Keep canonical role
+     records in-session unless the project explicitly requests persistence.
    - `audited`: continue through the complete loop and persist the required
      machine-readable records.
-2. **Define:** read project instructions and `core/protocol.md`; select a pack;
+   The six JSON objects in `core/artifact-schema/` are canonical role records;
+   verify JSON/Markdown reports are evidence, not canonical records.
+   The numbered Define through Finish steps apply only to full and audited
+   routes. A compact route keeps Work Item, Artifact, Verification, and
+   Decision information in its brief and check outcomes only.
+2. **Define (`full`/`audited`):** read project instructions and
+   `core/protocol.md`; select a pack;
    create a Work Item with `id` and `pack_id`; state goal, constraints, risk,
-   acceptance criteria, and repair budget.
+   acceptance criteria as a map of stable criterion IDs to statements, and
+   `max_repair_iterations`.
    At the end of Define, write a short run brief with the goal, acceptance
    criteria, current artifact references, open questions, and next action.
+   A material open question that can change the goal, acceptance semantics,
+   scope, data handling, or irreversible effects blocks `DEFINE -> PRODUCE`.
+   Resolve it with the user or an authoritative source, or record an explicit
+   assumption and rollback. An independent Reviewer is not a substitute for
+   that decision.
 3. **Produce:** use `roles/producer.md`; create the smallest complete, versioned
    Artifact linked by `work_item_id`, with a stable `id` and `version`, and
    capture assumptions.
 4. **Verify:** use `roles/verifier.md`; run native checks. If the Python
    CLI/config exists, run `python loop_engineering/cli.py verify --root
-   <project-root>` from the kit root (`python3` on Linux, `py -3` on Windows).
-   Link each Verification to the tested Artifact id/version.
+   <project-root> --report-dir <report-dir>` from the kit root (`python3` on
+   Linux, `py -3` on Windows). Use a session-temporary report directory for
+   `none`, `compact`, and `full` unless persistent evidence is requested. Use
+   an explicit project report directory for `audited`. Link each Verification
+   to the tested Artifact id/version and covered `criterion_ids`.
    For money, numeric aggregation, security, or data-loss logic, add at least
    one boundary or aggregate check beyond the visible happy-path tests.
 5. **Review and challenge:** use only the roles selected by the route. For L2+,
@@ -56,7 +72,12 @@ paths are emitted beside this `SKILL.md`.
    `ACCEPT`, `REPAIR`, `ESCALATE`, or `STOP`. A `REPAIR` decision also records
    both fields: artifact repair uses `repair_kind: artifact` and
    `next_state: PRODUCE`; missing evidence uses `repair_kind: evidence` and
-   `next_state: VERIFY`. Include `work_item_id` and `artifact_versions`.
+   `next_state: VERIFY`. Include `work_item_id` and `artifact_versions`. For
+   `ACCEPT`, include each `criterion_id` mapped to passing
+   `verification_ids`; a `REPAIR` records the open findings and failing or
+   missing evidence instead. Before `ACCEPT`, run `check-finding` with the
+   Work Item, Artifact, and Verification directory for every closed high,
+   blocking, or recurring Finding.
 8. **Repair:** if required, use the pack workflow and send named findings to the
    Producer. Create an Iteration with the same `work_item_id`, input versions,
    and changes. Create a new Artifact version or perform evidence-only checks
@@ -71,7 +92,9 @@ paths are emitted beside this `SKILL.md`.
 
 Use the record shapes in `core/artifact-schema/` when `record_depth` is
 `audited`, or when a full run explicitly opts into machine records. Do not add
-an `artifacts/` directory to an otherwise unrelated project without a request
-or project configuration. Never fabricate results or treat BLOCKED/NOT_RUN as
-PASS. Ask before destructive, irreversible, production-impacting, or
-credential-related actions.
+canonical role-record files to an otherwise unrelated project without a request
+or project configuration. An explicitly invoked `verify` writes only the
+evidence reports requested by `--report-dir`; omitting that option keeps its
+existing project-default behavior. Never fabricate results or treat
+BLOCKED/NOT_RUN as PASS. Ask before destructive, irreversible,
+production-impacting, or credential-related actions.

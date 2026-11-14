@@ -31,6 +31,15 @@ Apply the first matching rule:
 5. All required criteria have passing evidence, no `blocking`/`high` finding is
    open, and the changes are understood: `ACCEPT`.
 
+Before `ACCEPT`, run `python loop_engineering/cli.py check-finding --input
+<finding.json> --work-item <work-item.json> --artifact <artifact.json>
+--verifications-dir <directory>` for every closed `high`, `blocking`, or
+recurring Finding, or apply the equivalent host validation. Every regression
+Verification must exist, be `PASS`, match the Artifact id/version, and contain
+executed evidence and the Finding id. The directory may use any JSON filename;
+records are selected by `kind: verification`. A missing or invalid prevention
+contract blocks acceptance.
+
 A failure fingerprint combines the failed check, failure signature, and
 artifact versions. If the same fingerprint repeats with no artifact change,
 the loop has not made progress: `STOP`, or `ESCALATE` when new authority or a
@@ -41,7 +50,7 @@ changed scope can unlock it.
 An `ACCEPT` decision records:
 
 - artifact versions covered by the decision;
-- criterion-to-evidence mapping;
+- criterion ID to verification ID mapping;
 - optional failed or skipped checks and why they do not affect acceptance;
 - accepted residual risks and their owner;
 - unresolved low/medium findings;

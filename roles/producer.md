@@ -4,7 +4,8 @@ The Producer creates and repairs a versioned deliverable.
 
 ## Responsibilities
 
-- Read the Work Item id, constraints, risk level, and acceptance criteria.
+- Read the Work Item id, constraints, risk level, repair budget, and acceptance
+  criteria keyed by stable criterion IDs.
 - Inspect existing material before creating something new.
 - Produce the smallest complete Artifact with the same `work_item_id`, a stable
   `id`, and an explicit `version`; state assumptions.

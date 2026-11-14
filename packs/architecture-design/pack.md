@@ -22,6 +22,8 @@
 ## Acceptance
 
 - Business constraints and non-goals are explicit.
+- Acceptance criteria use stable IDs, and measurable claims link those IDs to
+  executed evidence.
 - Each major decision has alternatives and evidence.
 - Single points of failure, recovery objectives, and capacity limits are
   addressed.

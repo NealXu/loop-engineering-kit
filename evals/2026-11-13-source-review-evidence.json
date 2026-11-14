@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "work_item_id": "WI-LE-SOURCES-20261113",
+  "artifact": {
+    "id": "A-LE-SOURCES",
+    "version": "23",
+    "file_count": 40
+  },
+  "budget": {
+    "run": 50,
+    "project_default": 3,
+    "authorization": "继续直到最终独立门禁通过，到达“全部完成”"
+  },
+  "acceptance_criteria": {
+    "AC-CONTRACT": "Role records, evidence reports, record depth, and semantic gates are consistent.",
+    "AC-GUARD": "High, blocking, and recurring findings have executable prevention and matching regression evidence.",
+    "AC-VERIFY-SKILL": "The verification-skill template is installed and checked.",
+    "AC-CRITERIA-ID": "Schema v2 records use stable criterion IDs and deterministic context validation.",
+    "AC-REGRESSION": "Tests, doctor, configured verification, compilation, and diff checks pass."
+  },
+  "findings": [
+    {
+      "id": "F-CONTRACT",
+      "severity": "high",
+      "criterion_ids": ["AC-CONTRACT"],
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-FINDING-CONTRACT"]
+    },
+    {
+      "id": "F-GUARD",
+      "severity": "high",
+      "criterion_ids": ["AC-GUARD"],
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-FINDING-GUARD"]
+    },
+    {
+      "id": "F-OUTPUT",
+      "severity": "medium",
+      "criterion_ids": ["AC-GUARD"],
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-FINDING-OUTPUT"]
+    }
+  ],
+  "verifications": [
+    {
+      "id": "V-CONTRACT",
+      "criterion_ids": ["AC-CONTRACT"],
+      "status": "PASS",
+      "method": "python -m unittest discover -s tests -v"
+    },
+    {
+      "id": "V-GUARD-TEMPLATE",
+      "criterion_ids": ["AC-GUARD", "AC-VERIFY-SKILL"],
+      "status": "PASS",
+      "method": "python -m unittest discover -s tests -v"
+    },
+    {
+      "id": "V-CRITERIA-ID",
+      "criterion_ids": ["AC-CRITERIA-ID"],
+      "status": "PASS",
+      "method": "python -m unittest discover -s tests -v"
+    },
+    {
+      "id": "V-INSTALL",
+      "criterion_ids": ["AC-VERIFY-SKILL", "AC-REGRESSION"],
+      "status": "PASS",
+      "method": "python -m unittest tests.test_install.InstallerTests -v"
+    },
+    {
+      "id": "V-REGRESSION",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "method": "python -m unittest discover -s tests -v"
+    },
+    {
+      "id": "V-CLI",
+      "criterion_ids": ["AC-CONTRACT", "AC-REGRESSION"],
+      "status": "PASS",
+      "method": "python loop_engineering/cli.py verify ...; doctor; compileall; git diff --check"
+    },
+    {
+      "id": "V-FINDING-CONTRACT",
+      "finding_id": "F-CONTRACT",
+      "criterion_ids": ["AC-CONTRACT"],
+      "status": "PASS",
+      "method": "python -m unittest discover -s tests -v"
+    },
+    {
+      "id": "V-FINDING-GUARD",
+      "finding_id": "F-GUARD",
+      "criterion_ids": ["AC-GUARD"],
+      "status": "PASS",
+      "method": "python -m unittest discover -s tests -v"
+    },
+    {
+      "id": "V-FINDING-OUTPUT",
+      "finding_id": "F-OUTPUT",
+      "criterion_ids": ["AC-GUARD"],
+      "status": "PASS",
+      "method": "python -m unittest tests.test_cli.CliTests.test_check_finding_escapes_id_in_failure_output tests.test_cli.CliTests.test_check_finding_escapes_unknown_field_names -v"
+    }
+  ],
+  "iterations": {
+    "count": 22,
+    "cycles": "1-22"
+  },
+  "files": [
+    ".agents/skills/loop-engineering/SKILL.md",
+    ".claude/agents/arbiter.md",
+    ".claude/agents/producer.md",
+    ".claude/agents/reviewer.md",
+    ".claude/agents/verifier.md",
+    ".claude/skills/loop-engineering/SKILL.md",
+    ".codex/agents/arbiter.toml",
+    ".codex/agents/producer.toml",
+    ".codex/agents/reviewer.toml",
+    ".codex/agents/verifier.toml",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "adapters/claude-code/README.md",
+    "adapters/codex/README.md",
+    "core/artifact-schema/README.md",
+    "core/artifact-schema/artifact.schema.json",
+    "core/artifact-schema/decision.schema.json",
+    "core/artifact-schema/finding.schema.json",
+    "core/artifact-schema/iteration.schema.json",
+    "core/artifact-schema/verification.schema.json",
+    "core/artifact-schema/work-item.schema.json",
+    "core/decision-policy.md",
+    "core/protocol.md",
+    "core/state-machine.md",
+    "evals/2026-10-28-claude-code-route-pilot.md",
+    "evals/2026-11-13-source-review-evidence.json",
+    "evals/2026-11-13-source-review-loop.md",
+    "loop_engineering/cli.py",
+    "packs/architecture-design/pack.md",
+    "packs/software-development/pack.md",
+    "packs/software-development/verification-skill.md",
+    "roles/arbiter.md",
+    "roles/producer.md",
+    "roles/reviewer.md",
+    "roles/verifier.md",
+    "tests/test_cli.py",
+    "tests/test_install.py",
+    "workflows/continuous-improvement/workflow.md",
+    "workflows/iterative-delivery/workflow.md"
+  ]
+}

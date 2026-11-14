@@ -41,10 +41,16 @@ the route allows it and must disclose `non_independent` review.
 The route is a control budget, not evidence. The Controller records the chosen
 tier and later reports omitted roles or checks.
 
+`route --max-repairs <n>` may record an explicit user-authorized override for
+the current run. The Work Item's `max_repair_iterations` is authoritative, and
+the current-run verification config must surface the same value until the run
+ends. The tracked project default remains unchanged.
+
 `compact` states the goal, acceptance criteria, and budget in the working
 conversation; it does not create machine-readable records. `full` performs the
-complete role loop but keeps records in-session unless the project opts in.
-`audited` persists the record shapes in `core/artifact-schema/`.
+complete role loop and keeps canonical role records in-session unless the
+project explicitly requests persistence. `audited` persists the record shapes
+in `core/artifact-schema/`.
 
 ## Working Set
 
@@ -57,6 +63,11 @@ update a short run brief containing:
 - open findings and disagreements;
 - the next action and the current failure fingerprint.
 
+Before `PRODUCE`, resolve any open question that can change goal, acceptance
+semantics, scope, data handling, or irreversible effects. If no user or
+authoritative source is available, record an explicit assumption and rollback.
+Do not use independent review as a substitute for a product-semantics decision.
+
 The brief is a working set, not a replacement for source evidence. Do not
 delete original command output or trajectory records merely to shorten the
 conversation. Preserve the information needed to resume and audit the run.
@@ -68,11 +79,11 @@ apply:
 
 | Record | Purpose |
 |---|---|
-| Work Item | id, selected pack_id, goal, constraints, priority, acceptance criteria |
+| Work Item | id, selected pack_id, goal, constraints, priority, risk, repair budget, acceptance criteria with stable IDs |
 | Artifact | id, work_item_id, version, type, content, source |
 | Finding | actionable defect, risk, or challenge |
-| Verification | artifact id/version, check method, result, and evidence |
-| Decision | work_item_id, artifact_versions, outcome, evidence, disagreement, approver |
+| Verification | artifact id/version, criterion_ids, check method, result, and evidence |
+| Decision | work_item_id, artifact_versions, criterion-to-verification mapping, outcome, evidence, disagreement, approver |
 | Iteration | work_item_id, cycle, input versions, changes, and result |
 
 The canonical field contract is in `core/artifact-schema/`. Human-readable
@@ -110,7 +121,7 @@ role must be disclosed and cannot be described as independent.
 A workflow pack defines:
 
 1. role bindings and required independence;
-2. domain artifacts and acceptance criteria;
+2. domain artifacts and acceptance criteria with stable IDs;
 3. deterministic checks and evidence requirements;
 4. review and challenge focus areas;
 5. escalation conditions and residual-risk rules.

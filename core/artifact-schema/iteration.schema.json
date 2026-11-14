@@ -15,18 +15,26 @@
     "result"
   ],
   "properties": {
-    "schema_version": { "const": 1 },
-    "id": { "type": "string", "minLength": 1 },
+    "schema_version": { "const": 2 },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+    },
     "kind": { "const": "iteration" },
-    "work_item_id": { "type": "string", "minLength": 1 },
+    "work_item_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+    },
     "cycle": { "type": "integer", "minimum": 1 },
     "input_versions": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     },
     "changes": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     },
     "result": {
       "enum": ["CONTINUE", "ACCEPT", "REPAIR", "ESCALATE", "STOP"]

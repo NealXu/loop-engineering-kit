@@ -13,7 +13,7 @@ The Reviewer independently asks: what is wrong with this deliverable?
 
 ## Checklist
 
-1. Requested behavior and acceptance criteria.
+1. Requested behavior and every acceptance criterion ID.
 2. Backward compatibility and integration failures.
 3. Invalid, empty, concurrent, or recovery cases.
 4. Security, permissions, secrets, and untrusted input.

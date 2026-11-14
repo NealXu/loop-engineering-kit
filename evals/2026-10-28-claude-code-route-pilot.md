@@ -97,7 +97,9 @@ Follow-up observations:
 
 - L1 slugify: 2/2 hidden passes, 14.5 mean turns, $0.2310 mean cost.
 - L2 orders: 2/4 hidden passes, 27.3 mean turns, $0.3694 mean cost.
-- The new version stopped writing unrequested `artifacts/` files.
+- v0.3.1 stopped creating the six canonical role-record files unless audited;
+  an explicitly invoked `verify` still writes its JSON/Markdown evidence
+  reports to the selected report directory.
 - The remaining L2 failures had the same per-line discount rounding mistake.
 - Adding a rule for boundary/aggregate checks did not resolve an ambiguous
   rounding contract; an independent reviewer or user clarification is still

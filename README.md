@@ -1,4 +1,4 @@
-# Universal Work Loop Engine Kit v0.3.1
+# Universal Work Loop Engine Kit v0.4.0
 
 基于证据的多角色工作闭环。代码开发是第一个可运行领域实例；架构设计用于
 验证同一套协议也可以处理非代码交付。
@@ -6,13 +6,14 @@
 ## 当前实现（阶段 1）
 
 - `core/`：通用协议、状态机、决策策略，以及 Work Item、Artifact、
-  Finding、Verification、Decision、Iteration 六类 JSON Schema。
+  Finding、Verification、Decision、Iteration 六类 JSON Schema（v2，验收标准
+  以稳定 `criterion_id` 为键并与验证证据关联）。
 - `roles/`：Producer、Verifier、Reviewer、Challenger、Arbiter 五类职责。
 - `workflows/`：迭代交付、对抗审查、受控持续改进。
-- `packs/`：软件开发和架构设计两个领域包。
+- `packs/`：软件开发和架构设计两个领域包；软件包包含可执行验证技能模板。
 - `.codex/`、`.claude/`、`adapters/`：Codex 与 Claude Code 的角色映射。
 - `loop_engineering/cli.py`：无第三方依赖的任务分级、环境检查和确定性
-  验证报告工具。
+  验证报告工具；`check-finding` 在 Arbiter 接受前校验 prevention 门禁。
 
 阶段 2（持久化运行时、检查点、恢复和人工审批）和阶段 3（指标、版本注册、
 自动改进候选）尚未实现，当前文档不会把它们描述成已有能力。
@@ -74,7 +75,8 @@ bash scripts/install.sh --target both --scope user --upgrade
 6. 代码域可将 `.loop-engineering.example.json` 复制为项目根目录
    `.loop-engineering.json`，配置确定性检查。
 7. 运行 `python3 loop_engineering/cli.py verify --root .`（Windows 用
-   `py -3`）并保留 JSON/Markdown 证据。
+   `py -3`）时显式传 `--report-dir <报告目录>`。L1/L2 默认使用会话临时目录，
+   只有需要长期保留证据或 L3 时才写入项目目录。
 
 任务分级：
 
@@ -91,12 +93,17 @@ bash scripts/install.sh --target both --scope user --upgrade
 py -3 loop_engineering\cli.py route --risk medium --files 2
 py -3 loop_engineering\cli.py route --risk low --files 1 --trivial
 py -3 loop_engineering\cli.py route --risk low --files 1 --irreversible
+py -3 loop_engineering\cli.py route --risk medium --files 2 --max-repairs 20
 ```
 
-`route` 只输出控制策略，不修改项目。L0 不要求多角色记录；非平凡任务仍使用
-原有 Work Item、Verification、Finding、Decision 和 Iteration 契约。
-L1 只保留三行目标/验收/预算简报；L2 使用完整角色循环但默认不落盘；
-只有 L3 或项目明确要求时才创建机器记录。
+`route` 只输出控制策略，不修改项目。`record_depth` 管的是六类 canonical
+角色记录：Work Item、Artifact、Finding、Verification、Decision、Iteration。
+L0 不要求多角色记录；L1 只保留三行目标/验收/预算简报；L2 使用完整角色循环
+但只保留会话内记录；只有 L3 或项目明确要求时才创建 canonical 记录文件。
+显式运行的 `verify` 所写 JSON/Markdown 是证据报告，不属于上述六类记录；
+因此应通过 `--report-dir` 明确选择会话目录还是项目目录。
+compact 路由不会因项目要求持久化而升级；如必须保留 canonical 记录，应先
+重新路由到 full 或 audited。
 
 配置示例：
 
@@ -132,7 +139,7 @@ Reviewer 和 Challenger 的独立性取决于宿主是否提供独立会话。Ce
 
 ## 设计依据
 
-v0.3.x 的任务分级、独立审查、上下文检查点和停机规则参考了以下工程结论：
+v0.4 的任务分级、独立审查、上下文检查点和停机规则参考了以下工程结论：
 
 - Agentless 表明简单、可解释的定位—修复—验证路径必须保留为基线。
 - SWE-agent 表明工具与文件接口本身会改变 Agent 行为。

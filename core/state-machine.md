@@ -4,7 +4,7 @@
 
 | State | Entry condition | Exit |
 |---|---|---|
-| `DEFINE` | A work request exists | `PRODUCE` once goal, constraints, acceptance criteria, risk level, and iteration budget are explicit |
+| `DEFINE` | A work request exists | `PRODUCE` once goal, constraints, IDed acceptance criteria, risk level, and iteration budget are explicit |
 | `PRODUCE` | Scope is defined | verification/review/challenge once at least one artifact version exists |
 | `VERIFY` | An artifact version exists | `RECONCILE` after required checks return evidence |
 | `REVIEW` | An artifact version exists | `RECONCILE` after findings are recorded |
@@ -26,6 +26,10 @@ approval before irreversible actions.
 ## Transition Guards
 
 - Missing acceptance criteria blocks `DEFINE -> PRODUCE`.
+- A material open question that can change goal, acceptance semantics, scope,
+  data handling, or irreversible effects blocks `DEFINE -> PRODUCE`. Resolve it
+  with the user or an authoritative source, or record an explicit assumption
+  and rollback; review cannot replace that decision.
 - A route that permits no artifact repair blocks a second artifact version
   unless the Controller explicitly redefines the task.
 - Missing artifact version blocks review and verification.

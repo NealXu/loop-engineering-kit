@@ -5,18 +5,42 @@ import datetime
 import json
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
 import time
+import uuid
+
+
+STABLE_ID = re.compile(r"^[A-Za-z][A-Za-z0-9._-]*$")
+
+
+def _quoted_names(items):
+    return ", ".join(json.dumps(item, ensure_ascii=True) for item in items)
+
+
+def _unique_object_pairs(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(
+                "duplicate key: {}".format(json.dumps(key, ensure_ascii=True)))
+        result[key] = value
+    return result
 
 
 def load_json(path):
     try:
-        value = json.loads(Path(path).read_text(encoding="utf-8"))
+        value = json.loads(Path(path).read_text(encoding="utf-8"),
+                           object_pairs_hook=_unique_object_pairs)
     except FileNotFoundError:
         raise ValueError("Configuration file not found: {}".format(path))
     except json.JSONDecodeError as exc:
         raise ValueError("Invalid JSON: {}".format(exc))
+    except ValueError as exc:
+        raise ValueError("Invalid JSON: {}".format(exc))
+    except OSError as exc:
+        raise ValueError("Unable to read JSON: {}".format(exc))
     if not isinstance(value, dict):
         raise ValueError("Configuration root must be a JSON object")
     return value
@@ -41,6 +65,386 @@ def load_verify_config(path):
     if isinstance(maximum, bool) or not isinstance(maximum, int) or maximum < 0:
         raise ValueError("max_repair_iterations must be a non-negative integer")
     return config
+
+
+def finding_errors(value):
+    required = {
+        "schema_version", "id", "kind", "source_role", "severity", "target",
+        "claim", "evidence", "impact", "required_action", "criterion_ids",
+        "status",
+    }
+    optional = {"recurrence_of", "prevention"}
+    errors = []
+    missing = sorted(required - set(value))
+    if missing:
+        errors.append("missing fields: {}".format(_quoted_names(missing)))
+    extra = sorted(set(value) - required - optional)
+    if extra:
+        errors.append("unknown fields: {}".format(_quoted_names(extra)))
+    if value.get("schema_version") != 2:
+        errors.append("schema_version must be 2")
+    if value.get("kind") != "finding":
+        errors.append("kind must be finding")
+    finding_id = value.get("id")
+    if not isinstance(finding_id, str) or not STABLE_ID.fullmatch(finding_id):
+        errors.append("id must be a stable ID")
+    source_role = value.get("source_role")
+    if not isinstance(source_role, str) or source_role not in {
+            "producer", "verifier", "reviewer", "challenger", "arbiter"}:
+        errors.append("invalid source_role")
+    for field in ("target", "claim", "impact", "required_action"):
+        if not isinstance(value.get(field), str) or not value.get(field).strip():
+            errors.append("{} must be a non-empty string".format(field))
+    evidence = value.get("evidence")
+    if not isinstance(evidence, list) or not evidence or not all(
+            isinstance(item, str) and item.strip() for item in evidence):
+        errors.append("evidence must be a non-empty string array")
+    criterion_ids = value.get("criterion_ids")
+    if not isinstance(criterion_ids, list) or not criterion_ids or not all(
+            isinstance(item, str) and STABLE_ID.fullmatch(item)
+            for item in criterion_ids):
+        errors.append("criterion_ids must be a non-empty stable ID array")
+    elif len(criterion_ids) != len(set(criterion_ids)):
+        errors.append("criterion_ids must be unique")
+
+    severity = value.get("severity")
+    status = value.get("status")
+    severity_valid = (
+        isinstance(severity, str)
+        and severity in {"low", "medium", "high", "blocking"}
+    )
+    status_valid = (
+        isinstance(status, str)
+        and status in {"open", "resolved", "accepted_risk", "not_reproducible"}
+    )
+    if not severity_valid:
+        errors.append("invalid severity")
+    if not status_valid:
+        errors.append("invalid status")
+    severity_blocks = severity_valid and severity in {"high", "blocking"}
+    if severity_blocks and status == "open":
+        errors.append("open high/blocking finding blocks acceptance")
+    if severity_blocks and status == "accepted_risk":
+        errors.append("high or blocking finding cannot be accepted_risk")
+
+    has_recurrence = "recurrence_of" in value
+    needs_prevention = (
+        has_recurrence
+        or (
+            status_valid
+            and status in {"resolved", "not_reproducible"}
+            and severity_blocks
+        )
+    )
+    prevention = value.get("prevention")
+    if "prevention" in value and not isinstance(prevention, dict):
+        errors.append("prevention must be an object")
+    if needs_prevention and not isinstance(prevention, dict):
+        errors.append("resolved high/blocking finding or recurrence requires prevention")
+    if isinstance(prevention, dict):
+        p_required = {
+            "kind", "action", "evidence", "regression_verification_ids"
+        }
+        p_missing = sorted(p_required - set(prevention))
+        if p_missing:
+            errors.append(
+                "prevention missing fields: {}".format(_quoted_names(p_missing)))
+        p_extra = sorted(set(prevention) - p_required - {"fallback_reason"})
+        if p_extra:
+            errors.append(
+                "prevention unknown fields: {}".format(_quoted_names(p_extra)))
+        kind = prevention.get("kind")
+        if not isinstance(kind, str) or kind not in {
+                "structure", "automatic_check", "skill_rule", "human_review"}:
+            errors.append("invalid prevention kind")
+            kind = None
+        for field in ("action",):
+            if (not isinstance(prevention.get(field), str)
+                    or not prevention.get(field).strip()):
+                errors.append("prevention {} must be a non-empty string".format(field))
+        for field in ("evidence",):
+            items = prevention.get(field)
+            if not isinstance(items, list) or not items or not all(
+                    isinstance(item, str) and item.strip() for item in items):
+                errors.append("prevention {} must be a non-empty string array".format(field))
+        if "regression_verification_ids" in prevention:
+            ids = prevention.get("regression_verification_ids")
+            if not isinstance(ids, list) or not ids or not all(
+                    isinstance(item, str) and STABLE_ID.fullmatch(item)
+                    for item in ids):
+                errors.append(
+                    "regression_verification_ids must be a non-empty string array of stable IDs")
+            elif len(ids) != len(set(ids)):
+                errors.append("regression_verification_ids must be unique")
+        reason = prevention.get("fallback_reason")
+        if "fallback_reason" in prevention and (
+                not isinstance(reason, str) or not reason.strip()):
+            errors.append("fallback_reason must be a non-empty string")
+        if kind in {"automatic_check", "skill_rule", "human_review"}:
+            if not isinstance(reason, str) or not reason.strip():
+                errors.append(
+                    "non-structure prevention requires fallback_reason")
+    recurrence = value.get("recurrence_of")
+    if "recurrence_of" in value and (
+            not isinstance(recurrence, str) or not STABLE_ID.fullmatch(recurrence)):
+        errors.append("recurrence_of must be a stable ID")
+    elif recurrence == value.get("id"):
+        errors.append("recurrence_of must not be self-referential")
+    return errors
+
+
+def verification_errors(finding, work_item, artifact, verifications):
+    errors = []
+    prevention = finding.get("prevention")
+    if not isinstance(prevention, dict):
+        return errors
+    refs = prevention.get("regression_verification_ids")
+    if not isinstance(refs, list) or not refs:
+        return errors
+    work_required = {
+        "schema_version", "id", "kind", "goal", "pack_id", "constraints",
+        "priority", "risk_level", "max_repair_iterations",
+        "acceptance_criteria",
+    }
+    work_missing = sorted(work_required - set(work_item))
+    if work_missing:
+        errors.append(
+            "Work Item missing fields: {}".format(_quoted_names(work_missing)))
+    work_extra = sorted(set(work_item) - work_required - {"open_questions"})
+    if work_extra:
+        errors.append(
+            "Work Item unknown fields: {}".format(_quoted_names(work_extra)))
+    if work_item.get("schema_version") != 2 or work_item.get("kind") != "work_item":
+        errors.append("Work Item schema_version/kind is invalid")
+    if not isinstance(work_item.get("id"), str) or not STABLE_ID.fullmatch(
+            work_item.get("id", "")):
+        errors.append("Work Item id must be a stable ID")
+    for field in ("goal", "pack_id"):
+        if (not isinstance(work_item.get(field), str)
+                or not work_item.get(field).strip()):
+            errors.append("Work Item {} must be non-blank".format(field))
+    constraints = work_item.get("constraints")
+    if not isinstance(constraints, list) or not all(
+            isinstance(item, str) and item.strip() for item in constraints):
+        errors.append("Work Item constraints must be a non-blank string array")
+    priority = work_item.get("priority")
+    if not isinstance(priority, str) or priority not in {
+            "low", "medium", "high", "critical"}:
+        errors.append("Work Item priority is invalid")
+    risk_level = work_item.get("risk_level")
+    if not isinstance(risk_level, str) or risk_level not in {
+            "low", "medium", "high", "critical"}:
+        errors.append("Work Item risk_level is invalid")
+    if (isinstance(work_item.get("max_repair_iterations"), bool)
+            or not isinstance(work_item.get("max_repair_iterations"), int)
+            or work_item.get("max_repair_iterations") < 0):
+        errors.append(
+            "Work Item max_repair_iterations must be a non-negative integer")
+    if "open_questions" in work_item:
+        questions = work_item.get("open_questions")
+        if not isinstance(questions, list) or not all(
+                isinstance(item, str) and item.strip() for item in questions):
+            errors.append(
+                "Work Item open_questions must be a non-blank string array")
+        elif questions:
+            errors.append("unresolved open_questions block acceptance")
+    criteria = work_item.get("acceptance_criteria")
+    if not isinstance(criteria, dict) or not criteria:
+        return ["work item acceptance_criteria must be a non-empty object"]
+    if not all(
+            isinstance(key, str) and STABLE_ID.fullmatch(key)
+            and isinstance(value, str) and value.strip()
+            for key, value in criteria.items()):
+        errors.append(
+            "Work Item acceptance_criteria must map stable IDs to non-blank text")
+    artifact_required = {
+        "schema_version", "id", "kind", "artifact_type", "version",
+        "content", "source", "work_item_id", "files",
+    }
+    artifact_missing = sorted(artifact_required - set(artifact))
+    if artifact_missing:
+        errors.append(
+            "Artifact missing fields: {}".format(_quoted_names(artifact_missing)))
+    artifact_extra = sorted(set(artifact) - artifact_required)
+    if artifact_extra:
+        errors.append(
+            "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))
+    if artifact.get("schema_version") != 2 or artifact.get("kind") != "artifact":
+        errors.append("Artifact schema_version/kind is invalid")
+    if not isinstance(artifact.get("id"), str) or not STABLE_ID.fullmatch(
+            artifact.get("id", "")):
+        errors.append("Artifact id must be a stable ID")
+    if not isinstance(artifact.get("work_item_id"), str) or not STABLE_ID.fullmatch(
+            artifact.get("work_item_id", "")):
+        errors.append("Artifact work_item_id must be a stable ID")
+    files = artifact.get("files")
+    if not isinstance(files, list) or not files or not all(
+            isinstance(item, str) and item.strip() for item in files):
+        errors.append("Artifact files must be a non-empty non-blank string array")
+    elif len(files) != len(set(files)):
+        errors.append("Artifact files must be unique")
+    for field in ("artifact_type", "version", "content", "source"):
+        if (not isinstance(artifact.get(field), str)
+                or not artifact.get(field).strip()):
+            errors.append(
+                "Artifact {} must be non-blank".format(field))
+    if artifact.get("work_item_id") != work_item.get("id"):
+        errors.append("artifact work_item_id does not match Work Item")
+    by_id = {}
+    for verification in verifications:
+        verification_id = verification.get("id")
+        if not isinstance(verification_id, str) or not STABLE_ID.fullmatch(verification_id):
+            errors.append("Verification id must be a stable ID")
+            continue
+        if verification_id in by_id:
+            errors.append("duplicate Verification id: {}".format(verification_id))
+            continue
+        by_id[verification_id] = verification
+    covered_criteria = set()
+    for verification_id in refs:
+        verification = by_id.get(verification_id)
+        if verification is None:
+            errors.append(
+                "regression Verification {} not found".format(verification_id))
+            continue
+        required = {
+            "schema_version", "id", "kind", "artifact_id", "artifact_version",
+            "criterion_ids", "check", "method", "status", "evidence",
+            "limitations", "finding_id",
+        }
+        missing = sorted(required - set(verification))
+        if missing:
+            errors.append(
+                "Verification {} missing fields: {}".format(
+                    verification_id, _quoted_names(missing)))
+        extra = sorted(set(verification) - required)
+        if extra:
+            errors.append(
+                "Verification {} unknown fields: {}".format(
+                    verification_id, _quoted_names(extra)))
+        if verification.get("schema_version") != 2:
+            errors.append(
+                "Verification {} schema_version must be 2".format(
+                    verification_id))
+        if verification.get("kind") != "verification":
+            errors.append(
+                "Verification {} kind must be verification".format(
+                    verification_id))
+        if verification.get("finding_id") != finding.get("id"):
+            errors.append(
+                "Verification {} finding_id mismatch".format(verification_id))
+        for field in ("check", "method"):
+            if (not isinstance(verification.get(field), str)
+                    or not verification.get(field).strip()):
+                errors.append(
+                    "Verification {} {} must be non-blank".format(
+                        verification_id, field))
+        if verification.get("status") != "PASS":
+            errors.append(
+                "regression Verification {} is not PASS".format(verification_id))
+        evidence = verification.get("evidence")
+        if not isinstance(evidence, list) or not evidence or not all(
+                isinstance(item, str) and item.strip() for item in evidence):
+            errors.append(
+                "regression Verification {} has no executed evidence".format(
+                    verification_id))
+        if verification.get("artifact_id") != artifact.get("id"):
+            errors.append(
+                "regression Verification {} artifact id mismatch".format(
+                    verification_id))
+        if verification.get("artifact_version") != artifact.get("version"):
+            errors.append(
+                "regression Verification {} artifact version mismatch".format(
+                    verification_id))
+        verification_criteria = verification.get("criterion_ids")
+        if not isinstance(verification_criteria, list) or not verification_criteria:
+            errors.append(
+                "regression Verification {} has no criterion_ids".format(
+                    verification_id))
+        elif not all(
+                isinstance(item, str) and STABLE_ID.fullmatch(item)
+                for item in verification_criteria):
+            errors.append(
+                "regression Verification {} has invalid criterion_ids".format(
+                    verification_id))
+        elif len(verification_criteria) != len(set(verification_criteria)):
+            errors.append(
+                "regression Verification {} criterion_ids must be unique".format(
+                    verification_id))
+        elif not set(verification_criteria).issubset(set(criteria)):
+            errors.append(
+                "regression Verification {} references unknown criterion".format(
+                    verification_id))
+        else:
+            covered_criteria.update(verification_criteria)
+        limitations = verification.get("limitations")
+        if (not isinstance(limitations, list)
+                or not all(
+                    isinstance(item, str) and item.strip()
+                    for item in limitations)):
+            errors.append(
+                "Verification {} limitations must be a non-blank string array".format(
+                    verification_id))
+    finding_criteria = finding.get("criterion_ids")
+    if isinstance(finding_criteria, list) and finding_criteria:
+        missing_criteria = set(finding_criteria) - covered_criteria
+        if missing_criteria:
+            errors.append(
+                "regression evidence does not cover Finding criterion_ids: {}".format(
+                    _quoted_names(sorted(missing_criteria))))
+    return errors
+
+
+def check_finding(path, work_item_path=None, artifact_path=None,
+                  verifications_dir=None):
+    try:
+        value = load_json(path)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = finding_errors(value)
+    prevention = value.get("prevention")
+    refs = prevention.get("regression_verification_ids") if isinstance(
+        prevention, dict) else None
+    refs_valid = (
+        isinstance(refs, list)
+        and bool(refs)
+        and all(
+            isinstance(item, str) and STABLE_ID.fullmatch(item)
+            for item in refs)
+    )
+    if refs_valid:
+        context = (work_item_path, artifact_path, verifications_dir)
+        if not all(context):
+            errors.append(
+                "regression verification evidence requires --work-item, "
+                "--artifact, and --verifications-dir")
+        else:
+            try:
+                work_item = load_json(work_item_path)
+                artifact = load_json(artifact_path)
+                directory = Path(verifications_dir)
+                if not directory.is_dir():
+                    raise ValueError(
+                        "Verification directory not found: {}".format(directory))
+                verifications = []
+                for item in sorted(directory.glob("*.json")):
+                    record = load_json(item)
+                    if record.get("kind") == "verification":
+                        verifications.append(record)
+            except ValueError as exc:
+                print("ERROR: {}".format(exc), file=sys.stderr)
+                return 2
+            errors.extend(verification_errors(
+                value, work_item, artifact, verifications))
+    if errors:
+        display_id = json.dumps(value.get("id", "finding"), ensure_ascii=True)
+        print("[FAIL] {}".format(display_id), file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(error), file=sys.stderr)
+        return 1
+    print("[PASS] {}".format(value["id"]))
+    return 0
 
 
 def doctor(root, mode="kit"):
@@ -101,6 +505,7 @@ def doctor(root, mode="kit"):
         "workflows/adversarial-review/workflow.md",
         "workflows/continuous-improvement/workflow.md",
         "packs/software-development/pack.md",
+        "packs/software-development/verification-skill.md",
         "packs/architecture-design/pack.md",
         ".agents/skills/loop-engineering/SKILL.md",
         ".claude/skills/loop-engineering/SKILL.md",
@@ -181,7 +586,8 @@ def markdown(data):
     return "\n".join(lines)
 
 
-def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False):
+def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False,
+               max_repairs=None):
     common_stops = [
         "acceptance criteria have passing evidence",
         "the same failure fingerprint repeats without new evidence",
@@ -229,6 +635,8 @@ def route_plan(risk, files, trivial=False, ambiguous=False, irreversible=False):
     if data["tier"] == "L3":
         data["stop_conditions"].append(
             "human approval is missing before an irreversible action")
+    if max_repairs is not None:
+        data["max_repair_iterations"] = max_repairs
     return data
 
 
@@ -245,7 +653,9 @@ def verify(root, config_path, report_dir, timeout):
     started = datetime.datetime.now().astimezone()
     checks = [run_one(x if isinstance(x, dict) else {}, root, timeout) for x in commands]
     failed = [x for x in checks if x["required"] and x["status"] != "PASS"]
-    data = {"schema_version": 1, "run_id": started.strftime("%Y%m%d-%H%M%S-%z"),
+    run_id = "{}-{}".format(
+        started.strftime("%Y%m%d-%H%M%S-%f-%z"), uuid.uuid4().hex[:8])
+    data = {"schema_version": 1, "run_id": run_id,
             "root": str(root), "started_at": started.isoformat(),
             "overall_status": "FAIL" if failed else "PASS",
             "max_repair_iterations": maximum, "checks": checks,
@@ -282,6 +692,12 @@ def main():
     rte.add_argument("--trivial", action="store_true")
     rte.add_argument("--ambiguous", action="store_true")
     rte.add_argument("--irreversible", action="store_true")
+    rte.add_argument("--max-repairs", type=int, default=None)
+    cf = subs.add_parser("check-finding")
+    cf.add_argument("--input", required=True)
+    cf.add_argument("--work-item", default=None)
+    cf.add_argument("--artifact", default=None)
+    cf.add_argument("--verifications-dir", default=None)
     r = subs.add_parser("report")
     r.add_argument("--input", required=True)
     r.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -295,10 +711,16 @@ def main():
     if a.command == "route":
         if a.files < 0:
             p.error("--files must be non-negative")
+        if a.max_repairs is not None and a.max_repairs < 0:
+            p.error("--max-repairs must be non-negative")
         print(json.dumps(route_plan(
-            a.risk, a.files, a.trivial, a.ambiguous, a.irreversible),
+            a.risk, a.files, a.trivial, a.ambiguous, a.irreversible,
+            a.max_repairs),
             indent=2, ensure_ascii=False))
         return 0
+    if a.command == "check-finding":
+        return check_finding(
+            a.input, a.work_item, a.artifact, a.verifications_dir)
     try:
         data = load_json(a.input)
     except ValueError as exc:
