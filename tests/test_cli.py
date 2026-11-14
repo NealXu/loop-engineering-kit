@@ -893,7 +893,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(data["budget"]["project_default"], 3)
         self.assertEqual(
             {item["id"] for item in data["findings"]},
-            {"F-CI", "F-CONTRACT", "F-GUARD", "F-OUTPUT"})
+            {"F-CI", "F-CONTRACT", "F-EOL", "F-GUARD", "F-OUTPUT"})
         self.assertTrue(all(
             item["status"] == "PASS" for item in data["verifications"]))
         ci_finding = next(

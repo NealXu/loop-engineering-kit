@@ -68,24 +68,26 @@ deployment, publication, or credential-related actions.
 
 ## Repair History
 
-Artifact versions 2 through 30 each have a session Iteration record under
+Artifact versions 2 through 31 each have a session Iteration record under
 `$env:TEMP\loop-engineering-session-WI-LE-SOURCES-20261113\iterations`.
 Each record identifies the input version, targeted findings, changes, and
-continue result. The final gate covers version 30.
+continue result. The final gate covers version 31.
 
 ## Actual Findings
 
 The review defects that drove the prevention work are recorded for this session as:
 
+- `finding-F-EOL.json` with `V-EOL`
 - `finding-F-CI.json` with `V-CI-MATRIX`
 - `finding-F-CONTRACT.json` with `V-FINDING-CONTRACT`
 - `finding-F-GUARD.json` with `V-FINDING-GUARD`
 - `finding-F-OUTPUT.json` with `V-FINDING-OUTPUT`
 
-Each resolved regression Verification is `PASS`, targets `A-LE-SOURCES` version 30,
+Each resolved regression Verification is `PASS`, targets `A-LE-SOURCES` version 31,
 contains a matching `finding_id`, and covers the relevant criterion. The
 `F-CI` verification is now `PASS` from GitHub Actions run `43546388421`; all
-four Finding gates resolve. The Arbiter path is:
+five Finding gates resolve after the v30 rerun `43546632594` also passed.
+The Arbiter path is:
 
 ```text
 SESSION_RECORDS=%TEMP%\loop-engineering-session-WI-LE-SOURCES-20261113
@@ -99,7 +101,10 @@ python loop_engineering/cli.py check-finding --input <finding> \
 
 - External JSON Schema engine: PowerShell `Test-Json` accepted six valid records
   and rejected six invalid cases.
-- Codex subagent: 48 tests, `doctor`, and all four Finding gates passed.
+- Codex subagent: 48 tests, `doctor`, and all five Finding gates passed.
+- A clean Windows clone with `core.autocrlf=true` initially reproduced 47/48
+  because `install.sh` used CRLF. `.gitattributes` now forces all `*.sh` files
+  to LF, and the same clean clone passes 48/48.
 - Claude Code `2.1.267`: both project and User Scope verifier sessions returned
   `CLAUDE_VERIFY_PASS`; the validated model was `qwen3.7-plus`.
 - The default CCR `opencode/glm-5.3-flash` route remained blocked by an upstream
