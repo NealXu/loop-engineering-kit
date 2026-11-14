@@ -22,7 +22,7 @@ def stage2_records():
         "content": "candidate",
         "source": "test",
         "work_item_id": "WI-1",
-        "files": ["result.txt"],
+        "files": ["result.txt", "notes.txt"],
     }
     return {
         "work-item.json": {
@@ -34,6 +34,7 @@ def stage2_records():
             "constraints": [],
             "priority": "medium",
             "risk_level": "medium",
+            "control_tier": "L2",
             "max_repair_iterations": 3,
             "acceptance_criteria": {"AC-1": "result is verified"},
             "open_questions": [],
@@ -731,7 +732,8 @@ class CliTests(unittest.TestCase):
              lambda value: value.update(review_independence="non_independent"),
              "independent review"),
             ("l3-controller", "work-item.json",
-             lambda value: value.update(risk_level="high"),
+             lambda value: value.update(
+                 risk_level="high", control_tier="L3"),
              "human approval"),
             ("malformed-decision-version", "decision.json",
              lambda value: value.update(artifact_versions=[[]]),
@@ -742,6 +744,9 @@ class CliTests(unittest.TestCase):
             ("malformed-kind", "verification.json",
              lambda value: value.update(kind=[]),
              "kind must be a string"),
+            ("unknown-kind", "verification.json",
+             lambda value: value.update(kind="verificatoin"),
+             "unknown record kind"),
         ]
         for name, filename, mutate, marker in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
@@ -880,6 +885,32 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            records["work-item.json"]["risk_level"] = "low"
+            records["decision.json"]["review_independence"] = "non_independent"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("independent review", p.stderr)
+            records["work-item.json"]["risk_level"] = "medium"
+            records["decision.json"]["review_independence"] = "independent"
+
+            records["iterations/iteration-02.json"] = {
+                "schema_version": 2,
+                "id": "I-2",
+                "kind": "iteration",
+                "work_item_id": "WI-1",
+                "cycle": 3,
+                "input_versions": ["2"],
+                "output_versions": [],
+                "changes": ["after accept"],
+                "result": "CONTINUE",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("final terminal Decision", p.stderr)
+            records.pop("iterations/iteration-02.json")
 
             records["iterations/iteration-01.json"]["result"] = "ACCEPT"
             write_records(root, records)

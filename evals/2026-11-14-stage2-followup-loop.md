@@ -27,6 +27,8 @@ its history.
 - `F-ID-COLLISION`: stable IDs are unique across non-Artifact record types.
 - `F-TERMINAL`: only one terminal ACCEPT/STOP/ESCALATE is allowed and it must
   be last; Iteration.result matches the same-cycle Decision.
+- `F-CONTROL-TIER`: Work Item control_tier is explicit and cannot be lower than
+  the route selected from risk and file count.
 - `F-REPAIR-VERSION`: artifact REPAIR names the pre-repair input version.
 - `F-RISK-ID` and `F-MALFORMED-KIND`: dangling risk references and non-string
   record kinds fail with structured diagnostics.
@@ -40,7 +42,7 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- The final terminal/risk repair is pending its pushed matrix and is not
+- The final control-tier repair is pending its pushed matrix and is not
   counted as PASS.
 
 ## Residual Risks

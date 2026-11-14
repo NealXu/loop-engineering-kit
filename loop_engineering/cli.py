@@ -288,7 +288,8 @@ def verification_errors(finding, work_item, artifact, verifications):
     if work_missing:
         errors.append(
             "Work Item missing fields: {}".format(_quoted_names(work_missing)))
-    work_extra = sorted(set(work_item) - work_required - {"open_questions"})
+    work_extra = sorted(
+        set(work_item) - work_required - {"open_questions", "control_tier"})
     if work_extra:
         errors.append(
             "Work Item unknown fields: {}".format(_quoted_names(work_extra)))
@@ -601,6 +602,11 @@ def records_errors(records):
             errors.append("record kind must be a string")
             schema_valid = False
             continue
+        if kind not in SCHEMA_FILES:
+            errors.append("unknown record kind {}".format(
+                json.dumps(kind, ensure_ascii=True)))
+            schema_valid = False
+            continue
         if kind in {
                 "work_item", "artifact", "finding", "verification",
                 "decision", "iteration"}:
@@ -638,6 +644,9 @@ def records_errors(records):
         return errors
     work_item = work_items[0]
     work_item_id = work_item.get("id")
+    control_tier = work_item.get("control_tier")
+    if control_tier not in {"L0", "L1", "L2", "L3"}:
+        errors.append("Work Item control_tier must be L0-L3")
     criteria = work_item.get("acceptance_criteria")
     if not isinstance(work_item_id, str) or not STABLE_ID.fullmatch(work_item_id):
         errors.append("Work Item id must be a stable ID")
@@ -682,6 +691,13 @@ def records_errors(records):
         artifact_versions.add(version)
     if len(artifact_ids) != 1:
         errors.append("Stage 2 record checks require one Artifact lineage")
+    tier_rank = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
+    if control_tier in tier_rank and artifacts:
+        planned = route_plan(
+            work_item.get("risk_level", "low"),
+            max(len(item.get("files", [])) for item in artifacts))
+        if tier_rank[control_tier] < tier_rank.get(planned["tier"], 3):
+            errors.append("control_tier is lower than the selected route")
 
     findings = {}
     finding_criteria = set(criteria)
@@ -855,12 +871,12 @@ def records_errors(records):
                 errors.append("open_questions block ACCEPT")
             risk_level = work_item.get("risk_level")
             independence = decision.get("review_independence")
-            if (risk_level in {"medium", "high", "critical"}
+            if (control_tier in {"L2", "L3"}
                     and independence != "independent"):
                 errors.append(
-                    "ACCEPT requires independent review for this risk level")
+                    "ACCEPT requires independent review for this control tier")
             approver = decision.get("approver")
-            if (risk_level in {"high", "critical"}
+            if (control_tier == "L3"
                     and (not isinstance(approver, str)
                          or approver.strip().lower() == "controller")):
                 errors.append("L3 ACCEPT requires human approval")
@@ -981,6 +997,15 @@ def records_errors(records):
         if repair is None or repair.get("repair_kind") != "artifact":
             errors.append(
                 "Artifact-producing Iteration requires an artifact REPAIR")
+    if (final_decision is not None
+            and isinstance(final_decision.get("cycle"), int)):
+        final_cycle = final_decision["cycle"]
+        if any(
+                isinstance(iteration.get("cycle"), int)
+                and iteration["cycle"] > final_cycle
+                for iteration in groups.get("iteration", [])):
+            errors.append(
+                "Iteration cannot follow the final terminal Decision")
 
     return errors
 
@@ -995,12 +1020,7 @@ def check_records(directory):
     try:
         for path in sorted(root.rglob("*.json")):
             record = load_json(path)
-            kind = record.get("kind")
-            if (not isinstance(kind, str)
-                    or kind in {
-                    "work_item", "artifact", "finding", "verification",
-                    "decision", "iteration"}):
-                records.append(record)
+            records.append(record)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2

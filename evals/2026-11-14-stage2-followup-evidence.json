@@ -20,6 +20,13 @@
   },
   "findings": [
     {
+      "id": "F-CONTROL-TIER",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-CONTROL-TIER"]
+    },
+    {
       "id": "F-TERMINAL",
       "severity": "high",
       "status": "resolved",
@@ -92,6 +99,12 @@
   ],
   "verifications": [
     {
+      "id": "V-CONTROL-TIER",
+      "finding_id": "F-CONTROL-TIER",
+      "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
+      "status": "PASS"
+    },
+    {
       "id": "V-TERMINAL",
       "finding_id": "F-TERMINAL",
       "criterion_ids": ["AC-ANCESTRY", "AC-REGRESSION"],
@@ -153,10 +166,10 @@
     "tests": "55/55",
     "rocky_tests": "55 tests, OK (skipped=1 Windows PowerShell expected)",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v5-20261114-201933",
-    "check_records": "PASS with 23 canonical records and two ordered Decisions",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v6-20261114-204852",
+    "check_records": "PASS with 25 canonical records and two ordered Decisions",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
-    "user_scope_backup_stamp": "20261114-203621",
+    "user_scope_backup_stamp": "20261114-204927",
     "ci_final_run": "PENDING",
     "ci_final_head": "PENDING",
     "ci_final_status": "PENDING: final terminal/risk repair not yet pushed",
