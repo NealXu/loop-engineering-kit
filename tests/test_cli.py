@@ -886,6 +886,24 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
+        for result in ("REPAIR", "ACCEPT", "STOP", "ESCALATE"):
+            with self.subTest(undecided=result):
+                with tempfile.TemporaryDirectory() as t:
+                    root = Path(t)
+                    records = stage2_records()
+                    records.pop("decision-repair.json")
+                    records["iterations/iteration-01.json"]["result"] = result
+                    for record_name, value in records.items():
+                        path = root / record_name
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(json.dumps(value), encoding="utf-8")
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                    self.assertIn("same-cycle Decision", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
             records["work-item.json"]["risk_level"] = "low"
             records["decision.json"]["review_independence"] = "non_independent"
             write_records(root, records)

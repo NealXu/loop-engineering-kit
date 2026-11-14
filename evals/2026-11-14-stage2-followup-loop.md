@@ -29,6 +29,7 @@ its history.
   be last; Iteration.result matches the same-cycle Decision.
 - `F-CONTROL-TIER`: Work Item control_tier is explicit and cannot be lower than
   the route selected from risk and file count.
+- `F-UNDECIDED`: non-CONTINUE Iterations require a same-cycle Decision.
 - `F-REPAIR-VERSION`: artifact REPAIR names the pre-repair input version.
 - `F-RISK-ID` and `F-MALFORMED-KIND`: dangling risk references and non-string
   record kinds fail with structured diagnostics.
@@ -42,8 +43,8 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final control-tier run `43596925223`: five jobs PASS at `abc450f`,
-  including Rocky Linux 8 and all Python 3.8/3.12 targets.
+- The final state-history repair is pending its pushed matrix and is not
+  counted as PASS.
 
 ## Residual Risks
 

@@ -842,8 +842,11 @@ def records_errors(records):
         if isinstance(decision.get("cycle"), int)}
     for iteration in groups.get("iteration", []):
         decision = decisions_by_cycle.get(iteration.get("cycle"))
-        if (decision is not None
-                and iteration.get("result") != decision.get("decision")):
+        if decision is None and iteration.get("result") != "CONTINUE":
+            errors.append(
+                "non-CONTINUE Iteration requires a same-cycle Decision")
+        elif (decision is not None
+              and iteration.get("result") != decision.get("decision")):
             errors.append(
                 "Iteration result must match same-cycle Decision")
     for decision in decisions:
