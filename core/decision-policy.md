@@ -39,6 +39,9 @@ Verification must exist, be `PASS`, match the Artifact id/version, and contain
 executed evidence and the Finding id. The directory may use any JSON filename;
 records are selected by `kind: verification`. A missing or invalid prevention
 contract blocks acceptance.
+`check-finding` validates the Finding and its regression evidence, not the
+overall Decision: an open `high` or `blocking` Finding is valid for REPAIR or
+STOP and blocks only ACCEPT.
 
 A failure fingerprint combines the failed check, failure signature, and
 artifact versions. If the same fingerprint repeats with no artifact change,

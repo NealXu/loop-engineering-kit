@@ -406,7 +406,7 @@ class CliTests(unittest.TestCase):
         cases = [
             (base, 1, "prevention"),
             (dict(base, status="not_reproducible"), 1, "prevention"),
-            (dict(base, status="open"), 1, "open"),
+            (dict(base, status="open"), 0, "PASS"),
             (dict(base, id="", prevention={
                 "kind": "automatic_check",
                 "action": "add test",
@@ -926,6 +926,38 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["iterations/iteration-01.json"].update(
+                cycle=1,
+                input_versions=["1"],
+                output_versions=[],
+                changes=["continue without a decision"],
+                result="CONTINUE",
+            )
+            records["iterations/iteration-02.json"] = {
+                "schema_version": 3,
+                "id": "I-2",
+                "kind": "iteration",
+                "work_item_id": "WI-1",
+                "cycle": 2,
+                "input_versions": ["1"],
+                "output_versions": ["2"],
+                "changes": ["produce version 2"],
+                "result": "REPAIR",
+            }
+            records["decision-repair.json"]["cycle"] = 2
+            records["decision.json"]["cycle"] = 3
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"]["cycle"] = 2
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("strictly increasing", p.stderr)
             for status in ("FAIL", "BLOCKED", "NOT_RUN"):
                 records["verification-review.json"]["status"] = status
                 write_records(root, records)
@@ -1258,6 +1290,61 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("terminal Decision", p.stderr)
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records.pop("artifact-2.json")
+            records.pop("iterations/iteration-01.json")
+            records.pop("decision-repair.json")
+            records["verification.json"]["artifact_version"] = "1"
+            records["verification-review.json"]["artifact_version"] = "1"
+            records["finding-open.json"] = {
+                "schema_version": 3,
+                "id": "F-OPEN",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "active blocker",
+                "claim": "the blocker is not closed",
+                "evidence": ["counterexample"],
+                "impact": "acceptance must wait",
+                "required_action": "repair before accept",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            records["decision.json"] = {
+                "schema_version": 3,
+                "id": "D-STOP",
+                "kind": "decision",
+                "cycle": 1,
+                "work_item_id": "WI-1",
+                "artifact_versions": ["1"],
+                "decision": "STOP",
+                "rationale": "blocker remains open",
+                "evidence_refs": ["V-1", "F-OPEN"],
+                "unresolved_disagreements": [],
+                "approver": "controller",
+            }
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"].update({
+                "decision": "ACCEPT",
+                "rationale": "invalid accept",
+                "criteria_evidence": {
+                    "AC-1": {
+                        "verification_ids": ["V-1"],
+                        "result": "PASS",
+                    },
+                },
+                "residual_risks": [],
+                "review_independence": "independent",
+            })
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("open high/blocking", p.stderr)
 
     def test_check_records_blocks_l3_and_uses_route_flags(self):
         with tempfile.TemporaryDirectory() as t:

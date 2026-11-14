@@ -25,7 +25,8 @@ of matching criteria by copied prose and prevents duplicate criterion entries.
 Decision `evidence_refs` contain stable Finding or Verification IDs; use the
 optional `evidence_notes` array for file paths, URLs, and prose. A repaired run
 may retain multiple Decisions ordered by `cycle`, with exactly one final ACCEPT
-for the final Artifact version.
+for the final Artifact version. Decision cycles must be unique and strictly
+increasing; a `CONTINUE` Iteration may remain undecided.
 
 A resolved `high` or `blocking` Finding includes a `prevention` object with
 `kind`, `action`, and `evidence`. The kinds are ordered `structure`,
@@ -45,6 +46,8 @@ that the review completed.
 Each accepted criterion also needs a final-version Verification whose role is
 `verifier` (or omitted for migrated legacy evidence). A `producer` Verification
 cannot serve as the Verifier gate.
+An open `high` or `blocking` Finding is structurally valid for REPAIR/STOP and
+`check-finding`; it blocks only the final ACCEPT decision.
 
 This is a breaking schema upgrade. The repository ships only version 3
 schemas. Version 1 and 2 records need external migration before validation;

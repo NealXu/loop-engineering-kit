@@ -211,8 +211,6 @@ def finding_errors(value):
     if not status_valid:
         errors.append("invalid status")
     severity_blocks = severity_valid and severity in {"high", "blocking"}
-    if severity_blocks and status == "open":
-        errors.append("open high/blocking finding blocks acceptance")
     if severity_blocks and status == "accepted_risk":
         errors.append("high or blocking finding cannot be accepted_risk")
 
@@ -836,10 +834,13 @@ def records_errors(records):
         if isinstance(decision.get("cycle"), int)]
     if len(decisions) > 1:
         if (len(decision_cycles) != len(decisions)
-                or sorted(decision_cycles) != list(
-                    range(1, len(decisions) + 1))):
+                or any(
+                    earlier >= later
+                    for earlier, later in zip(
+                        sorted(decision_cycles),
+                        sorted(decision_cycles)[1:]))):
             errors.append(
-                "multiple Decisions require contiguous cycles from 1")
+                "multiple Decisions require unique, strictly increasing cycles")
     terminal_decisions = [
         decision for decision in decisions
         if decision.get("decision") in {"ACCEPT", "STOP", "ESCALATE"}]
