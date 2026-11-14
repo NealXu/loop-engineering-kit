@@ -1,0 +1,242 @@
+# Universal Work Loop Engine Kit v0.4.0
+
+English | [简体中文](README.md)
+
+Loop Engineering Kit is a lightweight control layer for AI coding agents. It
+selects the smallest sufficient set of roles based on risk, then connects
+execution, verification, independent review, and the acceptance decision with
+evidence. Software development is the first runnable domain; architecture
+design shows how the same protocol applies to non-code work.
+
+## At a glance
+
+```mermaid
+flowchart TB
+    HOST["Codex or Claude Code host"] --> GOAL["User goal + project constraints"]
+    GOAL --> ROUTE["Risk-based route<br/>L0 / L1 / L2 / L3"]
+    ROUTE --> ROLES["Minimum required roles<br/>Producer · Verifier · Reviewer<br/>Challenger · Arbiter"]
+    ROUTE --> PACK["Domain workflow pack<br/>software development<br/>architecture design"]
+    ROLES --> LOOP["Evidence loop<br/>Define → Produce<br/>Verify + Review<br/>Reconcile → Decide"]
+    PACK --> LOOP
+    LOOP --> CLI["Deterministic checks<br/>doctor · verify<br/>check-finding"]
+    CLI --> GATE{"Evidence gate"}
+    GATE -->|ACCEPT| ART["Versioned artifact + acceptance evidence"]
+    GATE -->|REPAIR| LOOP
+    GATE -->|ESCALATE / STOP| HUMAN["Human escalation or stop"]
+```
+
+In one sentence: **spend effort in proportion to risk, replace claimed
+completion with executed evidence, and use an explicit gate to decide what
+ships.**
+
+## What it is—and is not
+
+- **What it is:** a host-neutral protocol, five composable roles, two domain
+  packs, adapters for Codex and Claude Code, and a dependency-free
+  deterministic CLI.
+- **What it solves:** as multi-role agent work grows, role sprawl, false
+  completion, missing evidence, and uncontrolled repair loops become likely.
+  This project makes those control points explicit.
+- **What it is not:** a model runtime or a sub-agent launcher. Codex, Claude
+  Code, or your own orchestrator still performs the work.
+- **Current stage:** v0.4 includes routing, verification evidence, decision
+  validation, and installation adapters. Persistent runtime storage,
+  checkpoint/recovery, a human-approval runtime, metrics, and automated
+  improvement are not implemented yet.
+
+## Current implementation (Stage 1)
+
+- `core/`: the protocol, state machine, decision policy, and JSON Schemas
+  (v2) for six record types: Work Item, Artifact, Finding, Verification,
+  Decision, and Iteration. Acceptance criteria use stable `criterion_id` keys
+  and are linked to verification evidence.
+- `roles/`: five responsibilities: Producer, Verifier, Reviewer, Challenger,
+  and Arbiter.
+- `workflows/`: iterative delivery, adversarial review, and controlled
+  continuous improvement.
+- `packs/`: software development and architecture design. The software pack
+  includes a reusable verification-skill template.
+- `.codex/`, `.claude/`, and `adapters/`: role mappings for Codex and Claude
+  Code.
+- `loop_engineering/cli.py`: a dependency-free CLI for risk routing,
+  environment checks, and deterministic verification reports.
+  `check-finding` validates the prevention gate before the Arbiter can accept.
+
+The current documentation does not claim Stage 2 capabilities (persistent
+runtime, checkpoints, recovery, and human approval) or Stage 3 capabilities
+(metrics, version registry, and automated improvement candidates).
+
+## Quick start
+
+Windows PowerShell:
+
+```powershell
+py -3 loop_engineering\cli.py doctor
+py -3 -m unittest discover -s tests -v
+.\scripts\install.ps1 -Target Both -Scope User
+```
+
+If local execution policy rejects unsigned scripts, bypass it for this install
+process only:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -Target Both -Scope User
+```
+
+Ubuntu 22.04 Linux CI target (these commands are the CI target; local
+compatibility is not claimed as evidence by this document):
+
+```bash
+python3 loop_engineering/cli.py doctor
+python3 -m unittest discover -s tests -v
+bash scripts/install.sh --target both --scope user
+```
+
+By default, `doctor` checks whether the Kit itself is complete. To check an
+ordinary target project, use `--mode project`: a missing
+`.loop-engineering.json` is allowed; an invalid config or check definition
+fails.
+
+After installation, validate the installed copy with `--mode installed`:
+
+```powershell
+python "$HOME\.agents\skills\loop-engineering\loop_engineering\cli.py" `
+  doctor --mode installed --root "$HOME\.agents\skills\loop-engineering"
+```
+
+For Claude Code, replace the root with
+`"$HOME\.claude\skills\loop-engineering"`.
+
+The default user-scope install includes five roles and a self-contained
+`loop-engineering` skill. It copies `core/`, `roles/`, `workflows/`, `packs/`,
+and `loop_engineering/`, skipping existing files rather than overwriting them.
+Merge `AGENTS.md` or `CLAUDE.md` into the target project manually.
+
+To upgrade an existing install, pass the upgrade flag. The installer creates a
+same-directory `.bak-<timestamp>` backup before replacing managed files and
+moves the old `implementer` agent out of the active configuration after
+backing it up:
+
+```powershell
+.\scripts\install.ps1 -Target Both -Scope User -Upgrade
+```
+
+```bash
+bash scripts/install.sh --target both --scope user --upgrade
+```
+
+## How to use it
+
+1. Install the adapter for your host in the target project.
+2. Merge the rules from `AGENTS.md` or `CLAUDE.md` into the project
+   instructions.
+3. Run `python loop_engineering/cli.py route` to select L0-L3. Start only the
+   roles required by that tier.
+4. Choose a pack `pack.md` and define the Work Item, acceptance criteria, risk
+   level, and repair budget.
+5. Follow `workflows/iterative-delivery/workflow.md` through production,
+   verification, review, challenge, reconciliation, and decision.
+6. For software work, copy `.loop-engineering.example.json` to
+   `.loop-engineering.json` in the project root and configure deterministic
+   checks.
+7. Run `python3 loop_engineering/cli.py verify --root . --report-dir
+   <report-dir>` (use `py -3` on Windows). L1/L2 normally use a session
+   temporary directory; use a project directory only when evidence must be
+   retained or the route is L3.
+
+Control tiers:
+
+| Tier | Use when | Roles | Repair budget | Records |
+|---|---|---|---:|---|
+| L0 | Low-risk, isolated, unambiguous | Host edits and checks directly | 0 | none |
+| L1 | Bounded single-file work | Producer, Verifier, Arbiter | 2 | compact |
+| L2 | Multiple files, medium risk, or ambiguity | L1 + independent Reviewer | 3 | full (in session) |
+| L3 | High risk or irreversible action | L2 + Challenger + human approval | 3 | audited |
+
+Examples:
+
+```powershell
+py -3 loop_engineering\cli.py route --risk medium --files 2
+py -3 loop_engineering\cli.py route --risk low --files 1 --trivial
+py -3 loop_engineering\cli.py route --risk low --files 1 --irreversible
+py -3 loop_engineering\cli.py route --risk medium --files 2 --max-repairs 20
+```
+
+`route` only prints the control policy; it does not modify the project.
+`record_depth` governs the six canonical role records: Work Item, Artifact,
+Finding, Verification, Decision, and Iteration. L0 requires no multi-role
+records; L1 keeps a compact three-line goal/acceptance/budget brief; L2 runs
+the full role loop but keeps records in session; only L3, or an explicit
+project request, creates canonical record files.
+
+JSON/Markdown files written by an explicit `verify` run are evidence reports,
+not canonical role records. Use `--report-dir` to choose a session or project
+location deliberately. A compact route does not become persistent because a
+project asks for persistence; re-route to full or audited first.
+
+Example verification config:
+
+```json
+{
+  "version": 1,
+  "max_repair_iterations": 3,
+  "commands": [
+    {
+      "name": "unit-tests",
+      "argv": ["{python}", "-m", "unittest", "discover", "-s", "tests", "-v"],
+      "required": true
+    }
+  ]
+}
+```
+
+`argv` must be an argument array; `shell=False` is the default.
+`{python}` is replaced by the Python interpreter running the CLI. Only
+configure commands you trust.
+
+## Acceptance gate
+
+`ACCEPT` requires explicit acceptance criteria, executed evidence for every
+required check, no unresolved `blocking` or `high` findings, and resolution or
+escalation of material disagreements. `BLOCKED` and `NOT_RUN` never count as
+passing. The default repair limit is three iterations; at the limit, stop or
+escalate. If the same failure fingerprint recurs without a new artifact
+version, stop or escalate immediately.
+
+## Boundaries
+
+The host starts model sub-agents; this tool does not call models behind Codex
+or Claude Code. Reviewer and Challenger independence depends on the host
+providing an independent session.
+
+The local test environment for this commit is Windows 11 with Python 3.12.
+Windows and Ubuntu Linux with Python 3.8 and 3.12 are CI targets. Ubuntu is
+pinned to 22.04 to retain a Python 3.8 runner. CentOS 8 is not covered by CI.
+Until the remote workflow runs, these environments are targets, not evidence
+of compatibility.
+
+## Design rationale
+
+The v0.4 routing, independent review, context checkpoint, and stopping rules
+draw on these engineering findings:
+
+- Agentless shows that a simple, explainable locate-fix-verify path should
+  remain the baseline.
+- SWE-agent shows that tool and file interfaces change agent behavior.
+- Rethinking Verification in Agent Harnesses finds that an independent
+  reviewer usually offers a better accuracy-cost tradeoff than adding more
+  completion checks.
+- TurnCost finds that coding-agent cost is driven mainly by the number of
+  turns rather than average observation length.
+- Context as a Tool and The Hidden Costs of Forgetting show that context should
+  be maintained as a working set and compression must account for repeated
+  retrieval and cache costs.
+- Why Do Multi-Agent LLM Systems Fail? shows that adding roles does not
+  automatically improve reliability.
+
+These figures are the papers' reports for specific models, tasks, and budgets,
+not measured gains from this repository.
+
+The first Claude Code routing comparison is recorded in
+`evals/2026-10-28-claude-code-route-pilot.md`. It verifies protocol compliance
+and cost only; it does not establish an improvement on complete coding tasks.

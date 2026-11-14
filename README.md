@@ -1,7 +1,40 @@
 # Universal Work Loop Engine Kit v0.4.0
 
-基于证据的多角色工作闭环。代码开发是第一个可运行领域实例；架构设计用于
-验证同一套协议也可以处理非代码交付。
+[English](README.en.md) | 简体中文
+
+Loop Engineering Kit 是给 AI 编程 Agent 用的轻量控制层。它按任务风险选择
+最小必要角色，把执行、验证、独立审查和验收决策串成一个有证据的闭环；
+代码开发是第一个已实现领域，架构设计用于验证同一套协议也适用于非代码交付。
+
+## 全景图
+
+```mermaid
+flowchart TB
+    HOST["Codex / Claude Code 宿主"] --> GOAL["用户目标 + 项目约束"]
+    GOAL --> ROUTE["按风险路由<br/>L0 / L1 / L2 / L3"]
+    ROUTE --> ROLES["最小必要角色<br/>Producer · Verifier · Reviewer<br/>Challenger · Arbiter"]
+    ROUTE --> PACK["领域工作包<br/>软件开发 / 架构设计"]
+    ROLES --> LOOP["证据闭环<br/>定义 → 生产<br/>验证 + 审查<br/>汇总 → 决策"]
+    PACK --> LOOP
+    LOOP --> CLI["确定性检查<br/>doctor · verify<br/>check-finding"]
+    CLI --> GATE{"证据门禁"}
+    GATE -->|ACCEPT| ART["版本化交付物 + 验收证据"]
+    GATE -->|REPAIR| LOOP
+    GATE -->|ESCALATE / STOP| HUMAN["人工升级或停机"]
+```
+
+一句话：**用风险控制投入，用实际检查替代口头完成，用明确门禁决定交付。**
+
+## 它是什么，不是什么
+
+- **是什么**：一套宿主无关的协议、五个可组合角色、两种领域工作包、
+  Codex/Claude Code 适配器，以及一个无第三方依赖的确定性 CLI。
+- **解决什么**：多角色工作越复杂，越容易出现角色膨胀、假完成、证据缺失和
+  返修失控；本项目把这些控制点显式化。
+- **不是什么**：不是模型运行时，也不负责启动子 Agent；实际执行仍由 Codex、
+  Claude Code 或你的编排器负责。
+- **阶段状态**：v0.4 已实现路由、验证证据、决策校验和安装适配；持久化
+  运行时、检查点/恢复、人工审批运行时、指标和自动改进仍未实现。
 
 ## 当前实现（阶段 1）
 
