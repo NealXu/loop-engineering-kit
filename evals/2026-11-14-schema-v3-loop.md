@@ -3,7 +3,7 @@
 ## Scope
 
 - Work Item: `WI-LE-SCHEMA-V3-20261114`
-- Artifact: `A-LE-SCHEMA-V3` version `7`
+- Artifact: `A-LE-SCHEMA-V3` version `8`
 - Base: `c02f1f6`; previous head: `7cf0af6`
 - Repair budget: `3`
 
@@ -48,6 +48,10 @@ Reviewer-evidence gate.
   to SHA-256 `db0609f79b9d28db3294150ad6b38dd10aeedbb6b2eaf5ff19cbe37cfa656ad9`.
 - `F-MANIFEST-METADATA`: manifest schema version, 2-to-3 direction, record
   count, digest, role disclosure, snapshot flag, and roleless IDs are enforced.
+- `F-MANIFEST-COMPLETENESS`: role-bearing and roleless IDs must exactly equal
+  the Verification records in the digest-bound record set.
+- `F-DECISION-CYCLE`: Decision cycle is required by Schema and checked as a
+  positive integer.
 
 ## Verification
 
@@ -58,11 +62,11 @@ Reviewer-evidence gate.
 - External Schema engine: 6 valid samples accepted, 6 invalid samples rejected
 - Source and both installed CLI copies: identical SHA-256; installed doctors
   and real Codex/Claude checks PASS
-- Final PowerShell User Scope backup stamp: `20261114-232553`
-- Artifact code head `ade7273`; cumulative diff blob
-  `91cf27e1249871204557effe8b3ef2a772fee467` from
-  `git diff --binary c02f1f6..ade7273 | git hash-object --stdin`
-- CI run `43609980117`: 5/5 jobs PASS at `ade7273`, including Rocky Linux 8
+- Final PowerShell User Scope backup stamp: `20261114-233655`
+- Artifact code head `a2eac76`; cumulative diff blob
+  `1b09b5141d07c2648b858d56cf79066e508384dc` from
+  `git diff --binary c02f1f6..a2eac76 | git hash-object --stdin`
+- CI run `43611016032`: 5/5 jobs PASS at `a2eac76`, including Rocky Linux 8
   and all Python 3.8/3.12 targets
 
 ## Residual Risks
