@@ -3,13 +3,13 @@
   "work_item_id": "WI-LE-SCHEMA-V3-20261114",
   "artifact": {
     "id": "A-LE-SCHEMA-V3",
-    "version": "3",
+    "version": "4",
     "file_count": 49,
     "base": "c02f1f6",
     "previous_head": "7cf0af6",
-    "code_head": "c7349a0f612421bcbe2a1c35dac9eeff03e55e45",
-    "diff_git_blob": "0e47126ee68c10d8af3e7333dc22a0cec5da780d",
-    "diff_hash_command": "git diff --binary c02f1f6..c7349a0 | git hash-object --stdin"
+    "code_head": "9cefef61ff32886bb3336171ca650f9b0e6e6d81",
+    "diff_git_blob": "b0a51531b594fff50705a35935dd21d15f7f7766",
+    "diff_hash_command": "git diff --binary c02f1f6..9cefef6 | git hash-object --stdin"
   },
   "budget": {
     "run": 3,
@@ -85,6 +85,20 @@
       "status": "resolved",
       "prevention_kind": "automatic_check",
       "regression_verification_ids": ["V-STOP-TEST-PATH-V3"]
+    },
+    {
+      "id": "F-CONTINUE-CYCLES",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-CONTINUE-CYCLES-V4"]
+    },
+    {
+      "id": "F-OPEN-FINDING-CHECKFINDING",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-OPEN-FINDING-V4"]
     }
   ],
   "verifications": [
@@ -128,7 +142,7 @@
       "id": "V-CI",
       "criterion_ids": ["AC-CI", "AC-REGRESSION"],
       "status": "PASS",
-      "evidence": "Run 43604359219 passed all five jobs on Artifact head c7349a0."
+      "evidence": "Run 43605545296 passed all five jobs on Artifact head 9cefef6."
     },
     {
       "id": "V-VERIFIER-GATE",
@@ -159,20 +173,32 @@
       "criterion_ids": ["AC-REGRESSION"],
       "status": "PASS",
       "evidence": "STOP with open_questions and a resolved high Finding regression passes; ACCEPT still rejects open_questions."
+    },
+    {
+      "id": "V-CONTINUE-CYCLES-V4",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "A leading undecided CONTINUE followed by REPAIR/ACCEPT passes; duplicate Decision cycles are rejected."
+    },
+    {
+      "id": "V-OPEN-FINDING-V4",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "check-finding accepts an open high Finding; STOP passes and final ACCEPT rejects it."
     }
   ],
   "post_delivery_verification": {
     "tests": "56/56",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-repair3-20261114-221949",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-repair4-20261114-223258",
     "check_records": "PASS with 29 migrated v3 records; 9/9 Finding gates PASS",
     "external_schema": "PowerShell Test-Json: 6 valid accepted, 6 invalid rejected",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "installed_cli_hash_match": true,
     "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
-    "user_scope_backup_stamp": "20261114-220743",
-    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43604359219",
-    "ci_artifact_head": "c7349a0f612421bcbe2a1c35dac9eeff03e55e45",
+    "user_scope_backup_stamp": "20261114-223548",
+    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43605545296",
+    "ci_artifact_head": "9cefef61ff32886bb3336171ca650f9b0e6e6d81",
     "ci_artifact_status": "PASS (5/5 jobs)",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"

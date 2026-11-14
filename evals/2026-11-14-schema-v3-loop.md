@@ -3,7 +3,7 @@
 ## Scope
 
 - Work Item: `WI-LE-SCHEMA-V3-20261114`
-- Artifact: `A-LE-SCHEMA-V3` version `3`
+- Artifact: `A-LE-SCHEMA-V3` version `4`
 - Base: `c02f1f6`; previous head: `7cf0af6`
 - Repair budget: `3`
 
@@ -32,6 +32,10 @@ Reviewer-evidence gate.
   removed Finding is asserted absent before later checks.
 - `F-STOP-TEST-PATH`: the STOP fixture now includes a resolved high Finding
   with prevention, so it exercises the original regression path.
+- `F-CONTINUE-CYCLES`: Decisions require unique, strictly increasing cycles;
+  a CONTINUE Iteration may remain undecided.
+- `F-OPEN-FINDING-CHECKFINDING`: open high/blocking Findings are valid for
+  REPAIR/STOP and checked structurally by `check-finding`; only ACCEPT blocks.
 
 ## Verification
 
@@ -42,11 +46,11 @@ Reviewer-evidence gate.
 - External Schema engine: 6 valid samples accepted, 6 invalid samples rejected
 - Source and both installed CLI copies: identical SHA-256; installed doctors
   and real Codex/Claude checks PASS
-- Final PowerShell User Scope backup stamp: `20261114-220743`
-- Artifact code head `c7349a0`; cumulative diff blob
-  `0e47126ee68c10d8af3e7333dc22a0cec5da780d` from
-  `git diff --binary c02f1f6..c7349a0 | git hash-object --stdin`
-- CI run `43604359219`: 5/5 jobs PASS at `c7349a0`, including Rocky Linux 8
+- Final PowerShell User Scope backup stamp: `20261114-223548`
+- Artifact code head `9cefef6`; cumulative diff blob
+  `b0a51531b594fff50705a35935dd21d15f7f7766` from
+  `git diff --binary c02f1f6..9cefef6 | git hash-object --stdin`
+- CI run `43605545296`: 5/5 jobs PASS at `9cefef6`, including Rocky Linux 8
   and all Python 3.8/3.12 targets
 
 ## Residual Risks
