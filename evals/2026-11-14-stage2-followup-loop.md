@@ -43,8 +43,8 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- The final authorization repair is pending its pushed matrix and is not
-  counted as PASS.
+- Final authorization run `43599142485`: five jobs PASS at `c60134a`,
+  including Rocky Linux 8 and all Python 3.8/3.12 targets.
 
 ## Residual Risks
 
