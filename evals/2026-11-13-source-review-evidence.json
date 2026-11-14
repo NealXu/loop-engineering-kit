@@ -3,8 +3,8 @@
   "work_item_id": "WI-LE-SOURCES-20261113",
   "artifact": {
     "id": "A-LE-SOURCES",
-    "version": "32",
-    "file_count": 43
+    "version": "31",
+    "file_count": 42
   },
   "budget": {
     "run": 50,
@@ -134,8 +134,8 @@
     }
   ],
   "iterations": {
-    "count": 31,
-    "cycles": "1-31"
+    "count": 30,
+    "cycles": "1-30"
   },
   "files": [
     ".gitattributes",
@@ -176,7 +176,6 @@
     "roles/producer.md",
     "roles/reviewer.md",
     "roles/verifier.md",
-    "scripts/install.sh",
     "tests/test_cli.py",
     "tests/test_install.py",
     "workflows/continuous-improvement/workflow.md",
@@ -194,7 +193,6 @@
       "evals/2026-11-13-source-review-evidence.json",
       "evals/2026-11-13-source-review-loop.md",
       "loop_engineering/cli.py",
-      "scripts/install.sh",
       "tests/test_cli.py",
       "tests/test_install.py"
     ],
@@ -206,7 +204,7 @@
     },
     "codex_subagent": {
       "status": "PASS",
-      "tests": "52/52",
+      "tests": "48/48",
       "doctor": "PASS",
       "finding_gate": "PASS",
       "environment": "Windows 11, Python 3.12.10"
@@ -227,17 +225,16 @@
       "installed_doctor_mode": "installed",
       "installed_doctor_exit": 0,
       "directory_as_file_rejected": true,
-      "backup_stamp": "20261114-185712",
+      "backup_stamp": "20261114-101921",
       "manager": "scripts/install.ps1"
     },
     "cross_environment": {
       "windows_powershell": "PASS",
       "bash_installer": "PASS in current harness",
       "windows_clean_clone": "PASS with core.autocrlf=true after forcing *.sh to LF",
-      "python_3_8": "PASS in Ubuntu, Windows, and Rocky Linux 8 CI jobs",
-      "centos_8": "Literal CentOS 8 NOT_RUN; Rocky Linux 8 compatibility job PASS",
-      "rocky_8": "PASS with Python 3.8.17 in GitHub Actions run 43587425749",
-      "ci_matrix": "run 43587425749 passed Ubuntu 22.04, Windows, and Rocky Linux 8 after Actions checkout@v5/setup-python@v6 upgrade"
+      "python_3_8": "NOT_RUN locally; CI matrix added",
+      "centos_8": "NOT_RUN",
+      "ci_matrix": "v29 run 43546388421 passed Ubuntu 22.04 and Windows on Python 3.8 and 3.12; v30 updates evidence and retains the same pinned workflow"
     }
   }
 }

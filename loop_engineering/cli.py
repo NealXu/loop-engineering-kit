@@ -13,6 +13,15 @@ import uuid
 
 
 STABLE_ID = re.compile(r"^[A-Za-z][A-Za-z0-9._-]*$")
+SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "core" / "artifact-schema"
+SCHEMA_FILES = {
+    "work_item": "work-item.schema.json",
+    "artifact": "artifact.schema.json",
+    "finding": "finding.schema.json",
+    "verification": "verification.schema.json",
+    "decision": "decision.schema.json",
+    "iteration": "iteration.schema.json",
+}
 
 
 def _quoted_names(items):
@@ -65,6 +74,75 @@ def load_verify_config(path):
     if isinstance(maximum, bool) or not isinstance(maximum, int) or maximum < 0:
         raise ValueError("max_repair_iterations must be a non-negative integer")
     return config
+
+
+def schema_errors(value, schema, path="$"):
+    errors = []
+    expected_type = schema.get("type")
+    valid_type = True
+    if expected_type == "object":
+        valid_type = isinstance(value, dict)
+    elif expected_type == "array":
+        valid_type = isinstance(value, list)
+    elif expected_type == "string":
+        valid_type = isinstance(value, str)
+    elif expected_type == "integer":
+        valid_type = isinstance(value, int) and not isinstance(value, bool)
+    if not valid_type:
+        return ["{} must be {}".format(path, expected_type)]
+    if "const" in schema and value != schema["const"]:
+        errors.append("{} must equal {}".format(path, json.dumps(schema["const"])))
+    if "enum" in schema and value not in schema["enum"]:
+        errors.append("{} has invalid value".format(path))
+    if isinstance(value, str):
+        if len(value) < schema.get("minLength", 0):
+            errors.append("{} is too short".format(path))
+        pattern = schema.get("pattern")
+        if pattern and not re.search(pattern, value):
+            errors.append("{} has invalid format".format(path))
+    if isinstance(value, int) and not isinstance(value, bool):
+        if "minimum" in schema and value < schema["minimum"]:
+            errors.append("{} is below minimum".format(path))
+    if isinstance(value, list):
+        if len(value) < schema.get("minItems", 0):
+            errors.append("{} has too few items".format(path))
+        if schema.get("uniqueItems") and len(value) != len({
+                json.dumps(item, sort_keys=True) for item in value}):
+            errors.append("{} items must be unique".format(path))
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item in enumerate(value):
+                errors.extend(schema_errors(
+                    item, item_schema, "{}[{}]".format(path, index)))
+    if isinstance(value, dict):
+        properties = schema.get("properties", {})
+        missing = sorted(set(schema.get("required", [])) - set(value))
+        if missing:
+            errors.append("{} missing fields: {}".format(
+                path, _quoted_names(missing)))
+        if len(value) < schema.get("minProperties", 0):
+            errors.append("{} has too few properties".format(path))
+        property_names = schema.get("propertyNames")
+        if isinstance(property_names, dict):
+            for key in value:
+                errors.extend(schema_errors(
+                    key, property_names, "{}.<key>".format(path)))
+        additional = schema.get("additionalProperties")
+        for key, item in value.items():
+            child_path = "{}.{}".format(path, key)
+            if key in properties:
+                errors.extend(schema_errors(item, properties[key], child_path))
+            elif additional is False:
+                errors.append("{} is not allowed".format(child_path))
+            elif isinstance(additional, dict):
+                errors.extend(schema_errors(item, additional, child_path))
+    for child in schema.get("allOf", []):
+        errors.extend(schema_errors(value, child, path))
+    if isinstance(schema.get("if"), dict):
+        condition_errors = schema_errors(value, schema["if"], path)
+        if not condition_errors and isinstance(schema.get("then"), dict):
+            errors.extend(schema_errors(value, schema["then"], path))
+    return errors
 
 
 def finding_errors(value):
@@ -456,6 +534,13 @@ def records_errors(records):
                 "work_item", "artifact", "finding", "verification",
                 "decision", "iteration"}:
             groups.setdefault(kind, []).append(record)
+            try:
+                schema = load_json(SCHEMA_ROOT / SCHEMA_FILES[kind])
+            except ValueError as exc:
+                errors.append("{} schema unavailable: {}".format(kind, exc))
+            else:
+                errors.extend("{} schema: {}".format(kind, error)
+                              for error in schema_errors(record, schema))
 
     work_items = groups.get("work_item", [])
     if len(work_items) != 1:
@@ -745,7 +830,8 @@ def check_records(directory):
     if errors:
         print("[FAIL] records", file=sys.stderr)
         for error in errors:
-            print("ERROR: {}".format(error), file=sys.stderr)
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
         return 1
     work_item = next(x for x in records if x.get("kind") == "work_item")
     print("[PASS] {} records={} artifacts={} cycles={}".format(

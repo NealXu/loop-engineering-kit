@@ -68,10 +68,10 @@ deployment, publication, or credential-related actions.
 
 ## Repair History
 
-Artifact versions 2 through 32 each have a session Iteration record under
+Artifact versions 2 through 31 each have a session Iteration record under
 `$env:TEMP\loop-engineering-session-WI-LE-SOURCES-20261113\iterations`.
 Each record identifies the input version, targeted findings, changes, and
-continue result. The final gate covers version 32.
+continue result. The final gate covers version 31.
 
 ## Actual Findings
 
@@ -83,7 +83,7 @@ The review defects that drove the prevention work are recorded for this session 
 - `finding-F-GUARD.json` with `V-FINDING-GUARD`
 - `finding-F-OUTPUT.json` with `V-FINDING-OUTPUT`
 
-Each resolved regression Verification is `PASS`, targets `A-LE-SOURCES` version 32,
+Each resolved regression Verification is `PASS`, targets `A-LE-SOURCES` version 31,
 contains a matching `finding_id`, and covers the relevant criterion. The
 `F-CI` verification is now `PASS` from GitHub Actions run `43546388421`; all
 five Finding gates resolve after the v30 rerun `43546632594` also passed.
@@ -101,10 +101,10 @@ python loop_engineering/cli.py check-finding --input <finding> \
 
 - External JSON Schema engine: PowerShell `Test-Json` accepted six valid records
   and rejected six invalid cases.
-- Codex subagent: 52 tests, `doctor`, and all five Finding gates passed.
+- Codex subagent: 48 tests, `doctor`, and all five Finding gates passed.
 - A clean Windows clone with `core.autocrlf=true` initially reproduced 47/48
   because `install.sh` used CRLF. `.gitattributes` now forces all `*.sh` files
-  to LF, and the same clean clone passes 52/52 after later test additions.
+  to LF, and the same clean clone passes 48/48.
 - Claude Code `2.1.267`: both project and User Scope verifier sessions returned
   `CLAUDE_VERIFY_PASS`; the validated model was `qwen3.7-plus`.
 - The default CCR `opencode/glm-5.3-flash` route remained blocked by an upstream
@@ -112,15 +112,15 @@ python loop_engineering/cli.py check-finding --input <finding> \
 - Real User Scope installation succeeded for both hosts with timestamped
   backups. The installed `doctor --mode installed` exits `0` for Codex and
   Claude copies.
-- CI run `43587425749` passed Ubuntu 22.04, Windows, and a Rocky Linux 8
-  container with Python 3.8.17. The Bash installer no longer depends on `find`.
-  The workflow uses `actions/checkout@v5` and `actions/setup-python@v6`.
+- The v27 CI run failed Python 3.8 because `ubuntu-latest` resolved to Ubuntu
+  26.04 without that runtime. The v29 repair pinned Ubuntu 22.04, and run
+  `43546388421` passed the full matrix: Ubuntu 22.04 and Windows with Python
+  3.8 and 3.12. CentOS 8 is not covered by CI.
 
 ## Limitations
 
-- Literal CentOS 8 was not executed locally; Rocky Linux 8 is the executed
-  CentOS-compatible CI target.
+- Python 3.8, Ubuntu, and CentOS 8 have not executed locally; the synchronized
+  CI matrix is the executed cross-environment evidence.
 - The default GLM provider remains blocked; the validated Claude path uses
   `qwen3.7-plus`.
-- Stage 2 durable storage, automatic recovery, and human-approval runtime remain
-  deferred; deterministic `check-records` ancestry validation is implemented.
+- Stage 2 cross-record ancestry and reference resolution remain deferred.

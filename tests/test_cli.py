@@ -688,6 +688,17 @@ class CliTests(unittest.TestCase):
             ("malformed-version", "verification.json",
              lambda value: value.update(artifact_version=[]),
              "must be strings"),
+            ("decision-enum", "decision.json",
+             lambda value: value.update(decision="MAYBE"),
+             "decision schema"),
+            ("criterion-id", "work-item.json",
+             lambda value: value["acceptance_criteria"].update(
+                 {"bad criterion": value["acceptance_criteria"].pop("AC-1")}),
+             "schema"),
+            ("result-enum", "decision.json",
+             lambda value: value["criteria_evidence"]["AC-1"].update(
+                 result="FAIL"),
+             "must equal"),
         ]
         for name, filename, mutate, marker in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
@@ -703,6 +714,37 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(p.returncode, 1, output)
                 self.assertIn(marker, output)
                 self.assertNotIn("Traceback", p.stderr)
+
+    def test_check_records_escapes_record_ids_in_failure_output(self):
+        records = stage2_records()
+        records["finding.json"] = {
+            "schema_version": 2,
+            "id": "F-1",
+            "kind": "finding",
+            "source_role": "reviewer",
+            "severity": "high",
+            "target": "gate",
+            "claim": "bad recurrence",
+            "evidence": ["counterexample"],
+            "impact": "log injection",
+            "required_action": "escape output",
+            "criterion_ids": ["AC-1"],
+            "status": "open",
+            "recurrence_of": "F-MISSING\n[PASS] forged",
+        }
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            for record_name, value in records.items():
+                path = root / record_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(value), encoding="utf-8")
+            p = run_cli("check-records", "--dir", root)
+            output = p.stdout + p.stderr
+            self.assertEqual(p.returncode, 1, output)
+            self.assertFalse(any(
+                line.startswith("[PASS] forged")
+                for line in output.splitlines()[1:]))
+            self.assertIn("\\n[PASS] forged", output)
 
     def test_iteration_schema_supports_explicit_ancestry(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"
@@ -1064,7 +1106,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(evidence["acceptance_criteria"], expected)
         self.assertEqual(
             evidence["post_delivery_verification"]["codex_subagent"]["tests"],
-            "52/52")
+            "48/48")
         report = (root / "evals" / "2026-11-13-source-review-loop.md").read_text(
             encoding="utf-8")
         self.assertNotIn("44 tests", report)
