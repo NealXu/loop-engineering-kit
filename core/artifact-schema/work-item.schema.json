@@ -45,6 +45,15 @@
         "irreversible": { "type": "boolean" }
       }
     },
+    "legacy_roleless_verification_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+      }
+    },
     "max_repair_iterations": { "type": "integer", "minimum": 0 },
     "acceptance_criteria": {
       "type": "object",

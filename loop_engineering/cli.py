@@ -299,7 +299,8 @@ def verification_errors(finding, work_item, artifact, verifications):
         errors.append(
             "Work Item missing fields: {}".format(_quoted_names(work_missing)))
     work_extra = sorted(
-        set(work_item) - work_required - {"open_questions"})
+        set(work_item) - work_required
+        - {"open_questions", "legacy_roleless_verification_ids"})
     if work_extra:
         errors.append(
             "Work Item unknown fields: {}".format(_quoted_names(work_extra)))
@@ -332,6 +333,16 @@ def verification_errors(finding, work_item, artifact, verifications):
             or not all(isinstance(value, bool)
                        for value in route_flags.values())):
         errors.append("Work Item route_flags must contain three booleans")
+    legacy_roleless = work_item.get("legacy_roleless_verification_ids", [])
+    if (not isinstance(legacy_roleless, list)
+            or not all(
+                isinstance(item, str) and STABLE_ID.fullmatch(item)
+                for item in legacy_roleless)):
+        errors.append(
+            "Work Item legacy_roleless_verification_ids must be a stable ID array")
+    elif len(legacy_roleless) != len(set(legacy_roleless)):
+        errors.append(
+            "Work Item legacy_roleless_verification_ids must be unique")
     if (isinstance(work_item.get("max_repair_iterations"), bool)
             or not isinstance(work_item.get("max_repair_iterations"), int)
             or work_item.get("max_repair_iterations") < 0):
@@ -677,6 +688,18 @@ def records_errors(records):
         errors.append(
             "Work Item route_flags must contain three booleans")
         route_flags = {}
+    legacy_roleless = work_item.get("legacy_roleless_verification_ids", [])
+    if (not isinstance(legacy_roleless, list)
+            or not all(
+                isinstance(item, str) and STABLE_ID.fullmatch(item)
+                for item in legacy_roleless)):
+        errors.append(
+            "Work Item legacy_roleless_verification_ids must be a stable ID array")
+        legacy_roleless = []
+    elif len(legacy_roleless) != len(set(legacy_roleless)):
+        errors.append(
+            "Work Item legacy_roleless_verification_ids must be unique")
+    legacy_roleless = set(legacy_roleless)
     criteria = work_item.get("acceptance_criteria")
     if not isinstance(work_item_id, str) or not STABLE_ID.fullmatch(work_item_id):
         errors.append("Work Item id must be a stable ID")
@@ -812,6 +835,16 @@ def records_errors(records):
                 isinstance(item, str) and item.strip() for item in evidence):
             errors.append("Verification {} has no executed evidence".format(
                 verification_id))
+    for verification_id in legacy_roleless:
+        verification = verifications.get(verification_id)
+        if verification is None:
+            errors.append(
+                "legacy roleless Verification {} does not resolve".format(
+                    verification_id))
+        elif verification.get("role") is not None:
+            errors.append(
+                "legacy roleless Verification {} declares a role".format(
+                    verification_id))
 
     final_artifact = None
     if len(final_versions) == 1:
@@ -1031,7 +1064,12 @@ def records_errors(records):
                             "Decision verification {} does not cover {}".format(
                                 json.dumps(verification_id, ensure_ascii=True),
                                 json.dumps(criterion_id, ensure_ascii=True)))
-                    if (verification.get("role") in {None, "verifier"}
+                    has_verifier_role = (
+                        verification.get("role") == "verifier"
+                        or (
+                            verification.get("role") is None
+                            and verification_id in legacy_roleless))
+                    if (has_verifier_role
                             and verification.get("status") == "PASS"
                             and final_artifact is not None
                             and verification.get("artifact_id")
@@ -1043,7 +1081,7 @@ def records_errors(records):
                         has_verifier_evidence = True
                 if not has_verifier_evidence:
                     errors.append(
-                        "Decision criterion {} requires a final-version Verifier Verification".format(
+                        "Decision criterion {} requires a final-version Verifier Verification role".format(
                             criterion_id))
         elif decision.get("decision") == "REPAIR":
             for field in ("next_state", "repair_kind"):

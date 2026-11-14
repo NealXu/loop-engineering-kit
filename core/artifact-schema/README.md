@@ -44,8 +44,9 @@ L2/L3 ACCEPT requires a referenced `role: reviewer` Verification with `PASS`
 status on the final Artifact id/version; a reviewer Finding alone is not proof
 that the review completed.
 Each accepted criterion also needs a final-version Verification whose role is
-`verifier` (or omitted for migrated legacy evidence). A `producer` Verification
-cannot serve as the Verifier gate.
+`verifier`. Role-omitted evidence is accepted only when its Verification id is
+listed in the Work Item's `legacy_roleless_verification_ids` migration
+allowlist. A `producer` Verification cannot serve as the Verifier gate.
 An open `high` or `blocking` Finding is structurally valid for REPAIR/STOP and
 `check-finding`; it blocks only the final ACCEPT decision.
 
