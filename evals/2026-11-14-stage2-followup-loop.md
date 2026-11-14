@@ -30,7 +30,8 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final CI: pending the follow-up push and is not counted as PASS yet
+- Final CI `43592182723`: five jobs PASS at `836712b`, including Rocky Linux 8
+  and all Python 3.8/3.12 targets.
 
 ## Residual Risks
 
