@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "work_item_id": "WI-LE-SCHEMA-V3-20261114",
+  "artifact": {
+    "id": "A-LE-SCHEMA-V3",
+    "version": "1",
+    "file_count": 47,
+    "base": "c02f1f6",
+    "previous_head": "7cf0af6",
+    "code_head": "aeb31a5c54a60600ba18f4e695a5da06f4d179b0",
+    "diff_sha256": "7a3a1f7881b85f5dc433185d2ef0bc5340053fd7aba61a0bbc01aeff350a5d52"
+  },
+  "budget": {
+    "run": 3,
+    "project_default": 3
+  },
+  "acceptance_criteria": {
+    "AC-SCHEMA": "All six canonical schemas use v3, and built-in schema validation covers every keyword used by those schemas.",
+    "AC-MIGRATION": "The 29 historical canonical records migrate to v3 without changing Decision, Iteration, Finding, or Verification content.",
+    "AC-REVIEW": "L2/L3 ACCEPT requires a referenced final-version PASS Reviewer Verification; findings and stale or failed reviews cannot substitute.",
+    "AC-REGRESSION": "The full suite, configured verify, record gates, installed copies, and model-host checks pass with exact evidence.",
+    "AC-CI": "The final pushed head passes all five CI jobs, including Rocky Linux 8 and Python 3.8/3.12."
+  },
+  "findings": [
+    {
+      "id": "F-SCHEMA-VERSION",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-SCHEMA"]
+    },
+    {
+      "id": "F-SCHEMA-KEYWORDS",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-SCHEMA"]
+    },
+    {
+      "id": "F-REVIEW-EVIDENCE",
+      "severity": "blocking",
+      "status": "resolved",
+      "prevention_kind": "automatic_check",
+      "regression_verification_ids": ["V-REVIEW-GATE"]
+    },
+    {
+      "id": "F-ARTIFACT-PROVENANCE",
+      "severity": "high",
+      "status": "resolved",
+      "prevention_kind": "structure",
+      "regression_verification_ids": ["V-CI"]
+    }
+  ],
+  "verifications": [
+    {
+      "id": "V-SCHEMA",
+      "criterion_ids": ["AC-SCHEMA"],
+      "status": "PASS",
+      "evidence": "PowerShell Test-Json accepted 6/6 valid v3 records and rejected 6/6 boundary-invalid records."
+    },
+    {
+      "id": "V-MIGRATION",
+      "criterion_ids": ["AC-MIGRATION", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "29/29 canonical JSON files migrated from v2 to v3; check-records PASS with 2 artifacts and ordered Decision history."
+    },
+    {
+      "id": "V-REVIEW-GATE",
+      "criterion_ids": ["AC-REVIEW"],
+      "status": "PASS",
+      "evidence": "FAIL, BLOCKED, NOT_RUN, stale-version, and Finding-only Reviewer cases are rejected."
+    },
+    {
+      "id": "V-REGRESSION",
+      "criterion_ids": ["AC-SCHEMA", "AC-MIGRATION", "AC-REVIEW", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "56/56 tests, configured verify, 9 Finding gates, compileall, and git diff --check passed locally."
+    },
+    {
+      "id": "V-INSTALL",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Source, Codex, and Claude CLI copies share one SHA-256; both installed doctors and real host checks pass."
+    },
+    {
+      "id": "V-MODEL",
+      "criterion_ids": ["AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "qwen3.7-plus returned CLAUDE_USER_VERIFY_PASS; Codex returned CODEX_USER_VERIFY_PASS."
+    },
+    {
+      "id": "V-CI",
+      "criterion_ids": ["AC-CI", "AC-REGRESSION"],
+      "status": "PASS",
+      "evidence": "Run 43601812408 passed all five jobs on Artifact head aeb31a5."
+    }
+  ],
+  "post_delivery_verification": {
+    "tests": "56/56",
+    "verify": "PASS",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-schema-v3-final-20261114-214948",
+    "check_records": "PASS with 29 migrated v3 records; 9/9 Finding gates PASS",
+    "external_schema": "PowerShell Test-Json: 6 valid accepted, 6 invalid rejected",
+    "installed_doctors": ["Codex PASS", "Claude PASS"],
+    "installed_cli_hash_match": true,
+    "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
+    "user_scope_backup_stamp": "20261114-214813",
+    "ci_artifact_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43601812408",
+    "ci_artifact_head": "aeb31a5c54a60600ba18f4e695a5da06f4d179b0",
+    "ci_artifact_status": "PASS (5/5 jobs)",
+    "provider_default": "BLOCKED: upstream GLM 403",
+    "provider_validated": "qwen3.7-plus"
+  }
+}

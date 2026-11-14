@@ -9,7 +9,8 @@
 
 This follow-up starts after the previous Stage 2 Work Item exhausted its three
 artifact repairs. It preserves the previous v4 snapshot instead of rewriting
-its history.
+its history. The later Schema v3 hardening is tracked separately in
+`2026-11-14-schema-v3-loop.md`.
 
 ## Resolved Findings
 
@@ -43,7 +44,7 @@ its history.
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final authorization run `43599293483`: five jobs PASS at `a8ae0b6`,
+- Final authorization run `43599436863`: five jobs PASS at `7cf0af6`,
   including Rocky Linux 8 and all Python 3.8/3.12 targets.
 
 ## Residual Risks
