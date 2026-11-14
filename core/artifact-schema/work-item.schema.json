@@ -13,6 +13,8 @@
     "constraints",
     "priority",
     "risk_level",
+    "control_tier",
+    "route_flags",
     "max_repair_iterations",
     "acceptance_criteria"
   ],
@@ -33,6 +35,16 @@
     "priority": { "enum": ["low", "medium", "high", "critical"] },
     "risk_level": { "enum": ["low", "medium", "high", "critical"] },
     "control_tier": { "enum": ["L0", "L1", "L2", "L3"] },
+    "route_flags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trivial", "ambiguous", "irreversible"],
+      "properties": {
+        "trivial": { "type": "boolean" },
+        "ambiguous": { "type": "boolean" },
+        "irreversible": { "type": "boolean" }
+      }
+    },
     "max_repair_iterations": { "type": "integer", "minimum": 0 },
     "acceptance_criteria": {
       "type": "object",

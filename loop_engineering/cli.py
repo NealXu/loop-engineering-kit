@@ -289,7 +289,8 @@ def verification_errors(finding, work_item, artifact, verifications):
         errors.append(
             "Work Item missing fields: {}".format(_quoted_names(work_missing)))
     work_extra = sorted(
-        set(work_item) - work_required - {"open_questions", "control_tier"})
+        set(work_item) - work_required
+        - {"open_questions", "control_tier", "route_flags"})
     if work_extra:
         errors.append(
             "Work Item unknown fields: {}".format(_quoted_names(work_extra)))
@@ -647,6 +648,14 @@ def records_errors(records):
     control_tier = work_item.get("control_tier")
     if control_tier not in {"L0", "L1", "L2", "L3"}:
         errors.append("Work Item control_tier must be L0-L3")
+    route_flags = work_item.get("route_flags")
+    if (not isinstance(route_flags, dict)
+            or set(route_flags) != {"trivial", "ambiguous", "irreversible"}
+            or not all(isinstance(value, bool)
+                       for value in route_flags.values())):
+        errors.append(
+            "Work Item route_flags must contain three booleans")
+        route_flags = {}
     criteria = work_item.get("acceptance_criteria")
     if not isinstance(work_item_id, str) or not STABLE_ID.fullmatch(work_item_id):
         errors.append("Work Item id must be a stable ID")
@@ -695,7 +704,10 @@ def records_errors(records):
     if control_tier in tier_rank and artifacts:
         planned = route_plan(
             work_item.get("risk_level", "low"),
-            max(len(item.get("files", [])) for item in artifacts))
+            max(len(item.get("files", [])) for item in artifacts),
+            bool(route_flags.get("trivial")),
+            bool(route_flags.get("ambiguous")),
+            bool(route_flags.get("irreversible")))
         if tier_rank[control_tier] < tier_rank.get(planned["tier"], 3):
             errors.append("control_tier is lower than the selected route")
 
@@ -879,10 +891,26 @@ def records_errors(records):
                 errors.append(
                     "ACCEPT requires independent review for this control tier")
             approver = decision.get("approver")
+            ref_findings = [
+                findings[ref] for ref in decision.get("evidence_refs", [])
+                if ref in findings]
+            if control_tier in {"L2", "L3"} and not any(
+                    finding.get("source_role") == "reviewer"
+                    for finding in ref_findings):
+                errors.append(
+                    "ACCEPT requires referenced independent Reviewer evidence")
+            if control_tier == "L3" and not any(
+                    finding.get("source_role") == "challenger"
+                    for finding in ref_findings):
+                errors.append(
+                    "L3 ACCEPT requires referenced Challenger evidence")
             if (control_tier == "L3"
                     and (not isinstance(approver, str)
                          or approver.strip().lower() == "controller")):
                 errors.append("L3 ACCEPT requires human approval")
+            if control_tier == "L3":
+                errors.append(
+                    "BLOCKED: L3 ACCEPT requires verified human approval runtime")
             if decision.get("unresolved_disagreements"):
                 errors.append("unresolved disagreements block ACCEPT")
             if any(
@@ -991,6 +1019,12 @@ def records_errors(records):
                 if produced:
                     errors.append(
                         "evidence REPAIR must not produce an Artifact version")
+                if iteration is not None:
+                    inputs = iteration.get("input_versions")
+                    if not isinstance(inputs, list) or sorted(inputs) != sorted(
+                            versions):
+                        errors.append(
+                            "evidence REPAIR versions must match Iteration input_versions")
 
     for iteration in groups.get("iteration", []):
         produced = iteration.get("output_versions")
@@ -1009,6 +1043,10 @@ def records_errors(records):
                 for iteration in groups.get("iteration", [])):
             errors.append(
                 "Iteration cannot follow the final terminal Decision")
+    for decision in terminal_decisions:
+        if "next_state" in decision or "repair_kind" in decision:
+            errors.append(
+                "terminal Decision must not contain repair fields")
 
     return errors
 
@@ -1029,11 +1067,13 @@ def check_records(directory):
         return 2
     errors = records_errors(records)
     if errors:
-        print("[FAIL] records", file=sys.stderr)
+        blocked = any(error.startswith("BLOCKED:") for error in errors)
+        print("[BLOCKED] records" if blocked else "[FAIL] records",
+              file=sys.stderr)
         for error in errors:
             print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
                   file=sys.stderr)
-        return 1
+        return 3 if blocked else 1
     work_item = next(x for x in records if x.get("kind") == "work_item")
     print("[PASS] {} records={} artifacts={} cycles={}".format(
         work_item["id"],

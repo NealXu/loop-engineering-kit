@@ -36,15 +36,15 @@ its history.
 
 ## Verification
 
-- Local suite: `55/55 OK`
+- Local suite: `56/56 OK`
 - Configured verify: PASS
 - Canonical `check-records`: PASS
 - Closed Finding gates: PASS
 - Source and both installed doctors: PASS
 - Rocky Linux 8: current applicable suite PASS with the expected Windows-only
   PowerShell skip
-- Final state-history run `43597829735`: five jobs PASS at `c60134a`,
-  including Rocky Linux 8 and all Python 3.8/3.12 targets.
+- The final authorization repair is pending its pushed matrix and is not
+  counted as PASS.
 
 ## Residual Risks
 

@@ -176,16 +176,16 @@
     }
   ],
   "post_delivery_verification": {
-    "tests": "55/55",
-    "rocky_tests": "55 tests, OK (skipped=1 Windows PowerShell expected)",
+    "tests": "56/56",
+    "rocky_tests": "56 tests, OK (skipped=1 Windows PowerShell expected)",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v7-20261114-210225",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage2-followup-v8-20261114-211748",
     "check_records": "PASS with 27 canonical records and two ordered Decisions",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
-    "user_scope_backup_stamp": "20261114-210302",
-    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43597829735",
-    "ci_final_head": "c60134af9cfd664625a03f21c01e7e1d3902d164",
-    "ci_final_status": "PASS",
+    "user_scope_backup_stamp": "20261114-211824",
+    "ci_final_run": "PENDING",
+    "ci_final_head": "PENDING",
+    "ci_final_status": "PENDING: final authorization repair not yet pushed",
     "provider_default": "BLOCKED: upstream GLM 403",
     "provider_validated": "qwen3.7-plus"
   }

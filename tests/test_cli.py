@@ -35,6 +35,11 @@ def stage2_records():
             "priority": "medium",
             "risk_level": "medium",
             "control_tier": "L2",
+            "route_flags": {
+                "trivial": False,
+                "ambiguous": False,
+                "irreversible": False,
+            },
             "max_repair_iterations": 3,
             "acceptance_criteria": {"AC-1": "result is verified"},
             "open_questions": [],
@@ -63,7 +68,7 @@ def stage2_records():
             "artifact_versions": ["2"],
             "decision": "ACCEPT",
             "rationale": "verified",
-            "evidence_refs": ["V-1"],
+            "evidence_refs": ["V-1", "F-REVIEW"],
             "unresolved_disagreements": [],
             "approver": "controller",
             "criteria_evidence": {
@@ -71,6 +76,20 @@ def stage2_records():
             },
             "residual_risks": [],
             "review_independence": "independent",
+        },
+        "finding-reviewer.json": {
+            "schema_version": 2,
+            "id": "F-REVIEW",
+            "kind": "finding",
+            "source_role": "reviewer",
+            "severity": "low",
+            "target": "review",
+            "claim": "review completed",
+            "evidence": ["independent review"],
+            "impact": "none",
+            "required_action": "none",
+            "criterion_ids": ["AC-1"],
+            "status": "resolved",
         },
         "decision-repair.json": {
             "schema_version": 2,
@@ -676,7 +695,7 @@ class CliTests(unittest.TestCase):
             output = p.stdout + p.stderr
             self.assertEqual(p.returncode, 0, output)
             self.assertIn("[PASS] WI-1", output)
-            self.assertIn("records=7", output)
+            self.assertIn("records=8", output)
         root = CLI.parents[1]
         for path in (
                 root / "README.md",
@@ -731,10 +750,6 @@ class CliTests(unittest.TestCase):
             ("non-independent", "decision.json",
              lambda value: value.update(review_independence="non_independent"),
              "independent review"),
-            ("l3-controller", "work-item.json",
-             lambda value: value.update(
-                 risk_level="high", control_tier="L3"),
-             "human approval"),
             ("malformed-decision-version", "decision.json",
              lambda value: value.update(artifact_versions=[[]]),
              "decision schema"),
@@ -904,6 +919,15 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             records = stage2_records()
+            records["decision.json"].update(
+                repair_kind="artifact", next_state="PRODUCE")
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("repair fields", p.stderr)
+            records["decision.json"].pop("repair_kind")
+            records["decision.json"].pop("next_state")
+
             records["work-item.json"]["risk_level"] = "low"
             records["decision.json"]["review_independence"] = "non_independent"
             write_records(root, records)
@@ -1116,6 +1140,41 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("terminal Decision", p.stderr)
+
+    def test_check_records_blocks_l3_and_uses_route_flags(self):
+        def write_records(root, records):
+            for record_name, value in records.items():
+                path = root / record_name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(value), encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["work-item.json"]["risk_level"] = "high"
+            records["work-item.json"]["control_tier"] = "L3"
+            records["work-item.json"]["route_flags"]["irreversible"] = True
+            records["decision.json"]["approver"] = "human-reviewer"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
+            self.assertIn("[BLOCKED]", p.stderr)
+
+        for flag, tier, expected in (
+                ("ambiguous", "L1", 1),
+                ("irreversible", "L2", 1)):
+            with self.subTest(flag=flag, tier=tier):
+                with tempfile.TemporaryDirectory() as t:
+                    root = Path(t)
+                    records = stage2_records()
+                    records["work-item.json"]["risk_level"] = "low"
+                    records["work-item.json"]["control_tier"] = tier
+                    records["work-item.json"]["route_flags"][flag] = True
+                    write_records(root, records)
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(
+                        p.returncode, expected, p.stdout + p.stderr)
+                    self.assertIn("control_tier", p.stderr)
 
     def test_iteration_schema_supports_explicit_ancestry(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "iteration.schema.json"
