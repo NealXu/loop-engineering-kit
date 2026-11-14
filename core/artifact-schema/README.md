@@ -1,7 +1,7 @@
-# Artifact Schema v2
+# Artifact Schema v3
 
 These JSON Schema files are the canonical inter-role records. They use JSON
-Schema 2020-12, use `schema_version: 2`, and contain no host-specific fields.
+Schema 2020-12, use `schema_version: 3`, and contain no host-specific fields.
 
 - `work-item.schema.json`
 - `artifact.schema.json`
@@ -39,10 +39,15 @@ Verification records include a `limitations` array, which may be empty when
 there are no material limitations. A Verification used as regression evidence
 for a Finding includes `finding_id`; `check-finding` requires it to equal the
 Finding id and scans JSON records by `kind`, not by filename prefix.
+L2/L3 ACCEPT requires a referenced `role: reviewer` Verification with `PASS`
+status on the final Artifact id/version; a reviewer Finding alone is not proof
+that the review completed.
 
-This is a breaking schema upgrade. The repository ships only version 2
-schemas; version 1 records need external migration before validation. There is
-no automatic migration.
+This is a breaking schema upgrade. The repository ships only version 3
+schemas. Version 1 and 2 records need external migration before validation;
+there is no automatic migration. Version 3 adds explicit control tiers and
+route flags, typed evidence references, Decision cycles, and Verification role
+labels.
 
 Iteration records may include `output_versions`; Stage 2 record checks require
 it so Artifact ancestry is explicit. Run

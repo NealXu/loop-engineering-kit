@@ -15,7 +15,7 @@ def run_cli(*args):
 
 def stage2_records():
     artifact = {
-        "schema_version": 2,
+        "schema_version": 3,
         "id": "A-1",
         "kind": "artifact",
         "artifact_type": "test",
@@ -26,7 +26,7 @@ def stage2_records():
     }
     return {
         "work-item.json": {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "WI-1",
             "kind": "work_item",
             "goal": "resolve records",
@@ -47,7 +47,7 @@ def stage2_records():
         "artifact-1.json": dict(artifact, version="1"),
         "artifact-2.json": dict(artifact, version="2"),
         "verification.json": {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "V-1",
             "kind": "verification",
             "artifact_id": "A-1",
@@ -60,7 +60,7 @@ def stage2_records():
             "limitations": [],
         },
         "decision.json": {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "D-1",
             "kind": "decision",
             "cycle": 2,
@@ -68,7 +68,7 @@ def stage2_records():
             "artifact_versions": ["2"],
             "decision": "ACCEPT",
             "rationale": "verified",
-            "evidence_refs": ["V-1", "F-REVIEW"],
+            "evidence_refs": ["V-1", "V-REVIEW"],
             "unresolved_disagreements": [],
             "approver": "controller",
             "criteria_evidence": {
@@ -77,22 +77,36 @@ def stage2_records():
             "residual_risks": [],
             "review_independence": "independent",
         },
-        "finding-reviewer.json": {
-            "schema_version": 2,
-            "id": "F-REVIEW",
-            "kind": "finding",
-            "source_role": "reviewer",
-            "severity": "low",
-            "target": "review",
-            "claim": "review completed",
-            "evidence": ["independent review"],
-            "impact": "none",
-            "required_action": "none",
+        "verification-review.json": {
+            "schema_version": 3,
+            "id": "V-REVIEW",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "2",
             "criterion_ids": ["AC-1"],
-            "status": "resolved",
+            "role": "reviewer",
+            "check": "independent review",
+            "method": "review artifact",
+            "status": "PASS",
+            "evidence": ["review completed"],
+            "limitations": [],
+        },
+        "verification-repair-evidence.json": {
+            "schema_version": 3,
+            "id": "V-REPAIR-EVIDENCE",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "1",
+            "criterion_ids": ["AC-1"],
+            "role": "verifier",
+            "check": "repair finding",
+            "method": "inspect version 1",
+            "status": "PASS",
+            "evidence": ["finding reproduced on version 1"],
+            "limitations": [],
         },
         "decision-repair.json": {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "D-REPAIR",
             "kind": "decision",
             "cycle": 1,
@@ -100,14 +114,14 @@ def stage2_records():
             "artifact_versions": ["1"],
             "decision": "REPAIR",
             "rationale": "produce the next version",
-            "evidence_refs": ["V-1"],
+            "evidence_refs": ["V-REPAIR-EVIDENCE"],
             "unresolved_disagreements": [],
             "approver": "controller",
             "next_state": "PRODUCE",
             "repair_kind": "artifact",
         },
         "iterations/iteration-01.json": {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "I-1",
             "kind": "iteration",
             "work_item_id": "WI-1",
@@ -145,7 +159,7 @@ class CliTests(unittest.TestCase):
             data = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(data["$schema"], "https://json-schema.org/draft/2020-12/schema")
             self.assertEqual(data["type"], "object")
-            self.assertEqual(data["properties"]["schema_version"]["const"], 2)
+            self.assertEqual(data["properties"]["schema_version"]["const"], 3)
 
     def test_artifact_schema_requires_versioned_file_list(self):
         path = CLI.parents[1] / "core" / "artifact-schema" / "artifact.schema.json"
@@ -307,7 +321,7 @@ class CliTests(unittest.TestCase):
 
         schema_readme = (root / "core" / "artifact-schema" / "README.md").read_text(
             encoding="utf-8")
-        self.assertIn("# Artifact Schema v2", schema_readme)
+        self.assertIn("# Artifact Schema v3", schema_readme)
         self.assertIn("criterion_id", schema_readme)
         self.assertIn("This is a breaking schema upgrade", schema_readme)
 
@@ -367,7 +381,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_enforces_prevention_gate(self):
         base = {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "F-1",
             "kind": "finding",
             "source_role": "reviewer",
@@ -558,7 +572,7 @@ class CliTests(unittest.TestCase):
             work_item = root / "work-item.json"
             artifact = root / "artifact.json"
             work_item.write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "WI-1",
                 "kind": "work_item",
                 "goal": "gate",
@@ -566,6 +580,12 @@ class CliTests(unittest.TestCase):
                 "constraints": [],
                 "priority": "medium",
                 "risk_level": "medium",
+                "control_tier": "L2",
+                "route_flags": {
+                    "trivial": False,
+                    "ambiguous": False,
+                    "irreversible": False
+                },
                 "max_repair_iterations": 3,
                 "acceptance_criteria": {
                     "AC-1": "gate works",
@@ -573,7 +593,7 @@ class CliTests(unittest.TestCase):
                 }
             }), encoding="utf-8")
             artifact.write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "A-1",
                 "kind": "artifact",
                 "artifact_type": "test",
@@ -584,7 +604,7 @@ class CliTests(unittest.TestCase):
                 "work_item_id": "WI-1"
             }), encoding="utf-8")
             (root / "V-1.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "V-1",
                 "kind": "verification",
                 "artifact_id": "A-1",
@@ -614,7 +634,7 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             path = Path(t) / "finding.json"
             path.write_text(
-                '{"schema_version": 2, "id": "F-1", "id": "F-2"}',
+                '{"schema_version": 3, "id": "F-1", "id": "F-2"}',
                 encoding="utf-8")
             p = run_cli("check-finding", "--input", path)
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
@@ -622,7 +642,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_escapes_id_in_failure_output(self):
         finding = {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "F-1\n[PASS] forged",
             "kind": "finding",
             "source_role": "reviewer",
@@ -654,7 +674,7 @@ class CliTests(unittest.TestCase):
         for separator in ("\n", "\u0085", "\u2028", "\u2029"):
             with self.subTest(separator=repr(separator)), tempfile.TemporaryDirectory() as t:
                 finding = {
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "F-1",
                     "kind": "finding",
                     "source_role": "reviewer",
@@ -695,7 +715,7 @@ class CliTests(unittest.TestCase):
             output = p.stdout + p.stderr
             self.assertEqual(p.returncode, 0, output)
             self.assertIn("[PASS] WI-1", output)
-            self.assertIn("records=8", output)
+            self.assertIn("records=9", output)
         root = CLI.parents[1]
         for path in (
                 root / "README.md",
@@ -762,6 +782,15 @@ class CliTests(unittest.TestCase):
             ("unknown-kind", "verification.json",
              lambda value: value.update(kind="verificatoin"),
              "unknown record kind"),
+            ("route-flag-type", "work-item.json",
+             lambda value: value["route_flags"].update(trivial="false"),
+             "work_item schema"),
+            ("terminal-repair-field", "decision.json",
+             lambda value: value.update(next_state="PRODUCE"),
+             "decision schema"),
+            ("accept-disagreement", "decision.json",
+             lambda value: value.update(unresolved_disagreements=["reviewer"]),
+             "decision schema"),
         ]
         for name, filename, mutate, marker in cases:
             with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
@@ -781,7 +810,7 @@ class CliTests(unittest.TestCase):
     def test_check_records_escapes_record_ids_in_failure_output(self):
         records = stage2_records()
         records["finding.json"] = {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "F-1",
             "kind": "finding",
             "source_role": "reviewer",
@@ -823,7 +852,7 @@ class CliTests(unittest.TestCase):
             records["artifact-3.json"] = dict(
                 records["artifact-2.json"], version="3")
             records["iterations/iteration-02.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "I-2",
                 "kind": "iteration",
                 "work_item_id": "WI-1",
@@ -855,7 +884,7 @@ class CliTests(unittest.TestCase):
             root = Path(t)
             records = stage2_records()
             records["finding.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "F-MEDIUM",
                 "kind": "finding",
                 "source_role": "reviewer",
@@ -900,6 +929,42 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            for status in ("FAIL", "BLOCKED", "NOT_RUN"):
+                records["verification-review.json"]["status"] = status
+                write_records(root, records)
+                p = run_cli("check-records", "--dir", root)
+                self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                self.assertIn("PASS Reviewer Verification", p.stderr)
+            records["verification-review.json"]["status"] = "PASS"
+
+            records["verification-review.json"]["artifact_version"] = "1"
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("PASS Reviewer Verification", p.stderr)
+            records["verification-review.json"]["artifact_version"] = "2"
+
+            records["finding-review.json"] = {
+                "schema_version": 3,
+                "id": "F-REVIEW",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "low",
+                "target": "review",
+                "claim": "reviewed an earlier artifact",
+                "evidence": ["historical review"],
+                "impact": "does not prove final-version review",
+                "required_action": "review the final artifact",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            records["decision.json"]["evidence_refs"] = ["V-1", "F-REVIEW"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("PASS Reviewer Verification", p.stderr)
+            records.pop("finding-review.json")
+            records["decision.json"]["evidence_refs"] = ["V-1", "V-REVIEW"]
 
         for result in ("REPAIR", "ACCEPT", "STOP", "ESCALATE"):
             with self.subTest(undecided=result):
@@ -924,9 +989,17 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-            self.assertIn("repair fields", p.stderr)
+            self.assertIn("decision schema", p.stderr)
             records["decision.json"].pop("repair_kind")
             records["decision.json"].pop("next_state")
+
+            records["decision-repair.json"]["evidence_refs"] = ["V-1"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("future Artifact version", p.stderr)
+            records["decision-repair.json"]["evidence_refs"] = [
+                "V-REPAIR-EVIDENCE"]
 
             records["work-item.json"]["risk_level"] = "low"
             records["decision.json"]["review_independence"] = "non_independent"
@@ -938,7 +1011,7 @@ class CliTests(unittest.TestCase):
             records["decision.json"]["review_independence"] = "independent"
 
             records["iterations/iteration-02.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "I-2",
                 "kind": "iteration",
                 "work_item_id": "WI-1",
@@ -970,7 +1043,7 @@ class CliTests(unittest.TestCase):
 
             records["decision.json"]["cycle"] = 3
             records["decision-stop.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "D-STOP",
                 "kind": "decision",
                 "cycle": 2,
@@ -1006,7 +1079,7 @@ class CliTests(unittest.TestCase):
 
             records["decision.json"]["evidence_refs"] = ["V-1"]
             records["finding-high.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "F-HIGH",
                 "kind": "finding",
                 "source_role": "reviewer",
@@ -1032,7 +1105,7 @@ class CliTests(unittest.TestCase):
 
             records.pop("finding-high.json")
             records["finding-base.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "F-BASE",
                 "kind": "finding",
                 "source_role": "reviewer",
@@ -1046,7 +1119,7 @@ class CliTests(unittest.TestCase):
                 "status": "resolved",
             }
             records["finding-recurrence.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "F-RECUR",
                 "kind": "finding",
                 "source_role": "reviewer",
@@ -1074,7 +1147,7 @@ class CliTests(unittest.TestCase):
             records.pop("finding-base.json")
             records.pop("finding-recurrence.json")
             records["finding-conflict.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "V-1",
                 "kind": "finding",
                 "source_role": "reviewer",
@@ -1099,8 +1172,9 @@ class CliTests(unittest.TestCase):
             records.pop("iterations/iteration-01.json")
             records.pop("decision-repair.json")
             records["verification.json"]["artifact_version"] = "1"
+            records["verification-review.json"]["artifact_version"] = "1"
             records["decision.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "D-STOP",
                 "kind": "decision",
                 "cycle": 1,
@@ -1116,7 +1190,7 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             records["decision-accept.json"] = {
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "D-LATE",
                 "kind": "decision",
                 "cycle": 2,
@@ -1216,7 +1290,7 @@ class CliTests(unittest.TestCase):
                 artifact = root / "artifact.json"
                 finding = root / "finding.json"
                 work_item.write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "WI-1",
                     "kind": "work_item",
                     "goal": "gate",
@@ -1224,6 +1298,12 @@ class CliTests(unittest.TestCase):
                     "constraints": [],
                     "priority": "medium",
                     "risk_level": "medium",
+                    "control_tier": "L2",
+                    "route_flags": {
+                        "trivial": False,
+                        "ambiguous": False,
+                        "irreversible": False
+                    },
                     "max_repair_iterations": 3,
                     "acceptance_criteria": {
                         "AC-1": "gate works",
@@ -1235,7 +1315,7 @@ class CliTests(unittest.TestCase):
                     )
                 }), encoding="utf-8")
                 artifact.write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "A-1",
                     "kind": "artifact",
                     "artifact_type": "test",
@@ -1246,7 +1326,7 @@ class CliTests(unittest.TestCase):
                     "work_item_id": "WI-1"
                 }), encoding="utf-8")
                 finding.write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "F-1",
                     "kind": "finding",
                     "source_role": "reviewer",
@@ -1267,7 +1347,7 @@ class CliTests(unittest.TestCase):
                 }), encoding="utf-8")
                 if name != "missing":
                     (root / "verification-V-1.json").write_text(json.dumps({
-                        "schema_version": 2,
+                        "schema_version": 3,
                         "id": "V-1",
                         "kind": "verification",
                         "artifact_id": "A-1",
@@ -1290,7 +1370,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_requires_resolution_context(self):
         finding = {
-            "schema_version": 2,
+            "schema_version": 3,
             "id": "F-1",
             "kind": "finding",
             "source_role": "reviewer",
@@ -1318,7 +1398,7 @@ class CliTests(unittest.TestCase):
 
     def test_check_finding_rejects_malformed_regression_verification(self):
         malformed = [
-            {
+            ({
                 "id": "V-1",
                 "artifact_id": "A-1",
                 "artifact_version": "1",
@@ -1326,9 +1406,9 @@ class CliTests(unittest.TestCase):
                 "status": "PASS",
                 "evidence": ["executed"],
                 "limitations": [None]
-            },
-            {
-                "schema_version": 2,
+            }, None),
+            ({
+                "schema_version": 3,
                 "id": "V-1",
                 "kind": "verification",
                 "artifact_id": "A-1",
@@ -1340,13 +1420,27 @@ class CliTests(unittest.TestCase):
                 "evidence": ["executed"],
                 "limitations": [],
                 "unexpected": True
-            },
+            }, None),
+            ({
+                "schema_version": 3,
+                "id": "V-1",
+                "kind": "verification",
+                "role": "attacker",
+                "artifact_id": "A-1",
+                "artifact_version": "1",
+                "criterion_ids": ["AC-1"],
+                "check": "gate",
+                "method": "run",
+                "status": "PASS",
+                "evidence": ["executed"],
+                "limitations": []
+            }, "role"),
         ]
-        for index, verification in enumerate(malformed):
+        for index, (verification, marker) in enumerate(malformed):
             with self.subTest(index=index), tempfile.TemporaryDirectory() as t:
                 root = Path(t)
                 (root / "work-item.json").write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "WI-1",
                     "kind": "work_item",
                     "goal": "gate",
@@ -1354,11 +1448,17 @@ class CliTests(unittest.TestCase):
                     "constraints": [],
                     "priority": "medium",
                     "risk_level": "medium",
+                    "control_tier": "L2",
+                    "route_flags": {
+                        "trivial": False,
+                        "ambiguous": False,
+                        "irreversible": False
+                    },
                     "max_repair_iterations": 3,
                     "acceptance_criteria": {"AC-1": "gate works"}
                 }), encoding="utf-8")
                 (root / "artifact.json").write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "A-1",
                     "kind": "artifact",
                     "artifact_type": "test",
@@ -1369,7 +1469,7 @@ class CliTests(unittest.TestCase):
                     "work_item_id": "WI-1"
                 }), encoding="utf-8")
                 (root / "finding.json").write_text(json.dumps({
-                    "schema_version": 2,
+                    "schema_version": 3,
                     "id": "F-1",
                     "kind": "finding",
                     "source_role": "reviewer",
@@ -1397,22 +1497,30 @@ class CliTests(unittest.TestCase):
                     "--verifications-dir", root)
                 self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
                 self.assertIn("Verification", p.stderr)
+                if marker is not None:
+                    self.assertIn(marker, p.stderr)
 
     def test_check_finding_rejects_malformed_acceptance_context(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             (root / "work-item.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "WI-1",
                 "kind": "work_item",
                 "acceptance_criteria": {"AC-1": "gate works"},
+                "control_tier": "L2",
+                "route_flags": {
+                    "trivial": False,
+                    "ambiguous": False,
+                    "irreversible": False
+                },
                 "max_repair_iterations": -1,
                 "priority": [],
                 "risk_level": {},
                 "open_questions": "material ambiguity"
             }), encoding="utf-8")
             (root / "artifact.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "A-1",
                 "kind": "artifact",
                 "artifact_type": "test",
@@ -1423,7 +1531,7 @@ class CliTests(unittest.TestCase):
                 "work_item_id": "WI-1"
             }), encoding="utf-8")
             (root / "finding.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "F-1",
                 "kind": "finding",
                 "source_role": "reviewer",
@@ -1443,7 +1551,7 @@ class CliTests(unittest.TestCase):
                 }
             }), encoding="utf-8")
             (root / "verification-V-1.json").write_text(json.dumps({
-                "schema_version": 2,
+                "schema_version": 3,
                 "id": "V-1",
                 "kind": "verification",
                 "artifact_id": "A-1",
@@ -1482,7 +1590,7 @@ class CliTests(unittest.TestCase):
     def test_release_identity_matches_breaking_schema(self):
         readme = (CLI.parents[1] / "README.md").read_text(encoding="utf-8")
         self.assertTrue(readme.startswith(
-            "# Universal Work Loop Engine Kit v0.4.0"))
+            "# Universal Work Loop Engine Kit v0.5.0"))
 
     def test_source_review_eval_is_traceable(self):
         path = CLI.parents[1] / "evals" / "2026-11-13-source-review-loop.md"

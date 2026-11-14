@@ -86,6 +86,8 @@ def schema_errors(value, schema, path="$"):
         valid_type = isinstance(value, list)
     elif expected_type == "string":
         valid_type = isinstance(value, str)
+    elif expected_type == "boolean":
+        valid_type = isinstance(value, bool)
     elif expected_type == "integer":
         valid_type = isinstance(value, int) and not isinstance(value, bool)
     if not valid_type:
@@ -106,6 +108,8 @@ def schema_errors(value, schema, path="$"):
     if isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             errors.append("{} has too few items".format(path))
+        if "maxItems" in schema and len(value) > schema["maxItems"]:
+            errors.append("{} has too many items".format(path))
         if schema.get("uniqueItems") and len(value) != len({
                 json.dumps(item, sort_keys=True) for item in value}):
             errors.append("{} items must be unique".format(path))
@@ -142,6 +146,13 @@ def schema_errors(value, schema, path="$"):
         condition_errors = schema_errors(value, schema["if"], path)
         if not condition_errors and isinstance(schema.get("then"), dict):
             errors.extend(schema_errors(value, schema["then"], path))
+    if isinstance(schema.get("not"), dict):
+        if not schema_errors(value, schema["not"], path):
+            errors.append("{} must not satisfy forbidden schema".format(path))
+    any_of = schema.get("anyOf")
+    if isinstance(any_of, list) and not any(
+            not schema_errors(value, child, path) for child in any_of):
+        errors.append("{} must satisfy anyOf".format(path))
     return errors
 
 
@@ -159,8 +170,8 @@ def finding_errors(value):
     extra = sorted(set(value) - required - optional)
     if extra:
         errors.append("unknown fields: {}".format(_quoted_names(extra)))
-    if value.get("schema_version") != 2:
-        errors.append("schema_version must be 2")
+    if value.get("schema_version") != 3:
+        errors.append("schema_version must be 3")
     if value.get("kind") != "finding":
         errors.append("kind must be finding")
     finding_id = value.get("id")
@@ -281,7 +292,8 @@ def verification_errors(finding, work_item, artifact, verifications):
         return errors
     work_required = {
         "schema_version", "id", "kind", "goal", "pack_id", "constraints",
-        "priority", "risk_level", "max_repair_iterations",
+        "priority", "risk_level", "control_tier", "route_flags",
+        "max_repair_iterations",
         "acceptance_criteria",
     }
     work_missing = sorted(work_required - set(work_item))
@@ -289,12 +301,11 @@ def verification_errors(finding, work_item, artifact, verifications):
         errors.append(
             "Work Item missing fields: {}".format(_quoted_names(work_missing)))
     work_extra = sorted(
-        set(work_item) - work_required
-        - {"open_questions", "control_tier", "route_flags"})
+        set(work_item) - work_required - {"open_questions"})
     if work_extra:
         errors.append(
             "Work Item unknown fields: {}".format(_quoted_names(work_extra)))
-    if work_item.get("schema_version") != 2 or work_item.get("kind") != "work_item":
+    if work_item.get("schema_version") != 3 or work_item.get("kind") != "work_item":
         errors.append("Work Item schema_version/kind is invalid")
     if not isinstance(work_item.get("id"), str) or not STABLE_ID.fullmatch(
             work_item.get("id", "")):
@@ -315,6 +326,14 @@ def verification_errors(finding, work_item, artifact, verifications):
     if not isinstance(risk_level, str) or risk_level not in {
             "low", "medium", "high", "critical"}:
         errors.append("Work Item risk_level is invalid")
+    if work_item.get("control_tier") not in {"L0", "L1", "L2", "L3"}:
+        errors.append("Work Item control_tier must be L0-L3")
+    route_flags = work_item.get("route_flags")
+    if (not isinstance(route_flags, dict)
+            or set(route_flags) != {"trivial", "ambiguous", "irreversible"}
+            or not all(isinstance(value, bool)
+                       for value in route_flags.values())):
+        errors.append("Work Item route_flags must contain three booleans")
     if (isinstance(work_item.get("max_repair_iterations"), bool)
             or not isinstance(work_item.get("max_repair_iterations"), int)
             or work_item.get("max_repair_iterations") < 0):
@@ -349,7 +368,7 @@ def verification_errors(finding, work_item, artifact, verifications):
     if artifact_extra:
         errors.append(
             "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))
-    if artifact.get("schema_version") != 2 or artifact.get("kind") != "artifact":
+    if artifact.get("schema_version") != 3 or artifact.get("kind") != "artifact":
         errors.append("Artifact schema_version/kind is invalid")
     if not isinstance(artifact.get("id"), str) or not STABLE_ID.fullmatch(
             artifact.get("id", "")):
@@ -397,19 +416,25 @@ def verification_errors(finding, work_item, artifact, verifications):
             errors.append(
                 "Verification {} missing fields: {}".format(
                     verification_id, _quoted_names(missing)))
-        extra = sorted(set(verification) - required)
+        extra = sorted(set(verification) - required - {"role"})
         if extra:
             errors.append(
                 "Verification {} unknown fields: {}".format(
                     verification_id, _quoted_names(extra)))
-        if verification.get("schema_version") != 2:
+        if verification.get("schema_version") != 3:
             errors.append(
-                "Verification {} schema_version must be 2".format(
+                "Verification {} schema_version must be 3".format(
                     verification_id))
         if verification.get("kind") != "verification":
             errors.append(
                 "Verification {} kind must be verification".format(
                     verification_id))
+        if ("role" in verification
+                and verification.get("role") not in {
+                    "producer", "verifier", "reviewer", "challenger",
+                    "arbiter"}):
+            errors.append(
+                "Verification {} role is invalid".format(verification_id))
         if verification.get("finding_id") != finding.get("id"):
             errors.append(
                 "Verification {} finding_id mismatch".format(verification_id))
@@ -881,6 +906,12 @@ def records_errors(records):
                     errors.append(
                         "Decision evidence_ref {} does not resolve".format(
                             json.dumps(ref, ensure_ascii=True)))
+                elif (ref in verifications
+                      and verifications[ref].get("artifact_version")
+                      not in versions):
+                    errors.append(
+                        "Decision evidence_ref {} targets a future Artifact version".format(
+                            json.dumps(ref, ensure_ascii=True)))
         if decision is final_decision and decision.get("decision") == "ACCEPT":
             if work_item.get("open_questions"):
                 errors.append("open_questions block ACCEPT")
@@ -894,11 +925,22 @@ def records_errors(records):
             ref_findings = [
                 findings[ref] for ref in decision.get("evidence_refs", [])
                 if ref in findings]
-            if control_tier in {"L2", "L3"} and not any(
-                    finding.get("source_role") == "reviewer"
-                    for finding in ref_findings):
+            ref_verifications = [
+                verifications[ref] for ref in decision.get("evidence_refs", [])
+                if ref in verifications]
+            reviewer_evidence = (
+                final_artifact is not None
+                and any(
+                    verification.get("role") == "reviewer"
+                    and verification.get("status") == "PASS"
+                    and verification.get("artifact_id")
+                    == final_artifact.get("id")
+                    and verification.get("artifact_version")
+                    == final_artifact.get("version")
+                    for verification in ref_verifications))
+            if control_tier in {"L2", "L3"} and not reviewer_evidence:
                 errors.append(
-                    "ACCEPT requires referenced independent Reviewer evidence")
+                    "ACCEPT requires a final-version PASS Reviewer Verification")
             if control_tier == "L3" and not any(
                     finding.get("source_role") == "challenger"
                     for finding in ref_findings):

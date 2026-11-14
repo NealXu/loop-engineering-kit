@@ -1,4 +1,4 @@
-# Universal Work Loop Engine Kit v0.4.0
+# Universal Work Loop Engine Kit v0.5.0
 
 基于证据的多角色工作闭环。代码开发是第一个可运行领域实例；架构设计用于
 验证同一套协议也可以处理非代码交付。
@@ -6,7 +6,7 @@
 ## 当前实现（阶段 1）
 
 - `core/`：通用协议、状态机、决策策略，以及 Work Item、Artifact、
-  Finding、Verification、Decision、Iteration 六类 JSON Schema（v2，验收标准
+  Finding、Verification、Decision、Iteration 六类 JSON Schema（v3，验收标准
   以稳定 `criterion_id` 为键并与验证证据关联）。
 - `roles/`：Producer、Verifier、Reviewer、Challenger、Arbiter 五类职责。
 - `workflows/`：迭代交付、对抗审查、受控持续改进。
@@ -18,6 +18,9 @@
 
 阶段 2 的确定性记录解析已实现；持久化存储、自动恢复和人工审批运行时仍未
 实现。阶段 3（指标、版本注册、自动改进候选）也尚未实现。
+
+Schema v3 是 breaking change。v1/v2 记录需先迁移；v3 新增 control tier、
+route flags、Decision cycle、稳定 evidence refs 和 Verification role。
 
 ## 快速开始
 
@@ -142,7 +145,9 @@ Python 解释器。只配置你信任的本地命令。
 
 `ACCEPT` 要求：验收标准明确；必需检查有实际执行证据；没有未解决的
 `blocking`/`high` 问题；重要分歧已经按规则解决或升级。`BLOCKED` 与
-`NOT_RUN` 永远不算通过。默认最多返修 3 轮，达到上限后只能停止或升级。
+`NOT_RUN` 永远不算通过。L2/L3 还必须引用最终 Artifact 上状态为 `PASS`
+的 Reviewer Verification，单独的 Reviewer Finding 不能证明审查完成。
+默认最多返修 3 轮，达到上限后只能停止或升级。
 如果同一失败指纹重复出现且 artifact 版本没有变化，立即停止或升级。
 
 ## 边界
