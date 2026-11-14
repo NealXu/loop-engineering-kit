@@ -40,7 +40,6 @@ def stage2_records():
                 "ambiguous": False,
                 "irreversible": False,
             },
-            "legacy_roleless_verification_ids": ["V-1"],
             "max_repair_iterations": 3,
             "acceptance_criteria": {"AC-1": "result is verified"},
             "open_questions": [],
@@ -59,6 +58,7 @@ def stage2_records():
             "status": "PASS",
             "evidence": ["command exited 0"],
             "limitations": [],
+            "role": "verifier",
         },
         "decision.json": {
             "schema_version": 3,
@@ -980,8 +980,6 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("Verifier Verification", p.stderr)
             records["verification.json"].pop("role")
-            records["work-item.json"].pop(
-                "legacy_roleless_verification_ids")
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
@@ -989,6 +987,13 @@ class CliTests(unittest.TestCase):
                           p.stderr)
             records["work-item.json"][
                 "legacy_roleless_verification_ids"] = ["V-1"]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("legacy_roleless_verification_ids", p.stderr)
+            records["work-item.json"].pop(
+                "legacy_roleless_verification_ids")
+            records["verification.json"]["role"] = "verifier"
 
             records["finding-review.json"] = {
                 "schema_version": 3,

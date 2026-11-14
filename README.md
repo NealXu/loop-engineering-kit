@@ -148,8 +148,8 @@ Python 解释器。只配置你信任的本地命令。
 `NOT_RUN` 永远不算通过。L2/L3 还必须引用最终 Artifact 上状态为 `PASS`
 的 Reviewer Verification，单独的 Reviewer Finding 不能证明审查完成。
 每条验收标准还需最终 Artifact 上 role 为 `verifier` 的 PASS 证据；
-仅 Work Item 的 `legacy_roleless_verification_ids` 明确列出的迁移记录
-可省略 role；Producer 自验不能充当 Verifier。
+仅仓库内冻结迁移清单与整组记录摘要同时匹配的历史记录可省略 role；
+Producer 自验不能充当 Verifier。
 默认最多返修 3 轮，达到上限后只能停止或升级。
 如果同一失败指纹重复出现且 artifact 版本没有变化，立即停止或升级。
 

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "digest_algorithm": "SHA-256 over sorted compact JSON records joined by LF",
+  "migrations": [
+    {
+      "work_item_id": "WI-LE-STAGE2-FOLLOWUP-20261114",
+      "from_schema_version": 2,
+      "to_schema_version": 3,
+      "record_count": 29,
+      "records_sha256": "db0609f79b9d28db3294150ad6b38dd10aeedbb6b2eaf5ff19cbe37cfa656ad9",
+      "pre_migration_snapshot_retained": false,
+      "role_fields_present_before_rewrite": {
+        "V-REPAIR-EVIDENCE": "verifier",
+        "V-REVIEW": "reviewer"
+      },
+      "roleless_verification_ids": [
+        "V-ACTIONS",
+        "V-COMPAT",
+        "V-CONTROL-TIER",
+        "V-DECISION-HISTORY",
+        "V-EVIDENCE-REFS",
+        "V-MALFORMED-KIND",
+        "V-MODEL",
+        "V-REGRESSION",
+        "V-REPAIR-VERSION",
+        "V-RISK-ID",
+        "V-TERMINAL",
+        "V-UNDECIDED"
+      ],
+      "disclosure": "The available migration operation changed only schema_version. Two role labels already existed before that rewrite even though the v2 schema did not allow role; the exact pre-migration snapshot was not retained."
+    }
+  ]
+}

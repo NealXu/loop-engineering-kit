@@ -2,6 +2,7 @@
 """Cross-platform standard-library CLI for deterministic verification."""
 import argparse
 import datetime
+import hashlib
 import json
 from pathlib import Path
 import platform
@@ -14,6 +15,7 @@ import uuid
 
 STABLE_ID = re.compile(r"^[A-Za-z][A-Za-z0-9._-]*$")
 SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "core" / "artifact-schema"
+MIGRATION_MANIFEST = SCHEMA_ROOT / "migrations" / "v2-to-v3.json"
 SCHEMA_FILES = {
     "work_item": "work-item.schema.json",
     "artifact": "artifact.schema.json",
@@ -74,6 +76,40 @@ def load_verify_config(path):
     if isinstance(maximum, bool) or not isinstance(maximum, int) or maximum < 0:
         raise ValueError("max_repair_iterations must be a non-negative integer")
     return config
+
+
+def records_sha256(records):
+    payload = "\n".join(sorted(
+        json.dumps(record, sort_keys=True, separators=(",", ":"),
+                   ensure_ascii=True)
+        for record in records))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def legacy_roleless_ids(records, work_item_id):
+    try:
+        manifest = load_json(MIGRATION_MANIFEST)
+    except ValueError:
+        return set(), "migration manifest unavailable"
+    migrations = manifest.get("migrations")
+    if not isinstance(migrations, list):
+        return set(), "migration manifest migrations must be an array"
+    for migration in migrations:
+        if not isinstance(migration, dict):
+            return set(), "migration manifest entries must be objects"
+        if migration.get("work_item_id") != work_item_id:
+            continue
+        ids = migration.get("roleless_verification_ids")
+        if (not isinstance(ids, list)
+                or not all(
+                    isinstance(item, str) and STABLE_ID.fullmatch(item)
+                    for item in ids)
+                or len(ids) != len(set(ids))):
+            return set(), "migration manifest roleless ids are invalid"
+        if migration.get("records_sha256") != records_sha256(records):
+            return set(), "legacy migration record digest mismatch"
+        return set(ids), None
+    return set(), None
 
 
 def schema_errors(value, schema, path="$"):
@@ -298,9 +334,7 @@ def verification_errors(finding, work_item, artifact, verifications):
     if work_missing:
         errors.append(
             "Work Item missing fields: {}".format(_quoted_names(work_missing)))
-    work_extra = sorted(
-        set(work_item) - work_required
-        - {"open_questions", "legacy_roleless_verification_ids"})
+    work_extra = sorted(set(work_item) - work_required - {"open_questions"})
     if work_extra:
         errors.append(
             "Work Item unknown fields: {}".format(_quoted_names(work_extra)))
@@ -333,16 +367,6 @@ def verification_errors(finding, work_item, artifact, verifications):
             or not all(isinstance(value, bool)
                        for value in route_flags.values())):
         errors.append("Work Item route_flags must contain three booleans")
-    legacy_roleless = work_item.get("legacy_roleless_verification_ids", [])
-    if (not isinstance(legacy_roleless, list)
-            or not all(
-                isinstance(item, str) and STABLE_ID.fullmatch(item)
-                for item in legacy_roleless)):
-        errors.append(
-            "Work Item legacy_roleless_verification_ids must be a stable ID array")
-    elif len(legacy_roleless) != len(set(legacy_roleless)):
-        errors.append(
-            "Work Item legacy_roleless_verification_ids must be unique")
     if (isinstance(work_item.get("max_repair_iterations"), bool)
             or not isinstance(work_item.get("max_repair_iterations"), int)
             or work_item.get("max_repair_iterations") < 0):
@@ -688,18 +712,10 @@ def records_errors(records):
         errors.append(
             "Work Item route_flags must contain three booleans")
         route_flags = {}
-    legacy_roleless = work_item.get("legacy_roleless_verification_ids", [])
-    if (not isinstance(legacy_roleless, list)
-            or not all(
-                isinstance(item, str) and STABLE_ID.fullmatch(item)
-                for item in legacy_roleless)):
-        errors.append(
-            "Work Item legacy_roleless_verification_ids must be a stable ID array")
-        legacy_roleless = []
-    elif len(legacy_roleless) != len(set(legacy_roleless)):
-        errors.append(
-            "Work Item legacy_roleless_verification_ids must be unique")
-    legacy_roleless = set(legacy_roleless)
+    legacy_roleless, migration_error = legacy_roleless_ids(
+        records, work_item_id)
+    if migration_error:
+        errors.append(migration_error)
     criteria = work_item.get("acceptance_criteria")
     if not isinstance(work_item_id, str) or not STABLE_ID.fullmatch(work_item_id):
         errors.append("Work Item id must be a stable ID")
@@ -1214,6 +1230,7 @@ def doctor(root, mode="kit"):
         "core/artifact-schema/decision.schema.json",
         "core/artifact-schema/iteration.schema.json",
         "core/artifact-schema/README.md",
+        "core/artifact-schema/migrations/v2-to-v3.json",
         "roles/producer.md",
         "roles/verifier.md",
         "roles/reviewer.md",
