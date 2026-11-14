@@ -134,6 +134,15 @@ def stage2_records():
     }
 
 
+def write_records(root, records):
+    for path in root.rglob("*.json"):
+        path.unlink()
+    for record_name, value in records.items():
+        path = root / record_name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value), encoding="utf-8")
+
+
 class CliTests(unittest.TestCase):
     def test_doctor(self):
         p = run_cli("doctor", "--root", CLI.parents[1])
@@ -840,12 +849,6 @@ class CliTests(unittest.TestCase):
             self.assertIn("finding schema", output)
 
     def test_check_records_enforces_lineage_budget_and_medium_risk(self):
-        def write_records(root, records):
-            for record_name, value in records.items():
-                path = root / record_name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(value), encoding="utf-8")
-
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             records = stage2_records()
@@ -917,12 +920,6 @@ class CliTests(unittest.TestCase):
             self.assertIn("unknown Finding", p.stderr)
 
     def test_check_records_validates_decision_history_and_evidence(self):
-        def write_records(root, records):
-            for record_name, value in records.items():
-                path = root / record_name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(value), encoding="utf-8")
-
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             records = stage2_records()
@@ -972,6 +969,8 @@ class CliTests(unittest.TestCase):
             self.assertIn("PASS Reviewer Verification", p.stderr)
             records.pop("finding-review.json")
             records["decision.json"]["evidence_refs"] = ["V-1", "V-REVIEW"]
+            write_records(root, records)
+            self.assertFalse((root / "finding-review.json").exists())
 
         for result in ("REPAIR", "ACCEPT", "STOP", "ESCALATE"):
             with self.subTest(undecided=result):
@@ -1196,6 +1195,41 @@ class CliTests(unittest.TestCase):
             records["work-item.json"]["open_questions"] = [
                 "A material question may justify stopping."
             ]
+            records["finding-high.json"] = {
+                "schema_version": 3,
+                "id": "F-HIGH",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "STOP regression",
+                "claim": "The STOP path must preserve open questions.",
+                "evidence": ["The finding is closed before STOP."],
+                "impact": "A false rejection would destroy the true state.",
+                "required_action": "Keep the regression proof bound.",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "Keep the open-question check in ACCEPT only.",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-HIGH"],
+                },
+            }
+            records["verification-high.json"] = {
+                "schema_version": 3,
+                "id": "V-HIGH",
+                "kind": "verification",
+                "artifact_id": "A-1",
+                "artifact_version": "1",
+                "finding_id": "F-HIGH",
+                "criterion_ids": ["AC-1"],
+                "role": "verifier",
+                "check": "STOP regression",
+                "method": "run check-records",
+                "status": "PASS",
+                "evidence": ["the STOP state preserves open questions"],
+                "limitations": [],
+            }
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -1226,12 +1260,6 @@ class CliTests(unittest.TestCase):
             self.assertIn("terminal Decision", p.stderr)
 
     def test_check_records_blocks_l3_and_uses_route_flags(self):
-        def write_records(root, records):
-            for record_name, value in records.items():
-                path = root / record_name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(json.dumps(value), encoding="utf-8")
-
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             records = stage2_records()
