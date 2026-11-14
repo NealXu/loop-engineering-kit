@@ -5,6 +5,8 @@ import sys
 import tempfile
 import unittest
 
+import loop_engineering.cli as cli_module
+
 CLI = Path(__file__).resolve().parents[1] / "loop_engineering" / "cli.py"
 
 
@@ -145,6 +147,55 @@ def write_records(root, records):
 
 
 class CliTests(unittest.TestCase):
+    def test_legacy_migration_manifest_metadata_is_enforced(self):
+        records = [{"id": "V-1", "kind": "verification"}]
+        migration = {
+            "work_item_id": "WI-LEGACY",
+            "from_schema_version": 2,
+            "to_schema_version": 3,
+            "record_count": 1,
+            "records_sha256": cli_module.records_sha256(records),
+            "pre_migration_snapshot_retained": False,
+            "role_fields_present_before_rewrite": {},
+            "roleless_verification_ids": ["V-1"],
+            "disclosure": "available state frozen",
+        }
+        manifest = {
+            "schema_version": 1,
+            "digest_algorithm": (
+                "SHA-256 over sorted compact JSON records joined by LF"),
+            "migrations": [migration],
+        }
+        original = cli_module.MIGRATION_MANIFEST
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t) / "v2-to-v3.json"
+            cli_module.MIGRATION_MANIFEST = path
+            try:
+                path.write_text(json.dumps(manifest), encoding="utf-8")
+                self.assertEqual(
+                    ({"V-1"}, None),
+                    cli_module.legacy_roleless_ids(records, "WI-LEGACY"))
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, record_count=0)
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "record_count",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, from_schema_version=999)
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "2 to 3",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+            finally:
+                cli_module.MIGRATION_MANIFEST = original
+
     def test_doctor(self):
         p = run_cli("doctor", "--root", CLI.parents[1])
         self.assertEqual(p.returncode, 0, p.stderr)

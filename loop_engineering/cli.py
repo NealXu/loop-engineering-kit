@@ -91,6 +91,11 @@ def legacy_roleless_ids(records, work_item_id):
         manifest = load_json(MIGRATION_MANIFEST)
     except ValueError:
         return set(), "migration manifest unavailable"
+    if manifest.get("schema_version") != 1:
+        return set(), "migration manifest schema_version must be 1"
+    if manifest.get("digest_algorithm") != (
+            "SHA-256 over sorted compact JSON records joined by LF"):
+        return set(), "migration manifest digest_algorithm is invalid"
     migrations = manifest.get("migrations")
     if not isinstance(migrations, list):
         return set(), "migration manifest migrations must be an array"
@@ -99,6 +104,26 @@ def legacy_roleless_ids(records, work_item_id):
             return set(), "migration manifest entries must be objects"
         if migration.get("work_item_id") != work_item_id:
             continue
+        if migration.get("from_schema_version") != 2 or (
+                migration.get("to_schema_version") != 3):
+            return set(), "migration manifest versions must be 2 to 3"
+        if migration.get("record_count") != len(records):
+            return set(), "migration manifest record_count does not match"
+        if not isinstance(
+                migration.get("pre_migration_snapshot_retained"), bool):
+            return set(), "migration manifest snapshot flag is invalid"
+        roles = migration.get("role_fields_present_before_rewrite")
+        if (not isinstance(roles, dict)
+                or not all(
+                    isinstance(key, str) and STABLE_ID.fullmatch(key)
+                    and value in {
+                        "producer", "verifier", "reviewer", "challenger",
+                        "arbiter"}
+                    for key, value in roles.items())):
+            return set(), "migration manifest pre-existing roles are invalid"
+        disclosure = migration.get("disclosure")
+        if not isinstance(disclosure, str) or not disclosure.strip():
+            return set(), "migration manifest disclosure must be non-blank"
         ids = migration.get("roleless_verification_ids")
         if (not isinstance(ids, list)
                 or not all(
