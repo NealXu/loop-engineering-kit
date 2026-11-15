@@ -1793,6 +1793,8 @@ class CliTests(unittest.TestCase):
             self.assertIn("not PASS", p.stderr)
 
     def test_check_records_verifies_working_tree_source_files(self):
+        if shutil.which("git") is None:
+            self.skipTest("git is unavailable")
         with tempfile.TemporaryDirectory() as t:
             repo = Path(t) / "repo"
             records_dir = Path(t) / "records"
