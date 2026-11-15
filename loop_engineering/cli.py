@@ -1460,6 +1460,324 @@ def migrate_records(directory, write=False, verification_roles=None):
     return 0
 
 
+def load_runtime_records(directory):
+    root = Path(directory).resolve()
+    if not root.is_dir():
+        raise ValueError("Records directory not found: {}".format(root))
+    records = []
+    for path in sorted(root.rglob("*.json")):
+        records.append(load_json(path))
+    if not records:
+        raise ValueError("Records directory contains no JSON files")
+    return root, records
+
+
+def runtime_record_errors(records):
+    errors = []
+    work_items = []
+    artifact_ids = set()
+    work_item_id = None
+    for record in records:
+        kind = record.get("kind")
+        if not isinstance(kind, str) or kind not in SCHEMA_FILES:
+            errors.append("record kind is invalid")
+            continue
+        try:
+            schema = load_json(SCHEMA_ROOT / SCHEMA_FILES[kind])
+        except ValueError as exc:
+            errors.append("{} schema unavailable: {}".format(kind, exc))
+            continue
+        errors.extend(
+            "{} schema: {}".format(kind, error)
+            for error in schema_errors(record, schema))
+        if kind == "work_item":
+            work_items.append(record)
+        elif kind == "artifact":
+            artifact_ids.add(record.get("id"))
+    if len(work_items) != 1:
+        errors.append("runtime requires exactly one Work Item")
+    else:
+        work_item_id = work_items[0].get("id")
+    for record in records:
+        kind = record.get("kind")
+        if kind == "artifact" and record.get("work_item_id") != work_item_id:
+            errors.append("Artifact work_item_id does not match Work Item")
+        if kind == "decision" and record.get("work_item_id") != work_item_id:
+            errors.append("Decision work_item_id does not match Work Item")
+        if kind == "iteration" and record.get("work_item_id") != work_item_id:
+            errors.append("Iteration work_item_id does not match Work Item")
+        if (kind == "verification"
+                and record.get("artifact_id") not in artifact_ids):
+            errors.append("Verification artifact_id does not resolve")
+    return errors
+
+
+def derive_runtime_state(records, digest):
+    work_item = next(
+        record for record in records if record.get("kind") == "work_item")
+    artifacts = [
+        record for record in records if record.get("kind") == "artifact"
+    ]
+    verifications = [
+        record for record in records if record.get("kind") == "verification"
+    ]
+    findings = [
+        record for record in records if record.get("kind") == "finding"
+    ]
+    decisions = sorted(
+        (record for record in records if record.get("kind") == "decision"),
+        key=lambda record: record.get("cycle", 0))
+    terminal = [
+        record for record in decisions
+        if record.get("decision") in {"ACCEPT", "STOP", "ESCALATE"}
+    ]
+    open_findings = sorted(
+        record.get("id") for record in findings
+        if record.get("status") == "open")
+    blocking = [
+        record for record in findings
+        if record.get("status") == "open"
+        and record.get("severity") in {"high", "blocking"}
+    ]
+    latest_artifact = None
+    if artifacts:
+        latest_artifact = sorted(
+            artifacts, key=lambda record: record.get("version", ""))[-1]
+    if terminal:
+        decision = terminal[-1]
+        state = decision.get("decision")
+        next_action = "none"
+    elif decisions and decisions[-1].get("decision") == "REPAIR":
+        decision = decisions[-1]
+        state = decision.get("next_state", "REPAIR")
+        next_action = {
+            "PRODUCE": "produce or repair artifact",
+            "VERIFY": "run required verification",
+            "REVIEW": "collect independent review",
+            "CHALLENGE": "run challenge",
+        }.get(state, "apply declared repair")
+    elif blocking:
+        decision = decisions[-1] if decisions else None
+        state = "REPAIR"
+        next_action = "repair open blocking/high findings"
+    elif latest_artifact is None:
+        decision = None
+        state = "PRODUCE"
+        next_action = "produce the first artifact"
+    elif not verifications:
+        decision = None
+        state = "VERIFY"
+        next_action = "run required verification"
+    elif (work_item.get("control_tier") in {"L2", "L3"}
+          and not any(
+              verification.get("role") == "reviewer"
+              and verification.get("status") == "PASS"
+              and verification.get("artifact_id") == latest_artifact.get("id")
+              and verification.get("artifact_version")
+              == latest_artifact.get("version")
+              for verification in verifications)):
+        decision = None
+        state = "REVIEW"
+        next_action = "collect independent review"
+    else:
+        decision = None
+        state = "DECIDE"
+        next_action = "record the Decision"
+    return {
+        "schema_version": 1,
+        "checkpoint_id": "CKPT-{}-{}".format(
+            datetime.datetime.now().astimezone().strftime(
+                "%Y%m%d-%H%M%S-%f"),
+            uuid.uuid4().hex[:8]),
+        "created_at": datetime.datetime.now().astimezone().isoformat(),
+        "records_digest": digest,
+        "work_item_id": work_item.get("id"),
+        "state": state,
+        "next_action": next_action,
+        "artifact_versions": sorted(
+            record.get("version") for record in artifacts),
+        "open_findings": open_findings,
+        "last_decision": (
+            decision.get("id") if isinstance(decision, dict) else None),
+        "source": "canonical_records",
+    }
+
+
+def checkpoint_errors(checkpoint):
+    if not isinstance(checkpoint, dict):
+        return ["checkpoint must be an object"]
+    errors = []
+    if checkpoint.get("schema_version") != 1:
+        errors.append("checkpoint schema_version must be 1")
+    checkpoint_id = checkpoint.get("checkpoint_id")
+    if (not isinstance(checkpoint_id, str)
+            or not re.fullmatch(r"CKPT-[A-Za-z0-9._-]+", checkpoint_id)):
+        errors.append("checkpoint_id is invalid")
+    for field in ("created_at", "next_action"):
+        if (not isinstance(checkpoint.get(field), str)
+                or not checkpoint.get(field).strip()):
+            errors.append("{} must be non-blank".format(field))
+    digest = checkpoint.get("records_digest")
+    if not isinstance(digest, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", digest):
+        errors.append("records_digest is invalid")
+    if (not isinstance(checkpoint.get("work_item_id"), str)
+            or not STABLE_ID.fullmatch(checkpoint.get("work_item_id", ""))):
+        errors.append("work_item_id is invalid")
+    if checkpoint.get("state") not in {
+            "DEFINE", "PRODUCE", "VERIFY", "REVIEW", "CHALLENGE",
+            "RECONCILE", "DECIDE", "REPAIR", "ACCEPT", "ESCALATE", "STOP"}:
+        errors.append("state is invalid")
+    versions = checkpoint.get("artifact_versions")
+    if (not isinstance(versions, list)
+            or not all(isinstance(item, str) and item for item in versions)):
+        errors.append("artifact_versions is invalid")
+    findings = checkpoint.get("open_findings")
+    if (not isinstance(findings, list)
+            or not all(
+                isinstance(item, str) and STABLE_ID.fullmatch(item)
+                for item in findings)):
+        errors.append("open_findings is invalid")
+    return errors
+
+
+def write_checkpoint(store, checkpoint):
+    root = Path(store).resolve()
+    checkpoints = root / "checkpoints"
+    checkpoints.mkdir(parents=True, exist_ok=True)
+    target = checkpoints / "{}.json".format(checkpoint["checkpoint_id"])
+    temporary = target.with_name(
+        ".{}.{}.tmp".format(target.name, uuid.uuid4().hex))
+    temporary.write_text(
+        json.dumps(checkpoint, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    os.replace(str(temporary), str(target))
+    return target
+
+
+def checkpoint_store_path(records, store):
+    records = Path(records).resolve()
+    store = Path(store).resolve()
+    try:
+        common = Path(os.path.commonpath((str(records), str(store))))
+    except ValueError:
+        return store
+    if common == records:
+        raise ValueError("runtime store must not be inside the records directory")
+    return store
+
+
+def valid_checkpoints(store):
+    root = Path(store).resolve() / "checkpoints"
+    checkpoints = []
+    skipped = 0
+    if not root.is_dir():
+        return checkpoints, skipped
+    for path in sorted(root.glob("*.json"), reverse=True):
+        try:
+            checkpoint = load_json(path)
+        except ValueError:
+            skipped += 1
+            continue
+        if checkpoint_errors(checkpoint):
+            skipped += 1
+            continue
+        checkpoints.append(checkpoint)
+    return checkpoints, skipped
+
+
+def runtime_checkpoint(records_dir, store):
+    try:
+        store = checkpoint_store_path(records_dir, store)
+        _, records = load_runtime_records(records_dir)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = runtime_record_errors(records)
+    if errors:
+        print("[FAIL] runtime records", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    checkpoint = derive_runtime_state(records, records_sha256(records))
+    write_checkpoint(store, checkpoint)
+    print(json.dumps(checkpoint, indent=2, ensure_ascii=False))
+    return 0
+
+
+def runtime_status(store, records_dir=None):
+    checkpoints, skipped = valid_checkpoints(store)
+    if not checkpoints:
+        print("ERROR: no valid runtime checkpoint found", file=sys.stderr)
+        return 1
+    checkpoint = checkpoints[0]
+    if records_dir:
+        try:
+            _, records = load_runtime_records(records_dir)
+        except ValueError as exc:
+            print("ERROR: {}".format(exc), file=sys.stderr)
+            return 2
+        digest = records_sha256(records)
+        matching = next(
+            (item for item in checkpoints
+             if item.get("records_digest") == digest), None)
+        if matching is None:
+            errors = runtime_record_errors(records)
+            if errors:
+                print("ERROR: no matching checkpoint and records are invalid",
+                      file=sys.stderr)
+                return 1
+            checkpoint = derive_runtime_state(records, digest)
+            checkpoint["source"] = "canonical_records_recovery"
+    result = dict(checkpoint, skipped_invalid=skipped)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+    return 0
+
+
+def runtime_resume(store, records_dir=None):
+    checkpoints, skipped = valid_checkpoints(store)
+    if not records_dir:
+        if not checkpoints:
+            print("ERROR: no valid runtime checkpoint found", file=sys.stderr)
+            return 1
+        print(json.dumps({
+            "checkpoint": checkpoints[0],
+            "recovered": skipped > 0,
+            "skipped_invalid": skipped,
+        }, indent=2, ensure_ascii=False))
+        return 0
+    try:
+        _, records = load_runtime_records(records_dir)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = runtime_record_errors(records)
+    if errors:
+        print("[FAIL] runtime records", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    digest = records_sha256(records)
+    matching = next(
+        (item for item in checkpoints
+         if item.get("records_digest") == digest), None)
+    recovered = matching is None
+    if matching is None:
+        matching = derive_runtime_state(records, digest)
+        matching["source"] = "canonical_records_recovery"
+        if checkpoints:
+            matching["recovered_from"] = checkpoints[0]["checkpoint_id"]
+        write_checkpoint(store, matching)
+    print(json.dumps({
+        "checkpoint": matching,
+        "recovered": recovered or skipped > 0,
+        "skipped_invalid": skipped,
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
 def doctor(root, mode="kit"):
     root = Path(root).resolve()
     print("Loop Engineering Kit doctor")
@@ -1729,6 +2047,15 @@ def main():
     mr.add_argument("--dir", required=True)
     mr.add_argument("--write", action="store_true")
     mr.add_argument("--verification-role", action="append", default=[])
+    rc = subs.add_parser("runtime-checkpoint")
+    rc.add_argument("--records", required=True)
+    rc.add_argument("--store", required=True)
+    rs = subs.add_parser("runtime-status")
+    rs.add_argument("--store", required=True)
+    rs.add_argument("--records", default=None)
+    rr = subs.add_parser("runtime-resume")
+    rr.add_argument("--store", required=True)
+    rr.add_argument("--records", default=None)
     r = subs.add_parser("report")
     r.add_argument("--input", required=True)
     r.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -1757,6 +2084,12 @@ def main():
     if a.command == "migrate-records":
         return migrate_records(
             a.dir, a.write, a.verification_role)
+    if a.command == "runtime-checkpoint":
+        return runtime_checkpoint(a.records, a.store)
+    if a.command == "runtime-status":
+        return runtime_status(a.store, a.records)
+    if a.command == "runtime-resume":
+        return runtime_resume(a.store, a.records)
     try:
         data = load_json(a.input)
     except ValueError as exc:

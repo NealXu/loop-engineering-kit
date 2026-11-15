@@ -295,6 +295,66 @@ class CliTests(unittest.TestCase):
             }
             self.assertEqual(before_backups, after_backups)
 
+    def test_runtime_checkpoint_resumes_from_canonical_records(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            records = stage2_records()
+            decisions = {
+                name: records.pop(name)
+                for name in ("decision.json", "decision-repair.json")
+            }
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            checkpoint = json.loads(p.stdout)
+            self.assertEqual(checkpoint["state"], "DECIDE")
+
+            records.update(decisions)
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-resume", "--store", store,
+                "--records", records_dir)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            resumed = json.loads(p.stdout)
+            self.assertTrue(resumed["recovered"])
+            self.assertEqual(resumed["checkpoint"]["state"], "ACCEPT")
+            p = run_cli("runtime-status", "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(json.loads(p.stdout)["state"], "ACCEPT")
+
+    def test_runtime_skips_corrupt_checkpoint_and_rejects_embedded_store(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            write_records(records_dir, stage2_records())
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            checkpoints = store / "checkpoints"
+            (checkpoints / "zzzz-corrupt.json").write_text(
+                "{not-json", encoding="utf-8")
+            p = run_cli(
+                "runtime-resume", "--store", store,
+                "--records", records_dir)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            resumed = json.loads(p.stdout)
+            self.assertGreaterEqual(resumed["skipped_invalid"], 1)
+            self.assertEqual(resumed["checkpoint"]["state"], "ACCEPT")
+
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", records_dir / "runtime")
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertIn("inside the records directory", p.stderr)
+
     def test_legacy_migration_manifest_metadata_is_enforced(self):
         records = [
             {"id": "V-1", "kind": "verification"},
