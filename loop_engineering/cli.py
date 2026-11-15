@@ -2275,6 +2275,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
         "statement": statement.strip(),
         "approved_at": datetime.datetime.now().astimezone().isoformat(),
         "confirmation": confirmation,
+        "authentication": "unverified_host_attestation",
     }
     schema = load_json(SCHEMA_ROOT / SCHEMA_FILES["approval"])
     approval_errors = schema_errors(approval, schema)

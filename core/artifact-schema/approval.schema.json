@@ -14,7 +14,8 @@
     "approver",
     "statement",
     "approved_at",
-    "confirmation"
+    "confirmation",
+    "authentication"
   ],
   "properties": {
     "schema_version": { "const": 3 },
@@ -58,6 +59,9 @@
       "type": "string",
       "minLength": 1,
       "pattern": "\\S"
+    },
+    "authentication": {
+      "const": "unverified_host_attestation"
     }
   }
 }

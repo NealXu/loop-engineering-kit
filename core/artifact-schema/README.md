@@ -46,7 +46,9 @@ status on the final Artifact id/version; a reviewer Finding alone is not proof
 that the review completed.
 L3 also requires final-version Challenger PASS evidence and a referenced
 Human Approval record created by the `approve` command for the same Work Item
-and Artifact version.
+and Artifact version. Approval records carry
+`authentication: unverified_host_attestation`; identity authentication belongs
+to the host approval channel.
 Each accepted criterion also needs a final-version Verification whose role is
 `verifier`. Role-omitted evidence is accepted only for the frozen migration
 entry in `migrations/v2-to-v3.json` whose exact canonical record-set digest and

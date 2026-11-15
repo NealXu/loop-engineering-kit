@@ -556,7 +556,7 @@ class CliTests(unittest.TestCase):
             def failing_replace(source, target):
                 calls["count"] += 1
                 if calls["count"] == 2:
-                    raise OSError("injected commit failure")
+                    raise KeyboardInterrupt("injected commit failure")
                 return original_replace(source, target)
 
             stdout = io.StringIO()
