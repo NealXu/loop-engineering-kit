@@ -75,6 +75,11 @@
         "pattern": "^[0-9a-f]{64}$"
       }
     },
+    "deleted_files": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
+    },
     "evidence_path": {
       "type": "string",
       "minLength": 1,

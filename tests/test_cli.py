@@ -2089,6 +2089,13 @@ class CliTests(unittest.TestCase):
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
+            (repo / "helper.py").write_text("UNLISTED = True\n", encoding="utf-8")
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("unlisted change", p.stderr)
+            (repo / "helper.py").unlink()
+
             source.write_text("UNREVIEWED replacement\n", encoding="utf-8")
             p = run_cli(
                 "check-records", "--dir", records_dir, "--repo", repo)

@@ -234,11 +234,17 @@ def artifact_source_errors(artifact, repo_root):
         return errors
     file_hashes = artifact.get("file_hashes")
     files = artifact.get("files")
+    deleted_files = artifact.get("deleted_files", [])
     if (not isinstance(file_hashes, dict)
             or not isinstance(files, list)
-            or set(file_hashes) != set(files)):
+            or not isinstance(deleted_files, list)
+            or not all(isinstance(item, str) and item.strip()
+                       for item in deleted_files)
+            or len(deleted_files) != len(set(deleted_files))
+            or not set(deleted_files).issubset(set(files))
+            or set(file_hashes) != set(files) - set(deleted_files)):
         errors.append(
-            "working_tree_change Artifact file_hashes must match files")
+            "working_tree_change Artifact file_hashes/deleted_files must match files")
         return errors
     base_revision = artifact.get("base_revision")
     if not isinstance(base_revision, str) or not re.fullmatch(
@@ -253,7 +259,7 @@ def artifact_source_errors(artifact, repo_root):
     repo_root = Path(repo_root).resolve()
     try:
         changed = subprocess.run(
-            ["git", "diff", "--name-only",
+            ["git", "diff", "--name-only", "-z",
              "{}..{}".format(base_revision, revision)],
             cwd=str(repo_root), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, check=False)
@@ -262,11 +268,14 @@ def artifact_source_errors(artifact, repo_root):
     if changed.returncode != 0:
         return ["Unable to resolve Artifact changed file set"]
     changed_files = {
-        line for line in changed.stdout.splitlines() if line
+        line for line in changed.stdout.split("\0") if line
     }
     if not changed_files.issubset(set(files)):
         errors.append(
             "Artifact changed file set does not match base_revision..source_revision")
+    if not set(deleted_files).issubset(changed_files):
+        errors.append(
+            "Artifact deleted_files do not resolve in the changed file set")
     for relative, expected in sorted(file_hashes.items()):
         try:
             process = subprocess.run(
@@ -300,6 +309,27 @@ def artifact_source_errors(artifact, repo_root):
             errors.append(
                 "Artifact working tree file hash does not match: {}".format(
                     relative))
+    status = subprocess.run(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        cwd=str(repo_root), stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True, check=False)
+    if status.returncode != 0:
+        errors.append("Unable to resolve Artifact working tree status")
+    else:
+        evidence_prefix = artifact.get(
+            "evidence_path", "evals/2026-11-15-stage3-final")
+        declared = set(files) | set(deleted_files)
+        for item in status.stdout.split("\0"):
+            if not item:
+                continue
+            path_text = item[3:] if len(item) > 3 else ""
+            if (path_text.startswith(evidence_prefix)
+                    or path_text.startswith("evals/")):
+                continue
+            if path_text not in declared:
+                errors.append(
+                    "Artifact working tree contains unlisted change: {}".format(
+                        path_text))
     return errors
 
 
@@ -681,7 +711,7 @@ def verification_errors(
     artifact_extra = sorted(
         set(artifact) - artifact_required - {
             "producer_context", "source_revision", "file_hashes",
-            "evidence_path", "base_revision"})
+            "evidence_path", "base_revision", "deleted_files"})
     if artifact_extra:
         errors.append(
             "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))
@@ -2485,7 +2515,8 @@ def approval_exists(records, artifact, approver=None):
         for record in records)
 
 
-def runtime_record_errors(records, accept_gate=True, repo_root=None):
+def runtime_record_errors(
+        records, accept_gate=True, repo_root=None, allow_preclosure=True):
     errors = []
     work_items = []
     for record in records:
@@ -2619,7 +2650,11 @@ def runtime_record_errors(records, accept_gate=True, repo_root=None):
         "records must contain exactly one final ACCEPT/STOP/ESCALATE Decision",
     }
     for error in records_errors(
-            records, repo_root or Path.cwd(), pre_closure=True):
+            records, repo_root or Path.cwd(),
+            pre_closure=allow_preclosure and not any(
+                record.get("kind") == "decision"
+                and record.get("decision") == "ACCEPT"
+                for record in records)):
         if error in allowed_without_terminal:
             continue
         if error not in errors:
@@ -3004,13 +3039,28 @@ def runtime_resume(store, records_dir=None, repo=None):
 
 def approve_records(records_dir, artifact_path, approver, statement,
                     confirmation, repo=None):
+    fd, lock_path = acquire_migration_lock(records_dir)
+    if fd is None:
+        print("ERROR: records are busy with another writer", file=sys.stderr)
+        return 2
+    try:
+        return _approve_records_locked(
+            records_dir, artifact_path, approver, statement,
+            confirmation, repo)
+    finally:
+        release_migration_lock(fd, lock_path)
+
+
+def _approve_records_locked(records_dir, artifact_path, approver, statement,
+                            confirmation, repo=None):
     try:
         root, records = load_runtime_records(records_dir)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
     errors = runtime_record_errors(
-        records, accept_gate=False, repo_root=repo)
+        records, accept_gate=False, repo_root=repo,
+        allow_preclosure=False)
     if errors:
         print("[FAIL] approval records", file=sys.stderr)
         for error in errors:
