@@ -112,6 +112,22 @@ def artifact_content_hash(artifact):
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def registered_closure_verification_ids(records):
+    registered = set()
+    for finding in records:
+        if (finding.get("kind") != "finding"
+                or finding.get("closure_gate") is not True):
+            continue
+        prevention = finding.get("prevention")
+        ids = prevention.get("regression_verification_ids") if isinstance(
+            prevention, dict) else []
+        if isinstance(ids, list):
+            registered.update(
+                record_id for record_id in ids
+                if isinstance(record_id, str))
+    return registered
+
+
 def reviewed_set_sha256(records, artifact):
     work_items = [
         record for record in records if record.get("kind") == "work_item"
@@ -120,11 +136,7 @@ def reviewed_set_sha256(records, artifact):
     selected.extend(
         record for record in records
         if record.get("kind") == "finding")
-    closure_finding_ids = {
-        record.get("id") for record in records
-        if record.get("kind") == "finding"
-        and record.get("closure_gate") is True
-    }
+    registered_closures = registered_closure_verification_ids(records)
     selected.extend(
         record for record in records
         if record.get("kind") == "verification"
@@ -133,7 +145,7 @@ def reviewed_set_sha256(records, artifact):
         and not (
             record.get("closure_gate") is True
             and record.get("role") == "verifier"
-            and record.get("finding_id") in closure_finding_ids)
+            and record.get("id") in registered_closures)
         and record.get("role") in {"verifier", "reviewer", "challenger"})
     return records_sha256(selected)
 
@@ -1291,6 +1303,7 @@ def records_errors(records, repo_root=None, pre_closure=False):
             None)
     errors.extend(l3_host_provenance_errors(
         work_item, final_artifact, list(verifications.values())))
+    registered_closures = registered_closure_verification_ids(records)
     if final_artifact is not None:
         errors.extend(artifact_source_errors(
             final_artifact, repo_root or Path.cwd()))
@@ -1435,7 +1448,7 @@ def records_errors(records, repo_root=None, pre_closure=False):
                 and verification.get("artifact_id") == final_artifact.get("id")
                 and verification.get("artifact_version")
                 == final_artifact.get("version")
-                and not verification.get("closure_gate")
+                and verification.get("id") not in registered_closures
                 and verification.get("status") in {
                     "FAIL", "BLOCKED", "NOT_RUN"}
             ]
@@ -2602,9 +2615,10 @@ def derive_runtime_state(records, digest):
         and record.get("artifact_id") == latest_artifact.get("id")
         and record.get("artifact_version") == latest_artifact.get("version")
     ]
+    registered_closures = registered_closure_verification_ids(records)
     delivery_verifications = [
         record for record in final_verifications
-        if not record.get("closure_gate")
+        if record.get("id") not in registered_closures
     ]
     criteria = set(work_item.get("acceptance_criteria", {}))
     verifier_coverage = {
@@ -2986,6 +3000,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
             "ERROR: approval target must be the final L3 Artifact",
             file=sys.stderr)
         return 1
+    registered_closures = registered_closure_verification_ids(records)
     missing = [
         role for role, ready in (
             ("reviewer", role_pass_exists(records, artifact, "reviewer")),
@@ -3007,7 +3022,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
         and record.get("artifact_version") == artifact.get("version")
         and record.get("role") == "verifier"
         and record.get("status") == "PASS"
-        and not record.get("closure_gate")
+        and record.get("id") not in registered_closures
         for criterion_id in record.get("criterion_ids", [])
     }
     uncovered = sorted(criteria - verifier_coverage)
@@ -3036,14 +3051,14 @@ def approve_records(records_dir, artifact_path, approver, statement,
         and record.get("artifact_version") == artifact.get("version")
         and record.get("status") == "PASS"
         and record.get("role") in {"verifier", "reviewer", "challenger"}
-        and not record.get("closure_gate")
+        and record.get("id") not in registered_closures
     ]
     final_bad = [
         record for record in records
         if record.get("kind") == "verification"
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
-        and not record.get("closure_gate")
+        and record.get("id") not in registered_closures
         and record.get("status") in {"FAIL", "BLOCKED", "NOT_RUN"}
     ]
     if final_bad:
