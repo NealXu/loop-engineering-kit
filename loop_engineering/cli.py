@@ -267,6 +267,12 @@ def artifact_source_errors(artifact, repo_root):
             "working_tree_change Artifact requires --repo for file verification")
         return errors
     repo_root = Path(repo_root).resolve()
+    evidence_entries = [
+        item.rstrip("/") for item in
+        [artifact.get("evidence_path")] + artifact.get(
+            "evidence_files", [])
+        if isinstance(item, str) and item.strip()
+    ]
     try:
         changed = subprocess.run(
             ["git", "diff", "--name-only", "-z",
@@ -286,6 +292,23 @@ def artifact_source_errors(artifact, repo_root):
     if not set(deleted_files).issubset(changed_files):
         errors.append(
             "Artifact deleted_files do not resolve in the changed file set")
+    post_revision = subprocess.run(
+        ["git", "diff", "--name-only", "-z",
+         "{}..HEAD".format(revision)],
+        cwd=str(repo_root), stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True, check=False)
+    if post_revision.returncode != 0:
+        errors.append("Unable to resolve source_revision..HEAD")
+    else:
+        for path_text in post_revision.stdout.split("\0"):
+            if not path_text:
+                continue
+            if not any(
+                    path_text == entry or path_text.startswith(entry + "/")
+                    for entry in evidence_entries):
+                errors.append(
+                    "Artifact HEAD contains post-source change: {}".format(
+                        path_text))
     for relative, expected in sorted(file_hashes.items()):
         try:
             process = subprocess.run(
@@ -326,12 +349,6 @@ def artifact_source_errors(artifact, repo_root):
     if status.returncode != 0:
         errors.append("Unable to resolve Artifact working tree status")
     else:
-        evidence_entries = [
-            item.rstrip("/") for item in
-            [artifact.get("evidence_path")] + artifact.get(
-                "evidence_files", [])
-            if isinstance(item, str) and item.strip()
-        ]
         declared = set(files) | set(deleted_files)
         for item in status.stdout.split("\0"):
             if not item:
@@ -2974,6 +2991,13 @@ def runtime_status(store, records_dir=None, repo=None):
         except ValueError as exc:
             print("ERROR: {}".format(exc), file=sys.stderr)
             return 2
+        errors = runtime_record_errors(records, repo_root=repo)
+        if errors:
+            print("[FAIL] runtime records", file=sys.stderr)
+            for error in errors:
+                print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                      file=sys.stderr)
+            return 1
         digest = records_sha256(records)
         matching = next(
             (item for item in checkpoints

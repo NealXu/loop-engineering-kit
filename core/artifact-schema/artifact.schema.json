@@ -68,7 +68,6 @@
     },
     "file_hashes": {
       "type": "object",
-      "minProperties": 1,
       "propertyNames": { "pattern": "\\S" },
       "additionalProperties": {
         "type": "string",

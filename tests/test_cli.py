@@ -1413,6 +1413,26 @@ class CliTests(unittest.TestCase):
             self.assertEqual(status["state"], "ACCEPT")
             self.assertEqual(status["source"], "canonical_records_recovery")
 
+    def test_runtime_status_rejects_invalid_records_with_matching_checkpoint(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            records = stage2_records()
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"].pop("criteria_evidence")
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-status", "--store", store,
+                "--records", records_dir)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("schema", p.stderr)
+
     def test_runtime_rejects_tampered_semantics_and_embedded_resume_store(self):
         with tempfile.TemporaryDirectory() as t:
             base = Path(t)
