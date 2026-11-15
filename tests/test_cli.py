@@ -2092,6 +2092,12 @@ class CliTests(unittest.TestCase):
                 "execution": execution("check-records --pre-closure"),
             }
             rebind_record_hashes(records)
+            decision = records.pop("decision.json")
+            write_records(root, records)
+            p = run_cli(
+                "check-records", "--dir", root, "--pre-closure")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["decision.json"] = decision
             write_records(root, records)
             p = run_cli(
                 "check-records", "--dir", root, "--pre-closure")

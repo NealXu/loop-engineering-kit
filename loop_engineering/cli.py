@@ -1568,7 +1568,8 @@ def records_errors(
     decisions = groups.get("decision", [])
     if not decisions:
         errors.append("records must contain at least one Decision")
-    errors.extend(decision_history_errors(decisions, allow_no_terminal=False))
+    errors.extend(decision_history_errors(
+        decisions, allow_no_terminal=pre_closure))
     decision_cycles = [
         decision.get("cycle") for decision in decisions
         if isinstance(decision.get("cycle"), int)]
@@ -1584,7 +1585,8 @@ def records_errors(
     terminal_decisions = [
         decision for decision in decisions
         if decision.get("decision") in {"ACCEPT", "STOP", "ESCALATE"}]
-    if len(terminal_decisions) != 1:
+    if len(terminal_decisions) != 1 and not (
+            pre_closure and not terminal_decisions):
         errors.append(
             "records must contain exactly one final ACCEPT/STOP/ESCALATE Decision")
     final_decision = terminal_decisions[0] if len(
