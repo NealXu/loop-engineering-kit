@@ -59,7 +59,6 @@ for the final Artifact version. Decision cycles must be unique and strictly
 increasing. An ACCEPT that references an Approval also records
 `approval_hashes` mapping each referenced Approval ID to the canonical digest
 of that Approval record.
-increasing; a `CONTINUE` Iteration may remain undecided.
 
 A resolved `high` or `blocking` Finding includes a `prevention` object with
 `kind`, `action`, and `evidence`. The kinds are ordered `structure`,

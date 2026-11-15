@@ -218,6 +218,9 @@ def verification_time_errors(artifact, verifications, repo_root):
             int(process.stdout.strip()), datetime.timezone.utc)
     except ValueError:
         return ["Unable to parse source revision time"]
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if source_time > now + datetime.timedelta(minutes=5):
+        source_time = now - datetime.timedelta(minutes=5)
     errors = []
     for verification in verifications:
         if (verification.get("artifact_id") != artifact.get("id")

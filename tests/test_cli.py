@@ -1,6 +1,7 @@
 import json
 import hashlib
 import datetime
+import os
 from pathlib import Path
 import shutil
 import contextlib
@@ -2527,6 +2528,49 @@ class CliTests(unittest.TestCase):
                 "--statement", "records scope",
                 "--confirm", "APPROVE A-1@2")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+    def test_future_committer_time_does_not_block_evidence(self):
+        if shutil.which("git") is None:
+            self.skipTest("git is unavailable")
+        with tempfile.TemporaryDirectory() as t:
+            repo = Path(t)
+            subprocess.run(["git", "init"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "test"], cwd=repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.email", "test@example.com"],
+                cwd=repo, check=True)
+            (repo / "source.txt").write_text("source\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "add", "source.txt"], cwd=repo, check=True)
+            future_env = dict(
+                os.environ,
+                GIT_AUTHOR_DATE="2030-01-01T00:00:00Z",
+                GIT_COMMITTER_DATE="2030-01-01T00:00:00Z",
+            )
+            subprocess.run(
+                ["git", "commit", "-m", "future"], cwd=repo,
+                env=future_env, check=True)
+            revision = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            artifact = {
+                "id": "A-1",
+                "version": "1",
+                "artifact_type": "working_tree_change",
+                "source_revision": revision,
+            }
+            verification = {
+                "id": "V-1",
+                "artifact_id": "A-1",
+                "artifact_version": "1",
+                "execution": {
+                    "executed_at": datetime.datetime.now(
+                        datetime.timezone.utc).isoformat(),
+                },
+            }
+            self.assertEqual(
+                [], cli_module.verification_time_errors(
+                    artifact, [verification], repo))
 
     def test_migration_upgrades_legacy_v3_identity_fields(self):
         with tempfile.TemporaryDirectory() as t:
