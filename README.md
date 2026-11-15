@@ -135,6 +135,7 @@ bash scripts/install.sh --target both --scope user --upgrade
 py -3 loop_engineering\cli.py migrate-records --dir <记录目录>
 py -3 loop_engineering\cli.py migrate-records --dir <记录目录> `
   --verification-role V-1=verifier --verification-role V-REVIEW=reviewer `
+  --execution-evidence <旧验证执行证据.json> `
   --write
 # 旧记录缺少 criterion 映射时，再传 --record-criteria <ID>=<AC-1,AC-2>
 

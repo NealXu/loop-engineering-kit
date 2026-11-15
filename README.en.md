@@ -175,6 +175,7 @@ Control-plane commands:
 ```text
 migrate-records --dir <records> \
   --verification-role V-1=verifier --verification-role V-REVIEW=reviewer \
+  --execution-evidence <execution-evidence.json> \
   [--write]
 runtime-checkpoint --records <records> --store <store>
 runtime-status --store <store> --records <records>

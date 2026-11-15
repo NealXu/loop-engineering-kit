@@ -263,6 +263,7 @@ def legacy_v2_records():
             "status": "PASS",
             "evidence": ["executed"],
             "limitations": [],
+            "execution": execution("python -m unittest legacy"),
         },
         "verification-review.json": {
             "schema_version": 2,
@@ -276,6 +277,7 @@ def legacy_v2_records():
             "status": "PASS",
             "evidence": ["reviewed"],
             "limitations": [],
+            "execution": execution("host-session: legacy review"),
         },
         "decision.json": {
             "schema_version": 2,
@@ -333,7 +335,20 @@ def l3_records():
     }
     records["decision.json"]["evidence_refs"] = [
         "V-1", "V-REVIEW", "V-CHALLENGE"]
+    return rebind_record_hashes(records)
+
+
+def l3_preapproval_records():
+    records = l3_records()
+    records.pop("decision.json")
     return records
+
+
+def l3_with_approval(approval):
+    records = l3_records()
+    records["approval-test.json"] = approval
+    records["decision.json"]["evidence_refs"].append(approval["id"])
+    return rebind_record_hashes(records)
 
 
 def legacy_v1_records():
@@ -370,6 +385,7 @@ def legacy_v1_records():
             "method": "run",
             "status": "PASS",
             "evidence": ["executed"],
+            "execution": execution("python -m unittest legacy v1"),
         },
         "verification-review.json": {
             "schema_version": 1,
@@ -381,6 +397,7 @@ def legacy_v1_records():
             "method": "inspect",
             "status": "PASS",
             "evidence": ["reviewed"],
+            "execution": execution("host-session: legacy v1 review"),
         },
         "decision.json": {
             "schema_version": 1,
@@ -424,7 +441,7 @@ class CliTests(unittest.TestCase):
     def test_human_approval_runtime_unblocks_l3_accept(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            source_records = l3_records()
+            source_records = l3_preapproval_records()
             write_records(root, source_records)
             p = run_cli(
                 "approve", "--records", root,
@@ -438,14 +455,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(
                 approval["artifact_content_hash"],
                 source_records["artifact-2.json"]["content_hash"])
-            records = {
-                path.relative_to(root).as_posix(): json.loads(
-                    path.read_text(encoding="utf-8"))
-                for path in root.rglob("*.json")
-            }
-            records["decision.json"]["evidence_refs"].append(approval["id"])
-            records["decision.json"]["reviewed_set_digest"] = approval[
-                "reviewed_set_digest"]
+            records = l3_with_approval(approval)
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -453,7 +463,7 @@ class CliTests(unittest.TestCase):
     def test_human_approval_requires_exact_confirmation(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            write_records(root, l3_records())
+            write_records(root, l3_preapproval_records())
             p = run_cli(
                 "approve", "--records", root,
                 "--artifact", root / "artifact-2.json",
@@ -466,10 +476,9 @@ class CliTests(unittest.TestCase):
     def test_human_approval_requires_review_and_challenge_pass(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             records.pop("verification-review.json")
             records.pop("verification-challenger.json")
-            records["decision.json"]["evidence_refs"] = ["V-1"]
             write_records(root, records)
             p = run_cli(
                 "approve", "--records", root,
@@ -484,7 +493,7 @@ class CliTests(unittest.TestCase):
     def test_human_approval_rejects_ambiguous_lineage(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             records.pop("iterations/iteration-01.json")
             write_records(root, records)
             p = run_cli(
@@ -500,7 +509,7 @@ class CliTests(unittest.TestCase):
     def test_human_approval_requires_complete_criterion_coverage(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             records["work-item.json"]["acceptance_criteria"]["AC-2"] = (
                 "second criterion")
             write_records(root, records)
@@ -537,7 +546,7 @@ class CliTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             write_records(root, records)
             p = run_cli(
                 "approve", "--records", root,
@@ -546,16 +555,7 @@ class CliTests(unittest.TestCase):
                 "--statement", "provenance baseline",
                 "--confirm", "APPROVE A-1@2")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-            records = {
-                path.relative_to(root).as_posix(): json.loads(
-                    path.read_text(encoding="utf-8"))
-                for path in root.rglob("*.json")
-            }
-            approval = json.loads(p.stdout)
-            records["decision.json"]["evidence_refs"].append(
-                approval["id"])
-            records["decision.json"]["reviewed_set_digest"] = approval[
-                "reviewed_set_digest"]
+            records = l3_with_approval(json.loads(p.stdout))
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -594,7 +594,7 @@ class CliTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             write_records(root, records)
             p = run_cli(
                 "approve", "--records", root,
@@ -603,13 +603,7 @@ class CliTests(unittest.TestCase):
                 "--statement", "provenance baseline",
                 "--confirm", "APPROVE A-1@2")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-            records = {
-                path.relative_to(root).as_posix(): json.loads(
-                    path.read_text(encoding="utf-8"))
-                for path in root.rglob("*.json")
-            }
-            records["decision.json"]["evidence_refs"].append(
-                json.loads(p.stdout)["id"])
+            records = l3_with_approval(json.loads(p.stdout))
             write_records(root, records)
             for name, mutate, marker in cases:
                 with self.subTest(name=name):
@@ -624,7 +618,7 @@ class CliTests(unittest.TestCase):
     def test_human_approval_rejects_open_high_and_roleless_verifier(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             records["finding-open.json"] = {
                 "schema_version": 3,
                 "id": "F-OPEN",
@@ -663,10 +657,45 @@ class CliTests(unittest.TestCase):
             self.assertIn("Verifier coverage", p.stderr)
             self.assertEqual(list(root.glob("approval-*.json")), [])
 
+    def test_human_approval_rejects_invalid_closed_finding_evidence(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = l3_preapproval_records()
+            records["finding-invalid.json"] = {
+                "schema_version": 3,
+                "id": "F-INVALID",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "approval",
+                "claim": "invalid regression",
+                "evidence": ["counterexample"],
+                "impact": "approval bypass",
+                "required_action": "reject",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "guard",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-MISSING"],
+                },
+            }
+            write_records(root, records)
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "must fail",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("V-MISSING", p.stderr)
+            self.assertEqual(list(root.glob("approval-*.json")), [])
+
     def test_approval_binds_the_reviewed_record_set(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             write_records(root, records)
             p = run_cli(
                 "approve", "--records", root,
@@ -677,14 +706,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             approval = json.loads(p.stdout)
             self.assertIn("reviewed_set_digest", approval)
-            records = {
-                path.relative_to(root).as_posix(): json.loads(
-                    path.read_text(encoding="utf-8"))
-                for path in root.rglob("*.json")
-            }
-            records["decision.json"]["evidence_refs"].append(approval["id"])
-            records["decision.json"]["reviewed_set_digest"] = approval[
-                "reviewed_set_digest"]
+            records = l3_with_approval(approval)
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -700,7 +722,7 @@ class CliTests(unittest.TestCase):
     def test_challenger_finding_cannot_replace_pass(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            records = l3_records()
+            records = l3_preapproval_records()
             write_records(root, records)
             p = run_cli(
                 "approve", "--records", root,
@@ -710,12 +732,7 @@ class CliTests(unittest.TestCase):
                 "--confirm", "APPROVE A-1@2")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             approval = json.loads(p.stdout)
-            records = {
-                path.relative_to(root).as_posix(): json.loads(
-                    path.read_text(encoding="utf-8"))
-                for path in root.rglob("*.json")
-            }
-            records["decision.json"]["evidence_refs"].append(approval["id"])
+            records = l3_with_approval(approval)
             records.pop("verification-challenger.json")
             records["decision.json"]["evidence_refs"].remove("V-CHALLENGE")
             records["finding-challenger.json"] = {
@@ -891,6 +908,7 @@ class CliTests(unittest.TestCase):
                 "method": "run",
                 "status": "PASS",
                 "evidence": ["executed"],
+                "execution": execution("python -m unittest extra"),
             }
             write_records(root, records)
             p = run_cli(
@@ -1035,10 +1053,7 @@ class CliTests(unittest.TestCase):
             store = base / "store"
             records_dir.mkdir()
             records = stage2_records()
-            decisions = {
-                name: records.pop(name)
-                for name in ("decision.json", "decision-repair.json")
-            }
+            decision = records.pop("decision.json")
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -1047,7 +1062,7 @@ class CliTests(unittest.TestCase):
             checkpoint = json.loads(p.stdout)
             self.assertEqual(checkpoint["state"], "DECIDE")
 
-            records.update(decisions)
+            records["decision.json"] = decision
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-resume", "--store", store,
@@ -1119,7 +1134,6 @@ class CliTests(unittest.TestCase):
 
             records["verification.json"]["status"] = "FAIL"
             records.pop("decision.json")
-            records.pop("decision-repair.json")
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -1133,10 +1147,8 @@ class CliTests(unittest.TestCase):
             records_dir = base / "records"
             store = base / "store"
             records_dir.mkdir()
-            records = l3_records()
+            records = l3_preapproval_records()
             records.pop("verification-challenger.json")
-            records.pop("decision.json")
-            records.pop("decision-repair.json")
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -1144,9 +1156,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             self.assertEqual(json.loads(p.stdout)["state"], "CHALLENGE")
 
-            records = l3_records()
-            records.pop("decision.json")
-            records.pop("decision-repair.json")
+            records = l3_preapproval_records()
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -1163,7 +1173,6 @@ class CliTests(unittest.TestCase):
             records["work-item.json"]["acceptance_criteria"]["AC-2"] = (
                 "second criterion")
             records.pop("decision.json")
-            records.pop("decision-repair.json")
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -1213,6 +1222,49 @@ class CliTests(unittest.TestCase):
                 p = run_cli(*args)
                 self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
                 self.assertIn("terminal Decision", p.stderr)
+
+    def test_runtime_and_control_plane_reject_invalid_closed_findings(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            records = stage2_records()
+            records["finding-invalid.json"] = {
+                "schema_version": 3,
+                "id": "F-INVALID",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "shared validation",
+                "claim": "invalid closure",
+                "evidence": ["counterexample"],
+                "impact": "invalid records could persist",
+                "required_action": "apply shared validation",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "guard",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-MISSING"],
+                },
+            }
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli("check-records", "--dir", records_dir)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            for args in (
+                ("runtime-checkpoint", "--records", records_dir,
+                 "--store", store),
+                ("metrics", "--dir", records_dir),
+                ("registry-update", "--store", store,
+                 "--records", records_dir),
+                ("improvements", "--dir", records_dir),
+            ):
+                p = run_cli(*args)
+                self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                self.assertIn("V-MISSING", p.stderr)
 
     def test_runtime_status_recovers_from_only_corrupt_checkpoints(self):
         with tempfile.TemporaryDirectory() as t:
@@ -1282,7 +1334,7 @@ class CliTests(unittest.TestCase):
             records_dir = base / "records"
             store = base / "store"
             records_dir.mkdir()
-            write_records(records_dir, l3_records())
+            write_records(records_dir, l3_preapproval_records())
             p = run_cli(
                 "approve", "--records", records_dir,
                 "--artifact", records_dir / "artifact-2.json",
@@ -1290,11 +1342,7 @@ class CliTests(unittest.TestCase):
                 "--statement", "approved",
                 "--confirm", "APPROVE A-1@2")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-            records = {
-                path.relative_to(records_dir).as_posix(): json.loads(
-                    path.read_text(encoding="utf-8"))
-                for path in records_dir.rglob("*.json")
-            }
+            records = l3_with_approval(json.loads(p.stdout))
             records["decision.json"]["evidence_refs"] = ["V-1"]
             write_records(records_dir, records)
             p = run_cli("check-records", "--dir", records_dir)
@@ -1347,7 +1395,6 @@ class CliTests(unittest.TestCase):
                 "limitations": ["network unavailable"],
             }
             records.pop("decision.json")
-            records.pop("decision-repair.json")
             write_records(records_dir, records)
             host_metrics = base / "host-metrics.json"
             host_metrics.write_text(json.dumps({
@@ -1362,7 +1409,7 @@ class CliTests(unittest.TestCase):
                 "--host-metrics", host_metrics, "--output", output)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             metrics = json.loads(p.stdout)
-            self.assertEqual(metrics["record_count"], 9)
+            self.assertEqual(metrics["record_count"], 10)
             self.assertEqual(metrics["artifact_versions"], ["1", "2"])
             self.assertEqual(metrics["verification_statuses"]["BLOCKED"], 1)
             self.assertEqual(metrics["host_metrics"]["total_tokens"], 1400)
@@ -1728,7 +1775,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("execution", p.stderr)
 
-            records = l3_records()
+            records = l3_preapproval_records()
             records["verification-review.json"].pop("execution")
             write_records(root, records)
             p = run_cli(
@@ -1888,6 +1935,24 @@ class CliTests(unittest.TestCase):
                 "--verification-role", "V-1=verifier",
                 "--verification-role", "V-REVIEW=reviewer",
                 "--verification-role", "V-REPAIR-EVIDENCE=verifier")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("--execution-evidence", p.stderr)
+            self.assertNotIn(
+                "content_hash",
+                (root / "artifact-1.json").read_text(encoding="utf-8"))
+
+            evidence = root.parent / "execution-evidence.json"
+            evidence.write_text(json.dumps({
+                "V-1": execution("python -m unittest v3"),
+                "V-REVIEW": execution("host-session: v3 review"),
+                "V-REPAIR-EVIDENCE": execution("python -m unittest v3 repair"),
+            }), encoding="utf-8")
+            p = run_cli(
+                "migrate-records", "--dir", root, "--write",
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer",
+                "--verification-role", "V-REPAIR-EVIDENCE=verifier",
+                "--execution-evidence", evidence)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             for path in root.glob("artifact-*.json"):
                 artifact = json.loads(path.read_text(encoding="utf-8"))

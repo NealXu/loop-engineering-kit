@@ -108,7 +108,9 @@ older record sets. Run `migrate-records` to add content hashes, Artifact hashes,
 roles, execution metadata, and reviewed-set digests. Roleless legacy evidence
 is auto-labelled `verifier` only when it matches the frozen migration manifest;
 all other roleless Verification records require explicit
-`--verification-role`.
+`--verification-role`. Current PASS Verifications lacking execution metadata
+require an explicit `--execution-evidence` JSON map; migration never invents a
+command, exit code, or execution time.
 
 Iteration records may include `output_versions`; Stage 2 record checks require
 it so Artifact ancestry is explicit. Run

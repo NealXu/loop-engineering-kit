@@ -1736,7 +1736,7 @@ def release_migration_lock(fd, path):
 
 
 def migrate_records(directory, write=False, verification_roles=None,
-                    record_criteria=None):
+                    record_criteria=None, execution_evidence=None):
     fd, lock_path = acquire_migration_lock(directory)
     if fd is None:
         print("ERROR: migration already active for {}".format(directory),
@@ -1744,13 +1744,14 @@ def migrate_records(directory, write=False, verification_roles=None,
         return 2
     try:
         return _migrate_records(
-            directory, write, verification_roles, record_criteria)
+            directory, write, verification_roles, record_criteria,
+            execution_evidence)
     finally:
         release_migration_lock(fd, lock_path)
 
 
 def _migrate_records(directory, write=False, verification_roles=None,
-                     record_criteria=None):
+                     record_criteria=None, execution_evidence=None):
     root = Path(directory)
     recovered, recovery_error = recover_migration_transaction(root)
     if recovery_error:
@@ -1779,6 +1780,26 @@ def _migrate_records(directory, write=False, verification_roles=None,
                   file=sys.stderr)
             return 2
         roles[record_id] = role
+    execution_map = {}
+    if execution_evidence:
+        try:
+            execution_map = load_json(execution_evidence)
+        except ValueError as exc:
+            print("ERROR: {}".format(exc), file=sys.stderr)
+            return 2
+        for record_id, value in execution_map.items():
+            errors = execution_errors({
+                "id": record_id,
+                "status": "PASS",
+                "execution": value,
+            })
+            if errors:
+                print(
+                    "ERROR: execution evidence {} is invalid: {}".format(
+                        json.dumps(record_id, ensure_ascii=True),
+                        "; ".join(errors)),
+                    file=sys.stderr)
+                return 2
     criteria_overrides = {}
     for spec in record_criteria or []:
         if "=" not in spec:
@@ -1843,6 +1864,17 @@ def _migrate_records(directory, write=False, verification_roles=None,
                 or (kind == "approval"
                     and "artifact_content_hash" not in record)):
             migrated[path] = record
+    verification_ids = {
+        record.get("id") for _, record in records
+        if record.get("kind") == "verification"
+    }
+    unknown_execution = sorted(set(execution_map) - verification_ids)
+    if unknown_execution:
+        print(
+            "ERROR: --execution-evidence references unknown Verification {}"
+            .format(_quoted_names(unknown_execution)),
+            file=sys.stderr)
+        return 2
     work_items = [
         record for _, record in records
         if record.get("kind") == "work_item"
@@ -1988,11 +2020,14 @@ def _migrate_records(directory, write=False, verification_roles=None,
                     return 1
             record.setdefault("limitations", [])
             if "execution" not in record:
-                record["execution"] = {
-                    "command": "migrate-records legacy evidence import",
-                    "exit_code": 0 if record.get("status") == "PASS" else 1,
-                    "executed_at": datetime.datetime.now().astimezone().isoformat(),
-                }
+                if record_id in execution_map:
+                    record["execution"] = execution_map[record_id]
+                elif record.get("status") == "PASS":
+                    print(
+                        "ERROR: Verification {} requires --execution-evidence"
+                        .format(record_id),
+                        file=sys.stderr)
+                    return 1
         elif kind == "finding":
             if "criterion_ids" not in record:
                 record_id = record.get("id")
@@ -2415,13 +2450,17 @@ def runtime_record_errors(records, accept_gate=True):
                 work_item, final_artifact, records):
             if error not in errors:
                 errors.append(error)
-    if accept_gate and any(
-            record.get("kind") == "decision"
-            and record.get("decision") == "ACCEPT"
-            for record in records):
-        for error in records_errors(records):
-            if error not in errors:
-                errors.append(error)
+    allowed_without_terminal = {
+        "records must contain at least one Decision",
+        "records require a final terminal Decision",
+        "records must contain exactly one final ACCEPT/STOP/ESCALATE Decision",
+    }
+    for error in records_errors(
+            records, Path.cwd(), pre_closure=True):
+        if error in allowed_without_terminal:
+            continue
+        if error not in errors:
+            errors.append(error)
     return errors
 
 
@@ -2486,14 +2525,27 @@ def derive_runtime_state(records, digest):
         records, latest_artifact, "challenger")
     human_approval = approval_exists(records, latest_artifact)
     latest_terminal = terminal[-1] if terminal else None
+    last_repair = (
+        decisions[-1]
+        if decisions and decisions[-1].get("decision") == "REPAIR"
+        else None)
+    repair_pending = False
+    if last_repair is not None:
+        repair_pending = last_repair.get("repair_kind") != "artifact"
+        if last_repair.get("repair_kind") == "artifact":
+            repair_pending = not any(
+                record.get("kind") == "iteration"
+                and record.get("cycle") == last_repair.get("cycle")
+                and record.get("output_versions")
+                for record in records)
     if (latest_terminal is not None
             and latest_terminal.get("decision") in {"STOP", "ESCALATE"}):
         decision = latest_terminal
         state = decision.get("decision")
         next_action = "none"
-    elif decisions and decisions[-1].get("decision") == "REPAIR":
-        decision = decisions[-1]
-        state = decision.get("next_state", "REPAIR")
+    elif repair_pending:
+        decision = last_repair
+        state = last_repair.get("next_state", "REPAIR")
         next_action = {
             "PRODUCE": "produce or repair artifact",
             "VERIFY": "run required verification",
@@ -2879,8 +2931,24 @@ def approve_records(records_dir, artifact_path, approver, statement,
         error for record in final_evidence
         for error in execution_errors(record)
     ]
+    finding_failures = []
+    all_verifications = [
+        record for record in records
+        if record.get("kind") == "verification"
+    ]
+    for finding in records:
+        if (finding.get("kind") != "finding"
+                or finding.get("status") not in {
+                    "resolved", "not_reproducible"}
+                or (
+                    finding.get("severity") not in {"high", "blocking"}
+                    and not finding.get("recurrence_of"))):
+            continue
+        finding_failures.extend(verification_errors(
+            finding, work_item, final_artifact, all_verifications,
+            pre_closure=True))
     source_failures = artifact_source_errors(final_artifact, Path.cwd())
-    failures = execution_failures + source_failures
+    failures = execution_failures + finding_failures + source_failures
     if failures:
         print("[FAIL] approval preconditions", file=sys.stderr)
         for error in failures:
@@ -3560,6 +3628,7 @@ def main():
     mr.add_argument("--write", action="store_true")
     mr.add_argument("--verification-role", action="append", default=[])
     mr.add_argument("--record-criteria", action="append", default=[])
+    mr.add_argument("--execution-evidence", default=None)
     rc = subs.add_parser("runtime-checkpoint")
     rc.add_argument("--records", required=True)
     rc.add_argument("--store", required=True)
@@ -3616,7 +3685,8 @@ def main():
         return check_records(a.dir, a.repo, a.pre_closure)
     if a.command == "migrate-records":
         return migrate_records(
-            a.dir, a.write, a.verification_role, a.record_criteria)
+            a.dir, a.write, a.verification_role, a.record_criteria,
+            a.execution_evidence)
     if a.command == "runtime-checkpoint":
         return runtime_checkpoint(a.records, a.store)
     if a.command == "runtime-status":

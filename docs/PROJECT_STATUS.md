@@ -17,6 +17,7 @@ remain in `evals/`; canonical role records remain run-scoped JSON evidence.
 | Reviewed-set digest for Approval and ACCEPT | Complete | `reviewed_set_digest` |
 | Safe v1/v2 to v3 migration | Complete | `migrate-records` |
 | Deterministic pre-identity v3 record upgrade | Complete | `migrate-records` |
+| Explicit execution evidence during migration | Complete | `migrate-records --execution-evidence` |
 | Persistent runtime checkpoints | Complete | `runtime-checkpoint` |
 | Automatic resume and record-based recovery | Complete | `runtime-status`, `runtime-resume` |
 | Structured human approval for L3 | Complete | `approve`, `approval.schema.json` |
@@ -59,7 +60,10 @@ recovery journal, and swaps directories only after validation.
 - `approve` writes a human approval only when the exact
   `APPROVE <artifact>@<version>` confirmation is supplied.
 - Approval rejects open high/blocking Findings, incomplete Verifier coverage,
-  missing execution metadata, stale Artifact hashes, and changed reviewed sets.
+  invalid closed-Finding regression evidence, missing execution metadata,
+  stale Artifact hashes, and changed reviewed sets.
+- Runtime, metrics, registry, and improvements share full cross-record checks;
+  only the absence of a terminal Decision is allowed for in-progress records.
 - L3 ACCEPT requires final-version Reviewer and Challenger PASS evidence plus a
   referenced human approval record.
 
