@@ -957,12 +957,20 @@ class CliTests(unittest.TestCase):
             stage = base / "records.migration-stage-test"
             shutil.copytree(root, backup)
             shutil.copytree(root, stage)
+            nonce = "1" * 32
+            (stage / ".loop-engineering-stage-owner.json").write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "root": str(root.resolve()),
+                    "nonce": nonce,
+                }), encoding="utf-8")
             journal = cli_module.migration_journal_path(root)
             journal.write_text(json.dumps({
                 "schema_version": 1,
                 "root": str(root.resolve()),
                 "backup": str(backup.resolve()),
                 "stage": str(stage.resolve()),
+                "nonce": nonce,
                 "phase": "backed_up",
             }), encoding="utf-8")
             shutil.rmtree(root)
@@ -1033,6 +1041,27 @@ class CliTests(unittest.TestCase):
             recovered, error = cli_module.recover_migration_transaction(root)
             self.assertIsNone(recovered)
             self.assertIn("paths are invalid", error)
+
+    def test_migration_journal_requires_stage_ownership_marker(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            root = base / "records"
+            root.mkdir()
+            stage = base / "records.migration-stage-userdata"
+            stage.mkdir()
+            (stage / "keep.txt").write_text("keep", encoding="utf-8")
+            journal = cli_module.migration_journal_path(root)
+            journal.write_text(json.dumps({
+                "schema_version": 1,
+                "root": str(root.resolve()),
+                "backup": str((base / "records.migration-backup-x").resolve()),
+                "stage": str(stage.resolve()),
+                "phase": "prepared",
+            }), encoding="utf-8")
+            recovered, error = cli_module.recover_migration_transaction(root)
+            self.assertIsNone(recovered)
+            self.assertIn("ownership", error)
+            self.assertTrue((stage / "keep.txt").exists())
 
     def test_migrate_records_rejects_duplicate_mappings(self):
         with tempfile.TemporaryDirectory() as t:
@@ -1271,6 +1300,59 @@ class CliTests(unittest.TestCase):
                 p = run_cli(*args)
                 self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
                 self.assertIn("V-MISSING", p.stderr)
+
+    def test_final_fail_blocks_accept_even_when_unreferenced(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["verification-fail.json"] = {
+                "schema_version": 3,
+                "id": "V-FINAL-FAIL",
+                "kind": "verification",
+                "artifact_id": "A-1",
+                "artifact_version": "2",
+                "artifact_content_hash": records["artifact-2.json"][
+                    "content_hash"],
+                "criterion_ids": ["AC-1"],
+                "role": "verifier",
+                "check": "final failure",
+                "method": "run",
+                "status": "FAIL",
+                "evidence": ["failed"],
+                "limitations": [],
+                "execution": execution("python -m unittest", 1),
+            }
+            rebind_record_hashes(records)
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("final FAIL/BLOCKED/NOT_RUN", p.stderr)
+
+    def test_runtime_rejects_stale_approval_before_accept(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            records_dir.mkdir()
+            write_records(records_dir, l3_preapproval_records())
+            p = run_cli(
+                "approve", "--records", records_dir,
+                "--artifact", records_dir / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "approved",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records = l3_with_approval(json.loads(p.stdout))
+            records.pop("decision.json")
+            records["verification-review.json"]["evidence"] = [
+                "changed after approval"
+            ]
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", base / "store")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("reviewed_set_digest", p.stderr)
 
     def test_runtime_status_recovers_from_only_corrupt_checkpoints(self):
         with tempfile.TemporaryDirectory() as t:
@@ -1922,6 +2004,12 @@ class CliTests(unittest.TestCase):
             write_records(records_dir, records)
             p = run_cli(
                 "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            p = subprocess.run(
+                [sys.executable, str(CLI), "check-records",
+                 "--dir", str(records_dir), "--repo", str(repo)],
+                cwd=records_dir, text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
             source.write_text("UNREVIEWED replacement\n", encoding="utf-8")

@@ -1274,6 +1274,14 @@ def records_errors(records, repo_root=None, pre_closure=False):
         except (TypeError, ValueError):
             errors.append("Approval {} approved_at is invalid".format(
                 approval_id))
+        approval_artifact = artifacts_by_key.get(
+            (artifact_id, artifact_version))
+        if (approval_artifact is not None
+                and approval.get("reviewed_set_digest")
+                != reviewed_set_sha256(records, approval_artifact)):
+            errors.append(
+                "Approval {} reviewed_set_digest does not match reviewed records"
+                .format(approval_id))
 
     final_artifact = None
     if len(final_versions) == 1:
@@ -1422,6 +1430,19 @@ def records_errors(records, repo_root=None, pre_closure=False):
             ref_approvals = [
                 approvals[ref] for ref in decision.get("evidence_refs", [])
                 if ref in approvals]
+            bad_final_evidence = [
+                verification for verification in verifications.values()
+                if final_artifact is not None
+                and verification.get("artifact_id") == final_artifact.get("id")
+                and verification.get("artifact_version")
+                == final_artifact.get("version")
+                and not verification.get("closure_gate")
+                and verification.get("status") in {
+                    "FAIL", "BLOCKED", "NOT_RUN"}
+            ]
+            if bad_final_evidence:
+                errors.append(
+                    "final FAIL/BLOCKED/NOT_RUN evidence blocks ACCEPT")
             expected_reviewed_set = (
                 reviewed_set_sha256(records, final_artifact)
                 if final_artifact is not None else None)
@@ -1714,6 +1735,7 @@ def recover_migration_transaction(root):
         return None, "migration journal root does not match"
     backup = Path(journal_paths["backup"])
     stage = Path(journal_paths["stage"])
+    nonce = data.get("nonce")
     backup_prefix = root.name + ".migration-backup-"
     stage_prefix = root.name + ".migration-stage-"
     if (not backup.is_absolute() or not stage.is_absolute()
@@ -1723,19 +1745,53 @@ def recover_migration_transaction(root):
             or not stage.name.startswith(stage_prefix)
             or backup == stage or backup.is_symlink() or stage.is_symlink()):
         return None, "migration journal paths are invalid"
+    def verify_stage_owner():
+        if (not isinstance(nonce, str)
+                or not re.fullmatch(r"[0-9a-f]{32}", nonce)):
+            return "migration stage ownership is invalid"
+        marker = stage / ".loop-engineering-stage-owner.json"
+        try:
+            owner = load_json(marker)
+        except ValueError as exc:
+            return "migration stage ownership is invalid: {}".format(exc)
+        if (owner.get("schema_version") != 1
+                or owner.get("root") != str(root)
+                or owner.get("nonce") != nonce):
+            return "migration stage ownership is invalid"
+        return None
     try:
         if root.exists():
             if stage.exists():
+                ownership_error = verify_stage_owner()
+                if ownership_error:
+                    return None, ownership_error
                 shutil.rmtree(stage)
+            root_marker = root / ".loop-engineering-stage-owner.json"
+            if root_marker.exists():
+                try:
+                    owner = load_json(root_marker)
+                except ValueError:
+                    owner = {}
+                if (owner.get("schema_version") == 1
+                        and owner.get("root") == str(root)
+                        and owner.get("nonce") == nonce):
+                    root_marker.unlink()
             journal.unlink()
             return "kept_current", None
         if backup.exists():
             os.replace(str(backup), str(root))
             if stage.exists():
+                ownership_error = verify_stage_owner()
+                if ownership_error:
+                    return None, ownership_error
                 shutil.rmtree(stage)
             journal.unlink()
             return "rolled_back", None
         if stage.exists():
+            ownership_error = verify_stage_owner()
+            if ownership_error:
+                return None, ownership_error
+            (stage / ".loop-engineering-stage-owner.json").unlink()
             os.replace(str(stage), str(root))
             journal.unlink()
             return "rolled_forward", None
@@ -2212,6 +2268,8 @@ def _migrate_records(directory, write=False, verification_roles=None,
         backup = root.parent / "{}.migration-backup-{}".format(
             root.name, stamp)
         journal = migration_journal_path(root)
+        nonce = uuid.uuid4().hex
+        ownership_marker = stage / ".loop-engineering-stage-owner.json"
         try:
             shutil.copytree(root, stage)
             for path in sorted(migrated):
@@ -2225,11 +2283,17 @@ def _migrate_records(directory, write=False, verification_roles=None,
                 raise ValueError(
                     "staged migration validation failed: {}".format(
                         _quoted_names(errors)))
+            write_json_file(ownership_marker, {
+                "schema_version": 1,
+                "root": str(root.resolve()),
+                "nonce": nonce,
+            })
             write_json_file(journal, {
                 "schema_version": 1,
                 "root": str(root.resolve()),
                 "backup": str(backup.resolve()),
                 "stage": str(stage.resolve()),
+                "nonce": nonce,
                 "phase": "prepared",
             })
             os.replace(str(root), str(backup))
@@ -2238,21 +2302,22 @@ def _migrate_records(directory, write=False, verification_roles=None,
                 "root": str(root.resolve()),
                 "backup": str(backup.resolve()),
                 "stage": str(stage.resolve()),
+                "nonce": nonce,
                 "phase": "backed_up",
             })
             os.replace(str(stage), str(root))
+            (root / ".loop-engineering-stage-owner.json").unlink()
             write_json_file(journal, {
                 "schema_version": 1,
                 "root": str(root.resolve()),
                 "backup": str(backup.resolve()),
                 "stage": str(stage.resolve()),
+                "nonce": nonce,
                 "phase": "committed",
             })
             journal.unlink()
         except BaseException as exc:
             _, recovery_error = recover_migration_transaction(root)
-            if stage.exists() and root.exists():
-                shutil.rmtree(stage)
             print("ERROR: migration commit failed: {}".format(exc),
                   file=sys.stderr)
             if recovery_error:
@@ -2362,7 +2427,7 @@ def approval_exists(records, artifact, approver=None):
         for record in records)
 
 
-def runtime_record_errors(records, accept_gate=True):
+def runtime_record_errors(records, accept_gate=True, repo_root=None):
     errors = []
     work_items = []
     for record in records:
@@ -2496,7 +2561,7 @@ def runtime_record_errors(records, accept_gate=True):
         "records must contain exactly one final ACCEPT/STOP/ESCALATE Decision",
     }
     for error in records_errors(
-            records, Path.cwd(), pre_closure=True):
+            records, repo_root or Path.cwd(), pre_closure=True):
         if error in allowed_without_terminal:
             continue
         if error not in errors:
@@ -2763,14 +2828,14 @@ def valid_checkpoints(store):
     return checkpoints, skipped
 
 
-def runtime_checkpoint(records_dir, store):
+def runtime_checkpoint(records_dir, store, repo=None):
     try:
         store = checkpoint_store_path(records_dir, store)
         _, records = load_runtime_records(records_dir)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records)
+    errors = runtime_record_errors(records, repo_root=repo)
     if errors:
         print("[FAIL] runtime records", file=sys.stderr)
         for error in errors:
@@ -2783,7 +2848,7 @@ def runtime_checkpoint(records_dir, store):
     return 0
 
 
-def runtime_status(store, records_dir=None):
+def runtime_status(store, records_dir=None, repo=None):
     if records_dir:
         try:
             store = checkpoint_store_path(records_dir, store)
@@ -2807,7 +2872,7 @@ def runtime_status(store, records_dir=None):
             matching = None
             skipped += 1
         if matching is None:
-            errors = runtime_record_errors(records)
+            errors = runtime_record_errors(records, repo_root=repo)
             if errors:
                 print("ERROR: no matching checkpoint and records are invalid",
                       file=sys.stderr)
@@ -2824,7 +2889,7 @@ def runtime_status(store, records_dir=None):
     return 0
 
 
-def runtime_resume(store, records_dir=None):
+def runtime_resume(store, records_dir=None, repo=None):
     if records_dir:
         try:
             store = checkpoint_store_path(records_dir, store)
@@ -2847,7 +2912,7 @@ def runtime_resume(store, records_dir=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records)
+    errors = runtime_record_errors(records, repo_root=repo)
     if errors:
         print("[FAIL] runtime records", file=sys.stderr)
         for error in errors:
@@ -2878,13 +2943,14 @@ def runtime_resume(store, records_dir=None):
 
 
 def approve_records(records_dir, artifact_path, approver, statement,
-                    confirmation):
+                    confirmation, repo=None):
     try:
         root, records = load_runtime_records(records_dir)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records, accept_gate=False)
+    errors = runtime_record_errors(
+        records, accept_gate=False, repo_root=repo)
     if errors:
         print("[FAIL] approval records", file=sys.stderr)
         for error in errors:
@@ -2993,7 +3059,8 @@ def approve_records(records_dir, artifact_path, approver, statement,
         finding_failures.extend(verification_errors(
             finding, work_item, final_artifact, all_verifications,
             pre_closure=True))
-    source_failures = artifact_source_errors(final_artifact, Path.cwd())
+    source_failures = artifact_source_errors(
+        final_artifact, repo or Path.cwd())
     failures = execution_failures + finding_failures + source_failures
     if failures:
         print("[FAIL] approval preconditions", file=sys.stderr)
@@ -3128,7 +3195,7 @@ def metrics_data(records, host_metrics=None):
     }
 
 
-def metrics(records_dir, host_metrics_path=None, output=None):
+def metrics(records_dir, host_metrics_path=None, output=None, repo=None):
     try:
         output = external_output_path(records_dir, output)
         _, records = load_runtime_records(records_dir)
@@ -3136,7 +3203,7 @@ def metrics(records_dir, host_metrics_path=None, output=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records)
+    errors = runtime_record_errors(records, repo_root=repo)
     if errors:
         print("[FAIL] metrics records", file=sys.stderr)
         for error in errors:
@@ -3219,14 +3286,14 @@ def improvement_candidates(records):
             rank.get(item["priority"], 3), item["category"], item["id"]))
 
 
-def improvements(records_dir, output=None):
+def improvements(records_dir, output=None, repo=None):
     try:
         output = external_output_path(records_dir, output)
         _, records = load_runtime_records(records_dir)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records)
+    errors = runtime_record_errors(records, repo_root=repo)
     if errors:
         print("[FAIL] improvement records", file=sys.stderr)
         for error in errors:
@@ -3313,14 +3380,14 @@ def write_registry_entry(path, entry):
             pass
 
 
-def registry_update(store, records_dir, label=None, commit=None):
+def registry_update(store, records_dir, label=None, commit=None, repo=None):
     try:
         store = checkpoint_store_path(records_dir, store)
         _, records = load_runtime_records(records_dir)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records)
+    errors = runtime_record_errors(records, repo_root=repo)
     if errors:
         print("[FAIL] registry records", file=sys.stderr)
         for error in errors:
@@ -3684,30 +3751,37 @@ def main():
     rc = subs.add_parser("runtime-checkpoint")
     rc.add_argument("--records", required=True)
     rc.add_argument("--store", required=True)
+    rc.add_argument("--repo", default=None)
     rs = subs.add_parser("runtime-status")
     rs.add_argument("--store", required=True)
     rs.add_argument("--records", required=True)
+    rs.add_argument("--repo", default=None)
     rr = subs.add_parser("runtime-resume")
     rr.add_argument("--store", required=True)
     rr.add_argument("--records", required=True)
+    rr.add_argument("--repo", default=None)
     ap = subs.add_parser("approve")
     ap.add_argument("--records", required=True)
     ap.add_argument("--artifact", required=True)
     ap.add_argument("--approver", required=True)
     ap.add_argument("--statement", required=True)
     ap.add_argument("--confirm", required=True)
+    ap.add_argument("--repo", default=None)
     met = subs.add_parser("metrics")
     met.add_argument("--dir", required=True)
     met.add_argument("--host-metrics", default=None)
     met.add_argument("--output", default=None)
+    met.add_argument("--repo", default=None)
     imp = subs.add_parser("improvements")
     imp.add_argument("--dir", required=True)
     imp.add_argument("--output", default=None)
+    imp.add_argument("--repo", default=None)
     ru = subs.add_parser("registry-update")
     ru.add_argument("--store", required=True)
     ru.add_argument("--records", required=True)
     ru.add_argument("--label", default=None)
     ru.add_argument("--commit", default=None)
+    ru.add_argument("--repo", default=None)
     rl = subs.add_parser("registry-list")
     rl.add_argument("--store", required=True)
     r = subs.add_parser("report")
@@ -3740,21 +3814,22 @@ def main():
             a.dir, a.write, a.verification_role, a.record_criteria,
             a.execution_evidence)
     if a.command == "runtime-checkpoint":
-        return runtime_checkpoint(a.records, a.store)
+        return runtime_checkpoint(a.records, a.store, a.repo)
     if a.command == "runtime-status":
-        return runtime_status(a.store, a.records)
+        return runtime_status(a.store, a.records, a.repo)
     if a.command == "runtime-resume":
-        return runtime_resume(a.store, a.records)
+        return runtime_resume(a.store, a.records, a.repo)
     if a.command == "approve":
         return approve_records(
-            a.records, a.artifact, a.approver, a.statement, a.confirm)
+            a.records, a.artifact, a.approver, a.statement, a.confirm,
+            a.repo)
     if a.command == "metrics":
-        return metrics(a.dir, a.host_metrics, a.output)
+        return metrics(a.dir, a.host_metrics, a.output, a.repo)
     if a.command == "improvements":
-        return improvements(a.dir, a.output)
+        return improvements(a.dir, a.output, a.repo)
     if a.command == "registry-update":
         return registry_update(
-            a.store, a.records, a.label, a.commit)
+            a.store, a.records, a.label, a.commit, a.repo)
     if a.command == "registry-list":
         return registry_list(a.store)
     try:
