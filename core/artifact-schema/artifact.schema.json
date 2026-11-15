@@ -89,6 +89,14 @@
       "uniqueItems": true,
       "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     },
+    "evidence_hashes": {
+      "type": "object",
+      "propertyNames": { "pattern": "\\S" },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
     "work_item_id": {
       "type": "string",
       "minLength": 1,

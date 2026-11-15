@@ -1,5 +1,6 @@
 import json
 import hashlib
+import datetime
 from pathlib import Path
 import shutil
 import contextlib
@@ -2072,9 +2073,10 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             base_revision = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            source.write_text("reviewed content v2\n", encoding="utf-8")
             (repo / "hidden.txt").write_text("hidden\n", encoding="utf-8")
             for argv in (
-                ("git", "add", "hidden.txt"),
+                ("git", "add", "source.txt", "hidden.txt"),
                 ("git", "commit", "-m", "hidden"),
             ):
                 p = subprocess.run(
@@ -2087,6 +2089,10 @@ class CliTests(unittest.TestCase):
                 ["git", "show", "{}:source.txt".format(revision)],
                 cwd=repo)).hexdigest()
             records = stage2_records()
+            now = datetime.datetime.now().astimezone().isoformat()
+            for record in records.values():
+                if record.get("kind") == "verification":
+                    record["execution"]["executed_at"] = now
             for name, record in records.items():
                 if record.get("kind") == "artifact":
                     record.update({
@@ -2139,49 +2145,12 @@ class CliTests(unittest.TestCase):
             (repo / "evals" / "rogue.py").unlink()
             (repo / "evals").rmdir()
 
-            for name, record in records.items():
-                if record.get("kind") == "artifact":
-                    record["evidence_path"] = "evals/final"
-                    record["evidence_files"] = ["evals/final/route.json"]
-            rebind_record_hashes(records)
-            write_records(records_dir, records)
-            (repo / "evals" / "final").mkdir(parents=True)
-            (repo / "evals" / "final" / "record.json").write_text(
-                "{}\n", encoding="utf-8")
-            (repo / "evals" / "final" / "route.json").write_text(
-                "{}\n", encoding="utf-8")
-            p = run_cli(
-                "check-records", "--dir", records_dir, "--repo", repo)
-            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-
-            rogue = repo / "evals" / "final" / "rogue.py"
-            rogue.write_text("UNREVIEWED = True\n", encoding="utf-8")
-            p = run_cli(
-                "check-records", "--dir", records_dir, "--repo", repo)
-            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-            self.assertIn("evals/final/rogue.py", p.stderr)
-            rogue.unlink()
-
-            rogue.write_text("UNREVIEWED = True\n", encoding="utf-8")
-            for argv in (
-                ("git", "add", "evals/final/rogue.py"),
-                ("git", "commit", "-m", "unreviewed evidence code"),
-            ):
-                p = subprocess.run(
-                    argv, cwd=repo, text=True,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-            p = run_cli(
-                "check-records", "--dir", records_dir, "--repo", repo)
-            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-            self.assertIn("post-source change: evals/final/rogue.py", p.stderr)
-
             source.write_text("UNREVIEWED replacement\n", encoding="utf-8")
             p = run_cli(
                 "check-records", "--dir", records_dir, "--repo", repo)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("working tree", p.stderr)
-            source.write_text("reviewed content\n", encoding="utf-8")
+            source.write_text("reviewed content v2\n", encoding="utf-8")
 
             for name, record in records.items():
                 if record.get("kind") == "artifact":
@@ -2217,6 +2186,117 @@ class CliTests(unittest.TestCase):
             self.assertEqual(
                 decision["artifact_hashes"],
                 {"1": artifact["content_hash"]})
+
+    def test_evidence_scope_and_source_binding(self):
+        if shutil.which("git") is None:
+            self.skipTest("git is unavailable")
+        with tempfile.TemporaryDirectory() as t:
+            repo = Path(t) / "repo"
+            records_dir = repo / "evals" / "final"
+            records_dir.mkdir(parents=True)
+            (repo / "source.txt").write_text("source\n", encoding="utf-8")
+            (repo / "stable.txt").write_text("stable\n", encoding="utf-8")
+            for argv in (
+                ("git", "init"),
+                ("git", "config", "user.name", "test"),
+                ("git", "config", "user.email", "test@example.com"),
+                ("git", "add", "source.txt", "stable.txt"),
+                ("git", "commit", "-m", "base"),
+            ):
+                p = subprocess.run(
+                    argv, cwd=repo, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            base_revision = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            (repo / "hidden.txt").write_text("hidden\n", encoding="utf-8")
+            for argv in (
+                ("git", "add", "hidden.txt"),
+                ("git", "commit", "-m", "source"),
+            ):
+                p = subprocess.run(
+                    argv, cwd=repo, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            revision = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            route = repo / "evals" / "run-config.json"
+            route_hash = hashlib.sha256(b"{}\n").hexdigest()
+            records = stage2_records()
+            now = datetime.datetime.now().astimezone().isoformat()
+            records["verification.json"]["execution"]["executed_at"] = now
+            records["verification-review.json"]["execution"][
+                "executed_at"] = now
+            for record in records.values():
+                if record.get("kind") != "artifact":
+                    continue
+                record.update({
+                    "artifact_type": "working_tree_change",
+                    "files": ["hidden.txt"],
+                    "base_revision": base_revision,
+                    "source_revision": revision,
+                    "file_hashes": {
+                        "hidden.txt": hashlib.sha256(b"hidden\n").hexdigest(),
+                    },
+                    "evidence_path": "evals/final",
+                    "evidence_files": ["evals/run-config.json"],
+                    "evidence_hashes": {
+                        "evals/run-config.json": route_hash
+                    },
+                })
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            route.write_text("{}\n", encoding="utf-8")
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            route.write_text("{\"changed\":true}\n", encoding="utf-8")
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("evidence file hash", p.stderr)
+            route.write_text("{}\n", encoding="utf-8")
+
+            configs = repo / "configs"
+            configs.mkdir()
+            (configs / "critical.json").write_text(
+                "{\"critical\":true}\n", encoding="utf-8")
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["evidence_path"] = "configs"
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("actual records directory", p.stderr)
+
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["evidence_path"] = "evals/final"
+                    record["files"].append("stable.txt")
+                    record["file_hashes"]["stable.txt"] = hashlib.sha256(
+                        b"stable\n").hexdigest()
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("changed file set", p.stderr)
+
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["files"].remove("stable.txt")
+                    record["file_hashes"].pop("stable.txt")
+            records["verification.json"]["execution"]["executed_at"] = (
+                "1970-01-01T00:00:00+00:00")
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("before source revision", p.stderr)
 
     def test_migration_upgrades_legacy_v3_identity_fields(self):
         with tempfile.TemporaryDirectory() as t:

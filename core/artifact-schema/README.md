@@ -28,7 +28,12 @@ runtime reject a valid-looking but stale hash, including the same
 A `working_tree_change` Artifact additionally records an immutable
 `source_revision` and a `file_hashes` map for every path in `files`.
 `check-records --repo <git-root>` resolves those files at the recorded revision
-and rejects changed or missing content.
+and rejects changed or missing content. `files` must exactly equal the
+`base_revision..source_revision` changed-file set. A directory exemption is
+accepted only when `evidence_path` resolves to the actual records directory
+being checked; other evidence files require exact `evidence_files` entries and
+matching `evidence_hashes`. Verification execution timestamps cannot precede
+the source revision.
 
 For L3, the Artifact records `producer_context` and final Reviewer/Challenger
 PASS records record `host_context` with session id, model, independence, and

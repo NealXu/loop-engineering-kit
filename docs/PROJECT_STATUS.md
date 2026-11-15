@@ -13,7 +13,7 @@ remain in `evals/`; canonical role records remain run-scoped JSON evidence.
 | Seven v3 canonical record schemas | Implemented | `core/artifact-schema/*.schema.json` |
 | Cross-record, ancestry, role, and approval validation | Implemented | `check-records`, `check-finding` |
 | Content-addressed Artifact identity across evidence and approval | Implemented | `content_hash`, `check-records` |
-| Working-tree revision and per-file digest verification | Implemented | `source_revision`, `file_hashes`, `check-records --repo` |
+| Working-tree revision, exact changed-set, evidence digest, and time verification | Implemented | `source_revision`, `file_hashes`, `evidence_hashes`, `check-records --repo` |
 | Reviewed-set digest for Approval and ACCEPT | Implemented | `reviewed_set_digest` |
 | Safe v1/v2 to v3 migration | Implemented | `migrate-records` |
 | Deterministic pre-identity v3 record upgrade | Implemented | `migrate-records` |

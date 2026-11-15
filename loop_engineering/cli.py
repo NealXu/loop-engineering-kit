@@ -202,6 +202,49 @@ def execution_errors(verification):
     return errors
 
 
+def verification_time_errors(artifact, verifications, repo_root):
+    if (artifact.get("artifact_type") != "working_tree_change"
+            or repo_root is None):
+        return []
+    revision = artifact.get("source_revision")
+    try:
+        process = subprocess.run(
+            ["git", "show", "-s", "--format=%ct", revision],
+            cwd=str(Path(repo_root).resolve()), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, check=False)
+    except OSError as exc:
+        return ["Unable to resolve source revision time: {}".format(exc)]
+    if process.returncode != 0:
+        return ["Unable to resolve source revision time"]
+    try:
+        source_time = datetime.datetime.fromtimestamp(
+            int(process.stdout.strip()), datetime.timezone.utc)
+    except ValueError:
+        return ["Unable to parse source revision time"]
+    errors = []
+    for verification in verifications:
+        if (verification.get("artifact_id") != artifact.get("id")
+                or verification.get("artifact_version")
+                != artifact.get("version")):
+            continue
+        execution = verification.get("execution")
+        if not isinstance(execution, dict):
+            continue
+        try:
+            executed_at = datetime.datetime.fromisoformat(
+                execution.get("executed_at", ""))
+        except (TypeError, ValueError):
+            continue
+        if (executed_at.tzinfo is not None
+                and executed_at.astimezone(datetime.timezone.utc)
+                < source_time):
+            errors.append(
+                "Verification {} execution executed_at is before source revision"
+                .format(json.dumps(
+                    verification.get("id"), ensure_ascii=True)))
+    return errors
+
+
 def decision_history_errors(decisions, allow_no_terminal):
     errors = []
     cycles = []
@@ -233,7 +276,7 @@ def decision_history_errors(decisions, allow_no_terminal):
     return errors
 
 
-def artifact_source_errors(artifact, repo_root):
+def artifact_source_errors(artifact, repo_root, records_dir=None):
     if artifact.get("artifact_type") != "working_tree_change":
         return []
     errors = []
@@ -277,12 +320,31 @@ def artifact_source_errors(artifact, repo_root):
         for item in artifact.get("evidence_files", [])
         if isinstance(item, str) and item.strip()
     }
+    evidence_hashes = artifact.get("evidence_hashes", {})
+    if (not isinstance(evidence_hashes, dict)
+            or set(evidence_hashes) != evidence_files):
+        errors.append(
+            "working_tree_change Artifact evidence_hashes must match evidence_files")
+        evidence_hashes = {}
+    canonical_evidence = False
+    if records_dir is not None and evidence_path:
+        try:
+            records_relative = Path(records_dir).resolve().relative_to(
+                repo_root).as_posix()
+        except ValueError:
+            errors.append(
+                "Artifact records directory must be inside the repository")
+        else:
+            canonical_evidence = evidence_path == records_relative
+            if not canonical_evidence:
+                errors.append(
+                    "Artifact evidence_path must match the actual records directory")
 
     def is_evidence_path(path_text):
         return (
             path_text in evidence_files
             or (
-                bool(evidence_path)
+                canonical_evidence
                 and path_text.startswith(evidence_path + "/")
                 and path_text.endswith(".json")
             )
@@ -301,7 +363,7 @@ def artifact_source_errors(artifact, repo_root):
     changed_files = {
         line for line in changed.stdout.split("\0") if line
     }
-    if not changed_files.issubset(set(files)):
+    if changed_files != set(files):
         errors.append(
             "Artifact changed file set does not match base_revision..source_revision")
     if not set(deleted_files).issubset(changed_files):
@@ -354,6 +416,19 @@ def artifact_source_errors(artifact, repo_root):
         if worktree_hash != actual:
             errors.append(
                 "Artifact working tree file hash does not match: {}".format(
+                    relative))
+    for relative, expected in sorted(evidence_hashes.items()):
+        worktree = repo_root / relative
+        try:
+            evidence_bytes = worktree.read_bytes().replace(b"\r\n", b"\n")
+        except OSError as exc:
+            errors.append(
+                "Unable to read Artifact evidence file {}: {}".format(
+                    relative, exc))
+            continue
+        if hashlib.sha256(evidence_bytes).hexdigest() != expected:
+            errors.append(
+                "Artifact evidence file hash does not match: {}".format(
                     relative))
     status = subprocess.run(
         ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
@@ -1137,7 +1212,8 @@ def l3_host_provenance_errors(work_item, artifact, verifications):
     return errors
 
 
-def records_errors(records, repo_root=None, pre_closure=False):
+def records_errors(
+        records, repo_root=None, pre_closure=False, records_dir=None):
     errors = []
     groups = {}
     schema_valid = True
@@ -1425,7 +1501,10 @@ def records_errors(records, repo_root=None, pre_closure=False):
         work_item, final_artifact, list(verifications.values())))
     if final_artifact is not None:
         errors.extend(artifact_source_errors(
-            final_artifact, repo_root or Path.cwd()))
+            final_artifact, repo_root or Path.cwd(), records_dir))
+        errors.extend(verification_time_errors(
+            final_artifact, list(verifications.values()),
+            repo_root or Path.cwd()))
     for finding_id, finding in findings.items():
         if final_artifact is not None:
             errors.extend(verification_errors(
@@ -1817,7 +1896,8 @@ def check_records(directory, repo=None, pre_closure=False):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = records_errors(records, repo, pre_closure)
+    errors = records_errors(
+        records, repo, pre_closure, records_dir=root)
     if errors:
         blocked = any(error.startswith("BLOCKED:") for error in errors)
         print("[BLOCKED] records" if blocked else "[FAIL] records",
@@ -2560,7 +2640,8 @@ def approval_exists(records, artifact, approver=None):
 
 
 def runtime_record_errors(
-        records, accept_gate=True, repo_root=None, allow_preclosure=True):
+        records, accept_gate=True, repo_root=None, allow_preclosure=True,
+        records_dir=None):
     errors = []
     work_items = []
     for record in records:
@@ -2698,7 +2779,8 @@ def runtime_record_errors(
             pre_closure=allow_preclosure and not any(
                 record.get("kind") == "decision"
                 and record.get("decision") == "ACCEPT"
-                for record in records)):
+                for record in records),
+            records_dir=records_dir):
         if error in allowed_without_terminal:
             continue
         if error not in errors:
@@ -2974,7 +3056,8 @@ def runtime_checkpoint(records_dir, store, repo=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records, repo_root=repo)
+    errors = runtime_record_errors(
+        records, repo_root=repo, records_dir=records_dir)
     if errors:
         print("[FAIL] runtime records", file=sys.stderr)
         for error in errors:
@@ -3002,7 +3085,8 @@ def runtime_status(store, records_dir=None, repo=None):
         except ValueError as exc:
             print("ERROR: {}".format(exc), file=sys.stderr)
             return 2
-        errors = runtime_record_errors(records, repo_root=repo)
+        errors = runtime_record_errors(
+            records, repo_root=repo, records_dir=records_dir)
         if errors:
             print("[FAIL] runtime records", file=sys.stderr)
             for error in errors:
@@ -3018,7 +3102,8 @@ def runtime_status(store, records_dir=None, repo=None):
             matching = None
             skipped += 1
         if matching is None:
-            errors = runtime_record_errors(records, repo_root=repo)
+            errors = runtime_record_errors(
+                records, repo_root=repo, records_dir=records_dir)
             if errors:
                 print("ERROR: no matching checkpoint and records are invalid",
                       file=sys.stderr)
@@ -3058,7 +3143,8 @@ def runtime_resume(store, records_dir=None, repo=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records, repo_root=repo)
+    errors = runtime_record_errors(
+        records, repo_root=repo, records_dir=records_dir)
     if errors:
         print("[FAIL] runtime records", file=sys.stderr)
         for error in errors:
@@ -3111,7 +3197,7 @@ def _approve_records_locked(records_dir, artifact_path, approver, statement,
         return 2
     errors = runtime_record_errors(
         records, accept_gate=False, repo_root=repo,
-        allow_preclosure=False)
+        allow_preclosure=False, records_dir=records_dir)
     if errors:
         print("[FAIL] approval records", file=sys.stderr)
         for error in errors:
@@ -3382,7 +3468,8 @@ def metrics(records_dir, host_metrics_path=None, output=None, repo=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records, repo_root=repo)
+    errors = runtime_record_errors(
+        records, repo_root=repo, records_dir=records_dir)
     if errors:
         print("[FAIL] metrics records", file=sys.stderr)
         for error in errors:
@@ -3472,7 +3559,8 @@ def improvements(records_dir, output=None, repo=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records, repo_root=repo)
+    errors = runtime_record_errors(
+        records, repo_root=repo, records_dir=records_dir)
     if errors:
         print("[FAIL] improvement records", file=sys.stderr)
         for error in errors:
@@ -3566,7 +3654,8 @@ def registry_update(store, records_dir, label=None, commit=None, repo=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records, repo_root=repo)
+    errors = runtime_record_errors(
+        records, repo_root=repo, records_dir=records_dir)
     if errors:
         print("[FAIL] registry records", file=sys.stderr)
         for error in errors:
