@@ -144,14 +144,11 @@ def reviewed_set_sha256(records, artifact):
     selected.extend(
         record for record in records
         if record.get("kind") == "finding")
-    registered_closures = registered_closure_verification_ids(records)
     selected.extend(
         record for record in records
         if record.get("kind") == "verification"
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
-        and not is_registered_closure_verification(
-            record, registered_closures)
         and record.get("role") in {"verifier", "reviewer", "challenger"})
     return records_sha256(selected)
 
@@ -327,10 +324,16 @@ def artifact_source_errors(artifact, repo_root, records_dir=None):
             "working_tree_change Artifact evidence_hashes must match evidence_files")
         evidence_hashes = {}
     canonical_evidence = False
+    records_lock = None
     if records_dir is not None and evidence_path:
         try:
-            records_relative = Path(records_dir).resolve().relative_to(
+            resolved_records = Path(records_dir).resolve()
+            records_relative = resolved_records.relative_to(
                 repo_root).as_posix()
+            records_lock = (
+                resolved_records.parent
+                / ".{}.migration.lock".format(resolved_records.name))
+            records_lock = records_lock.relative_to(repo_root).as_posix()
         except ValueError:
             errors.append(
                 "Artifact records directory must be inside the repository")
@@ -343,6 +346,7 @@ def artifact_source_errors(artifact, repo_root, records_dir=None):
     def is_evidence_path(path_text):
         return (
             path_text in evidence_files
+            or path_text == records_lock
             or (
                 canonical_evidence
                 and path_text.startswith(evidence_path + "/")
@@ -369,6 +373,19 @@ def artifact_source_errors(artifact, repo_root, records_dir=None):
     if not set(deleted_files).issubset(changed_files):
         errors.append(
             "Artifact deleted_files do not resolve in the changed file set")
+    for relative in deleted_files:
+        source_exists = subprocess.run(
+            ["git", "cat-file", "-e", "{}:{}".format(revision, relative)],
+            cwd=str(repo_root), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, check=False)
+        if source_exists.returncode == 0:
+            errors.append(
+                "Artifact deleted file still exists at source revision: {}".format(
+                    relative))
+        if (repo_root / relative).exists():
+            errors.append(
+                "Artifact deleted file still exists in the working tree: {}".format(
+                    relative))
     post_revision = subprocess.run(
         ["git", "diff", "--name-only", "-z",
          "{}..HEAD".format(revision)],
@@ -406,14 +423,17 @@ def artifact_source_errors(artifact, repo_root, records_dir=None):
             continue
         worktree = repo_root / relative
         try:
-            worktree_bytes = worktree.read_bytes().replace(b"\r\n", b"\n")
+            raw_bytes = worktree.read_bytes()
         except OSError as exc:
             errors.append(
                 "Unable to read Artifact working tree file {}: {}".format(
                     relative, exc))
             continue
-        worktree_hash = hashlib.sha256(worktree_bytes).hexdigest()
-        if worktree_hash != actual:
+        worktree_hashes = {
+            hashlib.sha256(raw_bytes).hexdigest(),
+            hashlib.sha256(raw_bytes.replace(b"\r\n", b"\n")).hexdigest(),
+        }
+        if actual not in worktree_hashes:
             errors.append(
                 "Artifact working tree file hash does not match: {}".format(
                     relative))
@@ -3325,7 +3345,7 @@ def _approve_records_locked(records_dir, artifact_path, approver, statement,
             finding, work_item, final_artifact, all_verifications,
             pre_closure=True))
     source_failures = artifact_source_errors(
-        final_artifact, repo or Path.cwd())
+        final_artifact, repo or Path.cwd(), records_dir)
     failures = execution_failures + finding_failures + source_failures
     if failures:
         print("[FAIL] approval preconditions", file=sys.stderr)

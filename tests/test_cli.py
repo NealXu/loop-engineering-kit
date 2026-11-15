@@ -766,6 +766,76 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("reviewed_set_digest", p.stderr)
 
+    def test_approval_binds_closure_pass_evidence(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = l3_preapproval_records()
+            artifact = records["artifact-2.json"]
+            records["finding-closure.json"] = {
+                "schema_version": 3,
+                "id": "F-CLOSURE",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "closure",
+                "claim": "closure evidence is required",
+                "evidence": ["regression test"],
+                "impact": "acceptance would be incomplete",
+                "required_action": "run closure regression",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "closure_gate": True,
+                "prevention": {
+                    "kind": "structure",
+                    "action": "retain closure regression",
+                    "evidence": ["regression test"],
+                    "regression_verification_ids": ["V-CLOSURE"],
+                },
+            }
+            records["verification-closure.json"] = {
+                "schema_version": 3,
+                "id": "V-CLOSURE",
+                "kind": "verification",
+                "artifact_id": artifact["id"],
+                "artifact_version": artifact["version"],
+                "artifact_content_hash": artifact["content_hash"],
+                "closure_gate": True,
+                "criterion_ids": ["AC-1"],
+                "finding_id": "F-CLOSURE",
+                "role": "verifier",
+                "check": "closure regression",
+                "method": "targeted test",
+                "status": "PASS",
+                "evidence": ["closure passed"],
+                "limitations": [],
+                "execution": execution("python -m unittest closure"),
+            }
+            rebind_record_hashes(records)
+            write_records(root, records)
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "closure reviewed",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            approval = json.loads(p.stdout)
+            records["approval-test.json"] = approval
+            records["decision.json"] = l3_records()["decision.json"]
+            records["decision.json"]["evidence_refs"].append(approval["id"])
+            rebind_record_hashes(records)
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            records["verification-closure.json"]["evidence"] = [
+                "replaced after approval"
+            ]
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("reviewed_set_digest", p.stderr)
+
     def test_challenger_finding_cannot_replace_pass(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -2121,6 +2191,24 @@ class CliTests(unittest.TestCase):
             p = run_cli(
                 "check-records", "--dir", records_dir, "--repo", repo)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["deleted_files"] = ["source.txt"]
+                    record["file_hashes"].pop("source.txt")
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("deleted file still exists", p.stderr)
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["deleted_files"] = []
+                    record["file_hashes"]["source.txt"] = source_hash
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+
             p = subprocess.run(
                 [sys.executable, str(CLI), "check-records",
                  "--dir", str(records_dir), "--repo", str(repo)],
@@ -2297,6 +2385,65 @@ class CliTests(unittest.TestCase):
                 "check-records", "--dir", records_dir, "--repo", repo)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("before source revision", p.stderr)
+
+    def test_approval_keeps_records_scope(self):
+        if shutil.which("git") is None:
+            self.skipTest("git is unavailable")
+        with tempfile.TemporaryDirectory() as t:
+            repo = Path(t) / "repo"
+            records_dir = repo / "evals" / "final"
+            records_dir.mkdir(parents=True)
+            for argv in (
+                ("git", "init"),
+                ("git", "config", "user.name", "test"),
+                ("git", "config", "user.email", "test@example.com"),
+                ("git", "commit", "--allow-empty", "-m", "base"),
+            ):
+                p = subprocess.run(
+                    argv, cwd=repo, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            base_revision = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            source = repo / "source.txt"
+            source.write_text("reviewed source\n", encoding="utf-8")
+            for argv in (
+                ("git", "add", "source.txt"),
+                ("git", "commit", "-m", "source"),
+            ):
+                p = subprocess.run(
+                    argv, cwd=repo, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            revision = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            records = l3_preapproval_records()
+            now = datetime.datetime.now().astimezone().isoformat()
+            for record in records.values():
+                if record.get("kind") == "verification":
+                    record["execution"]["executed_at"] = now
+            artifact = records["artifact-2.json"]
+            artifact.update({
+                "artifact_type": "working_tree_change",
+                "files": ["source.txt"],
+                "base_revision": base_revision,
+                "source_revision": revision,
+                "file_hashes": {
+                    "source.txt": hashlib.sha256(
+                        b"reviewed source\n").hexdigest()
+                },
+                "evidence_path": "evals/final",
+            })
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "approve", "--records", records_dir,
+                "--artifact", records_dir / "artifact-2.json",
+                "--repo", repo,
+                "--approver", "human-reviewer",
+                "--statement", "records scope",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
     def test_migration_upgrades_legacy_v3_identity_fields(self):
         with tempfile.TemporaryDirectory() as t:

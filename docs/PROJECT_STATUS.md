@@ -91,6 +91,8 @@ Candidate generation does not modify artifacts or promote rules automatically.
 - L3 session/model provenance proves only which values the host declared. It
   detects missing and colliding declarations but is not a cryptographic proof
   of separate processes or model identity.
+- Execution freshness uses the declared Git committer timestamp as a local
+  ordering check. It is not a trusted monotonic clock or identity proof.
 - The default GLM provider remains an external availability constraint; the
   validated Claude path is `qwen3.7-plus`.
 - Literal CentOS 8 is not booted; Rocky Linux 8 is the executed compatibility
