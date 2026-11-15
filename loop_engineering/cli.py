@@ -2756,6 +2756,76 @@ def improvements(records_dir, output=None):
     return 0
 
 
+def registry_entry_errors(entry):
+    errors = []
+    if entry.get("schema_version") != 1:
+        errors.append("registry entry schema_version must be 1")
+    if (not isinstance(entry.get("work_item_id"), str)
+            or not STABLE_ID.fullmatch(entry.get("work_item_id", ""))):
+        errors.append("registry entry work_item_id is invalid")
+    digest = entry.get("records_digest")
+    if not isinstance(digest, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", digest):
+        errors.append("registry entry records_digest is invalid")
+    versions = entry.get("artifact_versions")
+    if (not isinstance(versions, list) or not versions
+            or not all(
+                isinstance(item, str) and item.strip() for item in versions)):
+        errors.append("registry entry artifact_versions is invalid")
+    if entry.get("state") not in {
+            "DEFINE", "PRODUCE", "VERIFY", "REVIEW", "CHALLENGE",
+            "RECONCILE", "DECIDE", "REPAIR", "ACCEPT", "ESCALATE", "STOP"}:
+        errors.append("registry entry state is invalid")
+    approval_count = entry.get("approval_count")
+    if (isinstance(approval_count, bool)
+            or not isinstance(approval_count, int)
+            or approval_count < 0):
+        errors.append("registry entry approval_count is invalid")
+    for field in ("label", "commit"):
+        if not isinstance(entry.get(field), str):
+            errors.append("registry entry {} is invalid".format(field))
+    registered_at = entry.get("registered_at")
+    if not isinstance(registered_at, str):
+        errors.append("registry entry registered_at is invalid")
+    else:
+        try:
+            datetime.datetime.fromisoformat(registered_at)
+        except ValueError:
+            errors.append("registry entry registered_at is invalid")
+    return errors
+
+
+def registry_provenance(entry):
+    return {
+        field: entry.get(field) for field in (
+            "schema_version", "work_item_id", "records_digest",
+            "artifact_versions", "state", "approval_count", "label", "commit")
+    }
+
+
+def write_registry_entry(path, entry):
+    path = Path(path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(
+        ".{}.{}.tmp".format(path.name, uuid.uuid4().hex))
+    temporary.write_text(
+        json.dumps(entry, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    try:
+        os.link(str(temporary), str(path))
+        return entry
+    except FileExistsError:
+        existing = load_json(path)
+        if registry_provenance(existing) != registry_provenance(entry):
+            raise ValueError("registry provenance conflict")
+        return existing
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def registry_update(store, records_dir, label=None, commit=None):
     try:
         store = checkpoint_store_path(records_dir, store)
@@ -2787,7 +2857,11 @@ def registry_update(store, records_dir, label=None, commit=None):
     key = "{}\0{}".format(entry["work_item_id"], digest).encode("utf-8")
     filename = "{}.json".format(hashlib.sha256(key).hexdigest())
     path = Path(store).resolve() / "registry" / "runs" / filename
-    write_json_file(path, entry)
+    try:
+        entry = write_registry_entry(path, entry)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 1
     print(json.dumps(entry, indent=2, ensure_ascii=False))
     return 0
 
@@ -2801,8 +2875,9 @@ def registry_list(store):
         except ValueError as exc:
             print("ERROR: {}".format(exc), file=sys.stderr)
             return 1
-        if entry.get("schema_version") != 1:
-            print("ERROR: registry entry format is invalid", file=sys.stderr)
+        errors = registry_entry_errors(entry)
+        if errors:
+            print("ERROR: {}".format(errors[0]), file=sys.stderr)
             return 1
         runs.append(entry)
     legacy = root / "registry.json"
@@ -2814,10 +2889,19 @@ def registry_list(store):
             return 1
         if isinstance(old.get("runs"), list):
             runs.extend(old["runs"])
-    unique = {
-        (entry.get("work_item_id"), entry.get("records_digest")): entry
-        for entry in runs
-    }
+    unique = {}
+    for entry in runs:
+        errors = registry_entry_errors(entry)
+        if errors:
+            print("ERROR: {}".format(errors[0]), file=sys.stderr)
+            return 1
+        key = (entry["work_item_id"], entry["records_digest"])
+        if key in unique:
+            if registry_provenance(unique[key]) != registry_provenance(entry):
+                print("ERROR: registry provenance conflict", file=sys.stderr)
+                return 1
+            continue
+        unique[key] = entry
     registry = {
         "schema_version": 1,
         "runs": sorted(

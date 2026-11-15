@@ -1109,10 +1109,12 @@ class CliTests(unittest.TestCase):
                 "registry-update", "--store", store,
                 "--records", records_dir, "--label", "local")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            first = json.loads(p.stdout)
             p = run_cli(
                 "registry-update", "--store", store,
                 "--records", records_dir, "--label", "local")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(json.loads(p.stdout), first)
             p = run_cli("registry-list", "--store", store)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             registry = json.loads(p.stdout)
@@ -1122,6 +1124,59 @@ class CliTests(unittest.TestCase):
             self.assertEqual(registry["runs"][0]["state"], "ACCEPT")
             self.assertEqual(
                 len(list((store / "registry" / "runs").glob("*.json"))), 1)
+
+    def test_registry_rejects_same_digest_provenance_conflict(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            write_records(records_dir, stage2_records())
+            p = run_cli(
+                "registry-update", "--store", store,
+                "--records", records_dir, "--label", "local",
+                "--commit", "abc123")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            original = json.loads(p.stdout)
+            entry_path = next((store / "registry" / "runs").glob("*.json"))
+            p = run_cli(
+                "registry-update", "--store", store,
+                "--records", records_dir, "--label", "remote",
+                "--commit", "abc123")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("provenance conflict", p.stderr)
+            self.assertEqual(
+                json.loads(entry_path.read_text(encoding="utf-8")),
+                original)
+            p = run_cli("registry-list", "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(json.loads(p.stdout)["runs"], [original])
+
+    def test_registry_same_digest_concurrent_conflict_keeps_one_provenance(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            write_records(records_dir, stage2_records())
+            processes = [
+                subprocess.Popen([
+                    sys.executable, str(CLI), "registry-update",
+                    "--store", str(store), "--records", str(records_dir),
+                    "--label", label,
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                for label in ("A", "B")
+            ]
+            outputs = [process.communicate(timeout=30) for process in processes]
+            for process, (stdout, stderr) in zip(processes, outputs):
+                self.assertNotIn("Traceback", stderr)
+            self.assertEqual(
+                sorted(process.returncode for process in processes), [0, 1])
+            p = run_cli("registry-list", "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            runs = json.loads(p.stdout)["runs"]
+            self.assertEqual(len(runs), 1)
+            self.assertIn(runs[0]["label"], {"A", "B"})
 
     def test_metrics_reject_cross_work_approval_and_nonfinite_values(self):
         with tempfile.TemporaryDirectory() as t:

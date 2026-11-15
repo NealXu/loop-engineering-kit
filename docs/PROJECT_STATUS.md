@@ -20,6 +20,7 @@ remain in `evals/`; canonical role records remain run-scoped JSON evidence.
 | Deterministic verification reports | Complete | `doctor`, `verify` |
 | Process metrics and host metrics ingestion | Complete | `metrics` |
 | Persistent version registry | Complete | `registry-update`, `registry-list` |
+| Registry provenance conflict rejection | Complete | same-digest metadata validation |
 | Automatic improvement candidates | Complete | `improvements` |
 | Codex and Claude Code adapters | Complete | `.codex/`, `.claude/`, `adapters/` |
 | Windows, Ubuntu, and Rocky Linux 8 CI | Complete | `.github/workflows/tests.yml` |
@@ -60,8 +61,9 @@ recovery journal, and swaps directories only after validation.
 - `metrics` reports workflow metrics and accepts optional host metrics for
   turns, tool calls, tokens, elapsed time, and cost.
 - `registry-update` and `registry-list` persist Work Item and Artifact version
-  evidence by canonical record digest in per-run files, so concurrent updates
-  do not overwrite one another.
+  evidence by canonical record digest in per-run files. Identical registration
+  is idempotent; conflicting metadata for the same digest is rejected and the
+  original provenance is preserved.
 - `improvements` generates deterministic candidates from recurring findings,
   failed or blocked checks, repeated repairs, and unresolved medium risks.
 

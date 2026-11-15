@@ -83,4 +83,7 @@ Approvals, and Iteration ancestry. `check-finding` remains the focused
 regression-evidence gate for high, blocking, and recurring Findings.
 `runtime-checkpoint`, `runtime-status`, and `runtime-resume` provide durable
 storage and automatic recovery. `metrics`, `registry-update`, and
-`improvements` implement the Stage 3 control-plane operations.
+`improvements` implement the Stage 3 control-plane operations. A registry key
+is the Work Item id plus canonical record digest; a repeated identical entry is
+idempotent, while different label, commit, state, version, or approval metadata
+for that key is a provenance conflict and cannot overwrite the original.

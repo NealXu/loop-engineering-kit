@@ -51,7 +51,10 @@ ships.**
 
 Stage 2 runtime and approval capabilities and Stage 3 metrics, registry, and
 improvement candidates are implemented. Generated improvement candidates are
-review inputs; they are never promoted automatically.
+review inputs; they are never promoted automatically. The run registry treats
+each Work Item plus record digest as one immutable provenance entry; identical
+registration is idempotent, while conflicting label, commit, or run metadata is
+rejected instead of overwriting the original.
 
 Schema v3 also binds Artifact identity to a canonical `content_hash`.
 Verification, Decision, and Human Approval records must repeat the matching
