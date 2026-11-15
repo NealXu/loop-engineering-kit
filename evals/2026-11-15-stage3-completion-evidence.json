@@ -3,12 +3,12 @@
   "work_item_id": "WI-LE-STAGE3-COMPLETION-20261115",
   "artifact": {
     "id": "A-LE-STAGE3-COMPLETION",
-    "version": "2",
+    "version": "3",
     "file_count": 18,
     "base": "73ea97a",
-    "code_head": "4707115aee7f2919593d265bf5be1c8fb24fab67",
-    "diff_git_blob": "ab57aa446786d7475c006ec3de4a88c5d6a10f72",
-    "diff_hash_command": "git diff --binary 73ea97a..4707115 | git hash-object --stdin"
+    "code_head": "74c94b98771188512553b97644e3ad54df6b2938",
+    "diff_git_blob": "7c101262e6d755e9f74ef5f4ab23ce738727db79",
+    "diff_hash_command": "git diff --binary 73ea97a..74c94b9 | git hash-object --stdin"
   },
   "acceptance_criteria": {
     "AC-MIGRATION": "migrate-records performs safe v1/v2 to v3 migration with dry-run, full validation, backup, and atomic writes.",
@@ -64,6 +64,31 @@
       "id": "F-REGISTRY-CONCURRENCY",
       "severity": "high",
       "status": "resolved"
+    },
+    {
+      "id": "F-SHARED-FULL-GATE",
+      "severity": "blocking",
+      "status": "resolved"
+    },
+    {
+      "id": "F-APPROVAL-LINEAGE",
+      "severity": "high",
+      "status": "resolved"
+    },
+    {
+      "id": "F-V1-COVERAGE-MAPPING",
+      "severity": "high",
+      "status": "resolved"
+    },
+    {
+      "id": "F-MIGRATION-JOURNAL",
+      "severity": "high",
+      "status": "resolved"
+    },
+    {
+      "id": "F-STAGE3-OUTPUT-CONTAINMENT",
+      "severity": "medium",
+      "status": "resolved"
     }
   ],
   "verifications": [
@@ -104,16 +129,16 @@
     }
   ],
   "post_delivery_verification": {
-    "tests": "76/76",
+    "tests": "80/80",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage3-repair1b-20261115-095254",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage3-repair2b-20261115-100938",
     "external_schema": "PowerShell Test-Json: 7 valid accepted, 7 invalid rejected",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "installed_cli_hash_match": true,
     "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
-    "user_scope_backup_stamp": "20261115-095515",
-    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43665217452",
-    "ci_final_head": "4707115aee7f2919593d265bf5be1c8fb24fab67",
+    "user_scope_backup_stamp": "20261115-101259",
+    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43666567186",
+    "ci_final_head": "74c94b98771188512553b97644e3ad54df6b2938",
     "ci_final_status": "PASS (5/5 jobs)"
   }
 }
