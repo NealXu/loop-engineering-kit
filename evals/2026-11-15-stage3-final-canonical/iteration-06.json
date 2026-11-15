@@ -1,0 +1,20 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-06",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 6,
+  "input_versions": [
+    "6"
+  ],
+  "output_versions": [
+    "7"
+  ],
+  "changes": [
+    "Restrict closure evidence to matching closure_gate fields.",
+    "Remove premature closure execution metadata.",
+    "Fail closed on malformed legacy registry entries.",
+    "Freeze final evidence before acceptance."
+  ],
+  "result": "REPAIR"
+}

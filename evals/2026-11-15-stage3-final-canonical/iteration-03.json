@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-03",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 3,
+  "input_versions": [
+    "3"
+  ],
+  "output_versions": [
+    "4"
+  ],
+  "changes": [
+    "Added evidence_scope record_closure.",
+    "Excluded closure evidence from reviewed_set_digest.",
+    "Added check-records --pre-closure bootstrap."
+  ],
+  "result": "REPAIR"
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-SOURCE-LINEAGE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Git source ancestry",
+  "claim": "An unrelated commit with a matching tree could be used as source_revision.",
+  "evidence": [
+    "A tree-equal orphan commit was accepted even though it was not an ancestor of HEAD."
+  ],
+  "impact": "Source identity and commit-time evidence could be decoupled from the delivered branch.",
+  "required_action": "Require base_revision to be an ancestor of source_revision and source_revision to be an ancestor of HEAD.",
+  "criterion_ids": [
+    "AC-INTEGRITY",
+    "AC-CI"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Use git merge-base --is-ancestor for both source lineage edges.",
+    "evidence": [
+      "tests/test_cli.py::test_evidence_scope_and_source_binding"
+    ],
+    "regression_verification_ids": [
+      "V-SOURCE-LINEAGE-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

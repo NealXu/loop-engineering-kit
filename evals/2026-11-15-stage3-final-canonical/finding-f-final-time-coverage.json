@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "F-FINAL-TIME-COVERAGE",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "medium",
+  "target": "Final verification timezone coverage",
+  "claim": "A final-version verification not referenced by the Decision could retain a timezone-less execution timestamp.",
+  "evidence": [
+    "The final-time helper skipped naive timestamps."
+  ],
+  "impact": "The freshness rule did not cover every final verification.",
+  "required_action": "Reject timezone-less execution timestamps for all final-version verifications.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved"
+}

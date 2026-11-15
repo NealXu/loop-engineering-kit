@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-MODEL-CODEX-V18",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "18",
+  "artifact_content_hash": "7df1d462475b8a3e3ede0e0c71b1a2f19d0e0a102e33b771b7b8aa0cd8961231",
+  "criterion_ids": [
+    "AC-REGRESSION"
+  ],
+  "role": "verifier",
+  "check": "Real Codex installed Skill",
+  "method": "codex exec --ephemeral in the installed Skill root",
+  "status": "PASS",
+  "evidence": [
+    "Session 01a1ddef-5d42-7ce3-a184-5f1d0292a61a used model deepseek-flash.",
+    "The installed doctor exited 0 and the host returned LOOP-ENGINEERING-CODEX-V18-PASS."
+  ],
+  "limitations": [
+    "Host session and model identity remain unverified attestations."
+  ],
+  "execution": {
+    "command": "codex exec -C C:/Users/xuqi/.agents/skills/loop-engineering --skip-git-repo-check --sandbox read-only --ephemeral --color never -",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:40:39+08:00"
+  }
+}

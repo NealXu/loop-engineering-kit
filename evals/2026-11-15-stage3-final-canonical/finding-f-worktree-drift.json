@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-WORKTREE-DRIFT",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Current working tree bytes",
+  "claim": "Source verification read only the recorded Git blob, not uncommitted working-tree content.",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+  ],
+  "impact": "Reviewed source or evidence could differ from the approved state.",
+  "required_action": "Verify both the Git revision blob and normalized current working-tree bytes.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-SOURCE-FILE-HASH",
+  "prevention": {
+    "kind": "structure",
+    "action": "Verify both the Git revision blob and normalized current working-tree bytes.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-WORKTREE-DRIFT-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

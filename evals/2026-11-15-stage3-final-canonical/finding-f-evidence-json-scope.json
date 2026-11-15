@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-EVIDENCE-JSON-SCOPE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Evidence JSON directory scope",
+  "claim": "Any JSON under the declared evidence path was exempted even when it was not part of the actual canonical record set.",
+  "evidence": [
+    "A configs/critical.json change after source_revision passed check-records --repo when configs was declared as evidence_path."
+  ],
+  "impact": "Unreviewed configuration could alter behavior while bypassing source and worktree checks.",
+  "required_action": "Exempt only the actual records directory and exact content-hashed evidence files.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Compare evidence_path with the actual records directory and only exempt canonical JSON from that directory.",
+    "evidence": [
+      "tests/test_cli.py::test_evidence_scope_and_source_binding"
+    ],
+    "regression_verification_ids": [
+      "V-EVIDENCE-JSON-SCOPE-V18-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

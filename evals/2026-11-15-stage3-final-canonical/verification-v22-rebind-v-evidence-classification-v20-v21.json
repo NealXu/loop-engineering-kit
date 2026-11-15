@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "V-EVIDENCE-CLASSIFICATION-V20-V21-V22",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-EVIDENCE-CLASSIFICATION",
+  "role": "verifier",
+  "check": "Evidence root and file class",
+  "method": "python -m unittest tests.test_cli.CliTests.test_evidence_scope_and_source_binding -v",
+  "status": "PASS",
+  "evidence": [
+    "A source path outside the records evidence root was rejected as evidence_files.",
+    "Exact JSON evidence under the records evidence root remained accepted.",
+    "Full suite 114/114 passed on final Artifact version 21.",
+    "Full suite 114/114 passed on final Artifact version 22."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:35:37+08:00"
+  }
+}

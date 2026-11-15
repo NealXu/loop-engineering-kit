@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "V-SOURCE-HEAD-BINDING-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-SOURCE-HEAD-BINDING",
+  "role": "verifier",
+  "check": "Source head binding",
+  "method": "targeted regression",
+  "status": "PASS",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files passed"
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T13:51:44+08:00"
+  }
+}

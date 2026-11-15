@@ -1,0 +1,38 @@
+{
+  "schema_version": 3,
+  "id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "kind": "work_item",
+  "goal": "Complete and independently verify Stage 1-3 runtime, approval, control-plane, content identity, provenance, and persistent audit records without accepting stale or conflicting evidence.",
+  "pack_id": "software-development",
+  "constraints": [
+    "No new runtime dependency",
+    "Preserve all prior evidence",
+    "Treat human approval and host identity as unverified host attestations",
+    "Treat Git committer timestamps used for execution freshness as local attestations, not trusted clock evidence",
+    "Use canonical final-version lineage for review and approval",
+    "Keep one primary worktree and do not delete user backup files",
+    "User authorization quoted verbatim: \"将未完成的部分全部完成之后，才能退出。\" and \"继续直到最终独立门禁通过，到达‘全部完成’\". This run-local authorization is recorded through repair 21; route evidence records 21."
+  ],
+  "priority": "high",
+  "risk_level": "high",
+  "control_tier": "L3",
+  "route_flags": {
+    "trivial": false,
+    "ambiguous": false,
+    "irreversible": false
+  },
+  "max_repair_iterations": 21,
+  "acceptance_criteria": {
+    "AC-MIGRATION": "v1/v2 migration is transactional, restart-safe, explicitly mapped, locked, and tested against interruption.",
+    "AC-RUNTIME": "Checkpoint state is semantically validated, requires complete lineage and criteria coverage, and cannot write inside records.",
+    "AC-APPROVAL": "Approval uses exact final lineage and content identity, rejects open high/blocking findings and incomplete coverage, binds referenced approval content through the terminal Decision, and records unverified host attestation semantics.",
+    "AC-STAGE3": "Metrics, registry, and improvements share validation, reject output contamination and provenance conflicts, and preserve concurrent runs.",
+    "AC-DOCS": "The status ledger, READMEs, Schema docs, protocol, state machine, workflows, roles, and skills remain synchronized.",
+    "AC-REGRESSION": "All platform-applicable tests and configured verify execute; the source-hash probe explicitly SKIPs only where Git is unavailable, and installers plus separate Codex/Claude host checks carry recorded evidence.",
+    "AC-CI": "The code head passes all five CI jobs as canonical delivery evidence. The subsequent evidence-only records commit receives its own immutable CI receipt, reported externally without rewriting the reviewed records.",
+    "AC-INTEGRITY": "Artifact id/version is bound to a canonical content hash repeated by Verification, Decision, and Human Approval records; source files exactly match the recorded changed set, deleted files are absent at source and in the worktree, evidence files have enforced content hashes, and final evidence cannot predate the locally attested source commit time.",
+    "AC-PROVENANCE": "L3 Producer, Reviewer, and Challenger declare distinct host sessions and models with the unverified-attestation limitation.",
+    "AC-RECORDS": "The L3 audited canonical records are persisted in the repository and pass check-records plus every applicable check-finding."
+  },
+  "open_questions": []
+}

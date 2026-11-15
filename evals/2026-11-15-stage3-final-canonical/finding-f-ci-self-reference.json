@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "F-CI-SELF-REFERENCE",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "medium",
+  "target": "CI evidence ordering",
+  "claim": "Requiring evidence-head CI to be written back inside the reviewed evidence creates a new evidence commit each time.",
+  "evidence": [
+    "The prior AC-CI wording required both code-head and evidence-head records to be embedded in the accepted set."
+  ],
+  "impact": "Final acceptance could never terminate without continually rewriting reviewed evidence.",
+  "required_action": "Treat code-head CI as canonical delivery evidence and report the evidence-only CI receipt externally.",
+  "criterion_ids": [
+    "AC-CI"
+  ],
+  "status": "resolved"
+}

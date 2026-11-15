@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-DOCS-V22",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "criterion_ids": [
+    "AC-DOCS"
+  ],
+  "role": "verifier",
+  "check": "Documentation and status ledger contract",
+  "method": "python -m unittest discover -s tests -v",
+  "status": "PASS",
+  "evidence": [
+    "Documentation and status-ledger checks passed in the full 114-test suite.",
+    "Schema documentation states that closure PASS is included in the reviewed set and --pre-closure permits a pending terminal Decision.",
+    "Project status separates local Git time and host provenance from trusted identity or clock evidence."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:35:37+08:00"
+  }
+}

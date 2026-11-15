@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-STALE-APPROVAL",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Stale approval before final Decision",
+  "claim": "An Approval could outlive changed reviewed evidence before ACCEPT existed.",
+  "evidence": [
+    "tests/test_cli.py::test_runtime_rejects_stale_approval_before_accept"
+  ],
+  "impact": "Recovery or acceptance could use unscoped or stale evidence.",
+  "required_action": "Recompute reviewed_set_digest for every Approval in shared record validation.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-RUNTIME"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-APPROVAL-PRECONDITION",
+  "prevention": {
+    "kind": "structure",
+    "action": "Recompute reviewed_set_digest for every Approval in shared record validation.",
+    "evidence": [
+      "tests/test_cli.py::test_runtime_rejects_stale_approval_before_accept"
+    ],
+    "regression_verification_ids": [
+      "V-STALE-APPROVAL-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

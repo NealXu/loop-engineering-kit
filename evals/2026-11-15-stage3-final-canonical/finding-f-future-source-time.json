@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-FUTURE-SOURCE-TIME",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "high",
+  "target": "Future source timestamp",
+  "claim": "A future-dated source commit made every legitimate verification appear stale.",
+  "evidence": [
+    "A 2030 committer date rejected evidence executed in 2026."
+  ],
+  "impact": "Clock skew or a future commit could cause a denial of acceptance.",
+  "required_action": "Clamp a future source timestamp to the local check window while preserving ordinary source-time ordering.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Treat source times beyond the allowed future window as clock skew.",
+    "evidence": [
+      "tests/test_cli.py::test_future_committer_time_does_not_block_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-FUTURE-SOURCE-TIME-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

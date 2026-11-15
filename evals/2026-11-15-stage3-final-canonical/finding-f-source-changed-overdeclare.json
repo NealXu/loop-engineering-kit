@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "F-SOURCE-CHANGED-OVERDECLARE",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "medium",
+  "target": "Changed-file exactness",
+  "claim": "The Artifact accepted declared files that were not in the actual base-to-source changed set.",
+  "evidence": [
+    "An unchanged tracked file with a valid hash could be added to files and still pass."
+  ],
+  "impact": "The delivered file surface could be overstated.",
+  "required_action": "Require files to equal the exact Git changed-file set.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved"
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-WORKTREE",
+  "kind": "decision",
+  "cycle": 7,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "7"
+  ],
+  "artifact_hashes": {
+    "7": "8a144c602e5b91f43957dc4c45d70b0220cabf0108e4ff9c6cc2f8f27cdc2142"
+  },
+  "decision": "REPAIR",
+  "rationale": "Reviewer found closure-role leakage and working-tree drift.",
+  "evidence_refs": [
+    "F-CLOSURE-ROLE-LEAK",
+    "F-WORKTREE-DRIFT"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

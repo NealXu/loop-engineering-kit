@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-UNREGISTERED",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "blocking",
+  "target": "Closure registration",
+  "claim": "Any verifier evidence could self-mark closure_gate and escape approval even without a registered closure Finding.",
+  "evidence": [
+    "tests/test_cli.py::test_final_fail_blocks_accept_even_when_unreferenced"
+  ],
+  "impact": "Final FAIL/BLOCKED/NOT_RUN evidence could be hidden.",
+  "required_action": "Exempt only Verification IDs present in closure Finding prevention evidence.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-APPROVAL-NONPASS",
+  "prevention": {
+    "kind": "structure",
+    "action": "Closure exemptions are derived from explicit Finding prevention registration.",
+    "evidence": [
+      "tests/test_cli.py::test_final_fail_blocks_accept_even_when_unreferenced"
+    ],
+    "regression_verification_ids": [
+      "V-CLOSURE-UNREGISTERED-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

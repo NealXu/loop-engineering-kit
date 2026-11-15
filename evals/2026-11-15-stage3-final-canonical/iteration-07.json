@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-07",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 7,
+  "input_versions": [
+    "7"
+  ],
+  "output_versions": [
+    "8"
+  ],
+  "changes": [
+    "Closure gates require verifier role and matching closure Finding.",
+    "Delivery criteria reject closure evidence.",
+    "Current working-tree bytes must match recorded source hashes."
+  ],
+  "result": "REPAIR"
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": 3,
+  "id": "V-DOCS-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "criterion_ids": [
+    "AC-DOCS"
+  ],
+  "role": "verifier",
+  "check": "Status ledger and documentation sync",
+  "method": "Four documentation/release identity tests on code head 75fcd7e",
+  "status": "PASS",
+  "evidence": [
+    "Final README, Schema README, protocol, state machine, pack, status ledger, and skill-copy tests passed on 75fcd7e."
+  ],
+  "limitations": [],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python -m unittest -v tests.test_cli.CliTests.test_release_identity_matches_breaking_schema tests.test_cli.CliTests.test_status_ledger_and_runtime_commands_are_documented tests.test_cli.CliTests.test_claude_adapter_documents_validated_model_path tests.test_cli.CliTests.test_loop_docs_carry_tracking_and_repair_fields",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T12:39:00+08:00"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-GATE-BYPASS",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Record closure authorization",
+  "claim": "Any Verification could self-label as closure and escape reviewed-set hashing.",
+  "evidence": [
+    "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+  ],
+  "impact": "Final evidence could bypass review or crash control-plane reads.",
+  "required_action": "Require matching closure_gate markers on Finding and Verification; closure evidence cannot satisfy delivery criteria.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-CLOSURE-PUBLICATION",
+  "prevention": {
+    "kind": "structure",
+    "action": "Require matching closure_gate markers on Finding and Verification; closure evidence cannot satisfy delivery criteria.",
+    "evidence": [
+      "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-CLOSURE-GATE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

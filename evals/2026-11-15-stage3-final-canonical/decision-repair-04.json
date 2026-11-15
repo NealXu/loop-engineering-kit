@@ -1,0 +1,22 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-CI",
+  "kind": "decision",
+  "cycle": 4,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "4"
+  ],
+  "artifact_hashes": {
+    "4": "1bffa1f214182fbb749432caa9516a8f192c333b4ad0b26fa3860cfe7a9e5015"
+  },
+  "decision": "REPAIR",
+  "rationale": "Rocky Linux lacks Git; the source-hash test needs an explicit environment skip before the final matrix can pass.",
+  "evidence_refs": [
+    "F-CI-GIT-PROBE"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

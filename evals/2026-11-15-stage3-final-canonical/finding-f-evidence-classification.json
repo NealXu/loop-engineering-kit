@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-EVIDENCE-CLASSIFICATION",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Evidence file classification",
+  "claim": "A post-source source or executable file could be reclassified as an exact evidence file.",
+  "evidence": [
+    "A source path outside the records evidence root was accepted when listed in evidence_files."
+  ],
+  "impact": "Reviewed and tested source could differ from the delivered source.",
+  "required_action": "Require exact evidence files to remain under the records evidence root and use JSON or Markdown.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Validate evidence file root and extension before hashing.",
+    "evidence": [
+      "tests/test_cli.py::test_evidence_scope_and_source_binding"
+    ],
+    "regression_verification_ids": [
+      "V-EVIDENCE-CLASSIFICATION-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

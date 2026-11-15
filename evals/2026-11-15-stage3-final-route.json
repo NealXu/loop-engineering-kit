@@ -1,0 +1,21 @@
+{
+  "tier": "L3",
+  "roles": [
+    "producer",
+    "verifier",
+    "reviewer",
+    "challenger",
+    "arbiter"
+  ],
+  "review_independence": "independent",
+  "max_repair_iterations": 21,
+  "human_approval_required": true,
+  "record_depth": "audited",
+  "stop_conditions": [
+    "acceptance criteria have passing evidence",
+    "the same failure fingerprint repeats without new evidence",
+    "the repair budget is exhausted",
+    "required evidence is BLOCKED or unavailable",
+    "human approval is missing before an irreversible action"
+  ]
+}

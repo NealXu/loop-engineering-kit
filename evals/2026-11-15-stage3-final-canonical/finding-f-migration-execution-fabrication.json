@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-MIGRATION-EXECUTION-FABRICATION",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Migration execution metadata",
+  "claim": "Migration previously invented command, exit code, and time for old PASS evidence.",
+  "evidence": [
+    "tests/test_cli.py::test_migration_upgrades_legacy_v3_identity_fields"
+  ],
+  "impact": "Final gate could accept incomplete or premature evidence.",
+  "required_action": "Require an explicit --execution-evidence map for PASS records.",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-MIGRATION-CRASH",
+  "prevention": {
+    "kind": "structure",
+    "action": "Require an explicit --execution-evidence map for PASS records.",
+    "evidence": [
+      "tests/test_cli.py::test_migration_upgrades_legacy_v3_identity_fields"
+    ],
+    "regression_verification_ids": [
+      "V-MIGRATION-EXECUTION-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-PRECLOSURE",
+  "kind": "decision",
+  "cycle": 21,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "21"
+  ],
+  "artifact_hashes": {
+    "21": "57efc95716bb0e0b2dfea996504ceb7f718e774647088e0e7cf79b831b5c832d"
+  },
+  "decision": "REPAIR",
+  "rationale": "Remove the pre-closure terminal Decision deadlock while preserving strict final closure.",
+  "evidence_refs": [
+    "F-PRECLOSURE-TERMINAL"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "V-REGRESSION-V21",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "21",
+  "artifact_content_hash": "57efc95716bb0e0b2dfea996504ceb7f718e774647088e0e7cf79b831b5c832d",
+  "criterion_ids": [
+    "AC-REGRESSION"
+  ],
+  "role": "verifier",
+  "check": "Final regression and configured verification",
+  "method": "python -m unittest discover -s tests -v; python loop_engineering/cli.py verify --root . --config evals/2026-11-15-stage3-final-run-config.json --report-dir <temp>",
+  "status": "PASS",
+  "evidence": [
+    "Full suite 114/114 passed on final code head bb6f394.",
+    "Configured verify passed unit-tests and compile-check.",
+    "Run config SHA-256: C4D50762197D20154A6966F498A23724573EB20E2806B86129A06DA4F9E8D260.",
+    "Verify JSON SHA-256: F0B9A92E7D4F767CC649A02A4FBBED38C09A2FF88F3EF965526FCAF798348804."
+  ],
+  "limitations": [
+    "Literal CentOS 8 is not booted locally; Rocky Linux 8 is covered by CI."
+  ],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:25:20+08:00"
+  }
+}

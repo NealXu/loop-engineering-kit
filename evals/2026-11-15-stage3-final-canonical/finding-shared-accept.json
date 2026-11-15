@@ -1,0 +1,32 @@
+{
+  "schema_version": 3,
+  "id": "F-SHARED-ACCEPT-GATE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Canonical ACCEPT consistency",
+  "claim": "Runtime and Stage 3 could report ACCEPT for records rejected by check-records.",
+  "evidence": [
+    "Unreferenced Reviewer/Challenger/Approval records produced ACCEPT in control-plane commands."
+  ],
+  "impact": "Recovery and registry could publish false completion.",
+  "required_action": "Run the full canonical ACCEPT gate before producing terminal state.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-RUNTIME",
+    "AC-STAGE3"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Invoke records_errors whenever a terminal ACCEPT exists.",
+    "evidence": [
+      "loop_engineering/cli.py",
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-SHARED-ACCEPT-GATE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Incomplete nonterminal runs still use partial validation."
+  },
+  "status": "resolved"
+}

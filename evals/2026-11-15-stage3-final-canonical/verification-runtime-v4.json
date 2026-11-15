@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "V-RUNTIME-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "criterion_ids": [
+    "AC-RUNTIME"
+  ],
+  "role": "verifier",
+  "check": "Persistent runtime and recovery",
+  "method": "Run checkpoint, stale resume, corrupt checkpoint fallback, status, and embedded-store rejection tests.",
+  "status": "PASS",
+  "evidence": [
+    "State persisted and resumed by digest.",
+    "Stale state rebuilt from records.",
+    "Corrupt checkpoint skipped."
+  ],
+  "limitations": [
+    "Checkpoint files are application data and rely on filesystem permissions."
+  ],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T11:31:31+08:00"
+  }
+}

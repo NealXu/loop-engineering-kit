@@ -1,0 +1,29 @@
+{
+  "id": "F-SOURCE-FILE-HASH",
+  "severity": "blocking",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "target": "Delivered source content",
+  "claim": "The Artifact JSON hash did not bind the actual files delivered by a working-tree change.",
+  "evidence": [
+    "Artifact wrapper stayed valid when listed source files changed.",
+    "Git revision and file hashes were absent."
+  ],
+  "impact": "Reviewed code and released code could differ under one Artifact version.",
+  "required_action": "Record a Git revision and per-file hashes and verify them with check-records --repo.",
+  "prevention": {
+    "kind": "structure",
+    "action": "working_tree_change Artifacts require source_revision and file_hashes resolved at that revision.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-SOURCE-FILES-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "schema_version": 3,
+  "kind": "finding",
+  "source_role": "challenger",
+  "status": "resolved"
+}

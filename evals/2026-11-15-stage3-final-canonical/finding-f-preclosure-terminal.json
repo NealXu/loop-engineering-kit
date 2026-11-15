@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-PRECLOSURE-TERMINAL",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Pre-closure bootstrap",
+  "claim": "check-records --pre-closure still required a terminal Decision, preventing closure evidence from being established before Approval.",
+  "evidence": [
+    "The focused test initially failed with the missing terminal Decision error."
+  ],
+  "impact": "A correct L3 run could deadlock between closure PASS, Approval, and ACCEPT.",
+  "required_action": "Allow zero terminal Decisions only in --pre-closure mode while retaining all other checks.",
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Make terminal Decision absence a pre-closure-only allowance.",
+    "evidence": [
+      "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-PRECLOSURE-TERMINAL-V22"
+    ]
+  },
+  "status": "resolved"
+}

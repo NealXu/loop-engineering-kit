@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "V-EVIDENCE-EXECUTABLE-FINAL-V18",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "18",
+  "artifact_content_hash": "7df1d462475b8a3e3ede0e0c71b1a2f19d0e0a102e33b771b7b8aa0cd8961231",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-EVIDENCE-EXECUTABLE",
+  "role": "verifier",
+  "check": "Evidence path executable counterexample",
+  "method": "python -m unittest tests.test_cli.CliTests.test_check_records_verifies_working_tree_source_files -v",
+  "status": "PASS",
+  "evidence": [
+    "The targeted test passed on code head 3c610bf.",
+    "An untracked and a committed .py file under the declared evidence directory were both rejected.",
+    "JSON record evidence and the exact route file remained accepted.",
+    "Full suite 111/111 passed on final Artifact version 18."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:38:47+08:00"
+  }
+}

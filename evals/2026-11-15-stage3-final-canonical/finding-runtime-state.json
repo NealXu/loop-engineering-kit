@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "id": "F-RUNTIME-NEXT-STATE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Runtime next state",
+  "claim": "Runtime selected versions lexically and skipped failed verification or L3 challenge gates.",
+  "evidence": [
+    "v10 was treated below v9.",
+    "FAIL evidence still produced DECIDE.",
+    "Missing Challenger produced DECIDE."
+  ],
+  "impact": "Recovery could resume the wrong phase or target the wrong Artifact.",
+  "required_action": "Use lineage/natural versions and order Verify -> Review -> Challenge -> Approval -> Decide.",
+  "criterion_ids": [
+    "AC-RUNTIME"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Cover v9-to-v10, FAIL, CHALLENGE, and RECONCILE states.",
+    "evidence": [
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-RUNTIME-STATE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Host execution timing remains outside checkpoint state."
+  },
+  "status": "resolved"
+}

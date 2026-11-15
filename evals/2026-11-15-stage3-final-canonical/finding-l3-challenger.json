@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-L3-CHALLENGER-BYPASS",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "L3 Challenger gate",
+  "claim": "An open Challenger Finding could replace a final-version Challenger PASS.",
+  "evidence": [
+    "Challenger Finding-only records passed before the repair."
+  ],
+  "impact": "L3 acceptance could bypass independent challenge.",
+  "required_action": "Require final-version role=challenger PASS Verification.",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Gate L3 only on final-version Challenger PASS Verification.",
+    "evidence": [
+      "loop_engineering/cli.py",
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-L3-GATE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "The host supplies challenge independence rather than the CLI."
+  },
+  "status": "resolved"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-EVIDENCE-CONTENT-HASH",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "high",
+  "target": "Exact evidence file identity",
+  "claim": "Explicit evidence files were path-exempted without an enforced content hash.",
+  "evidence": [
+    "Changing the verify run configuration after artifact creation did not fail check-records."
+  ],
+  "impact": "Reviewed configuration and the configuration used for verification could diverge.",
+  "required_action": "Require an evidence_hashes digest for every exact evidence file and reject mismatches.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Bind evidence_files to evidence_hashes in Artifact identity and verify worktree content.",
+    "evidence": [
+      "tests/test_cli.py::test_evidence_scope_and_source_binding"
+    ],
+    "regression_verification_ids": [
+      "V-EVIDENCE-CONTENT-HASH-V18-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

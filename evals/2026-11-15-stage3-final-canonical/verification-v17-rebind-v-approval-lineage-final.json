@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-APPROVAL-LINEAGE-FINAL-V17",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "17",
+  "finding_id": "F-APPROVAL-LINEAGE",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "role": "verifier",
+  "check": "Approval final lineage",
+  "method": "Run approval with two Artifacts and no Iteration lineage.",
+  "status": "PASS",
+  "evidence": [
+    "Approval is rejected and no approval file is written.",
+    "Full suite 110/110 passed on final Artifact version 17."
+  ],
+  "limitations": [],
+  "artifact_content_hash": "8abf9cde807b6c201ca55dd66099f6456027d0efadc4878103f93443858a49f2",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:20:07+08:00"
+  }
+}

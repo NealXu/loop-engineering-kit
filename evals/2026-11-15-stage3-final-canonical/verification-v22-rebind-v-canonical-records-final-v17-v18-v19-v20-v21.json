@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "V-CANONICAL-RECORDS-FINAL-V17-V18-V19-V20-V21-V22",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "finding_id": "F-AUDITED-RECORDS",
+  "role": "verifier",
+  "check": "Tracked canonical record gate",
+  "method": "python loop_engineering/cli.py check-records --dir evals/2026-11-15-stage3-final-canonical --repo . --pre-closure",
+  "status": "PASS",
+  "evidence": [
+    "The reviewed pre-closure canonical set passed with 621 records, 22 artifacts, and 21 cycles.",
+    "The exact Artifact v22, Reviewer PASS, Challenger PASS, closure findings, and all other records resolved."
+  ],
+  "limitations": [
+    "The strict full check-records run remains a separate post-ACCEPT gate."
+  ],
+  "execution": {
+    "command": "python loop_engineering/cli.py check-records --dir evals/2026-11-15-stage3-final-canonical --repo . --pre-closure",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:57:50+08:00"
+  }
+}

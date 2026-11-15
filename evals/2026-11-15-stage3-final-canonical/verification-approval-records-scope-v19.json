@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "V-APPROVAL-RECORDS-SCOPE-V19",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "19",
+  "artifact_content_hash": "13a6a9f0608ab6e213de3232f507fdb430a1d44d541602e0641c427bfcf4d294",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-RECORDS"
+  ],
+  "finding_id": "F-APPROVAL-RECORDS-SCOPE",
+  "role": "verifier",
+  "check": "Approval records-scope integration",
+  "method": "python -m unittest tests.test_cli.CliTests.test_approval_keeps_records_scope -v",
+  "status": "PASS",
+  "evidence": [
+    "Approval passed with a working-tree Artifact and canonical records inside the repository.",
+    "The stable records lock file was excluded without exposing other unlisted files."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest tests.test_cli.CliTests.test_approval_keeps_records_scope -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:54:06+08:00"
+  }
+}

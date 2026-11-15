@@ -1,0 +1,22 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-APPROVAL-NONPASS",
+  "kind": "decision",
+  "cycle": 9,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "9"
+  ],
+  "artifact_hashes": {
+    "9": "8d48507e59f471ae300ec752366de99fb52b5ca1ec535d407bb881a5ca42e6f3"
+  },
+  "decision": "REPAIR",
+  "rationale": "Challenger found Approval could cover final non-PASS evidence.",
+  "evidence_refs": [
+    "F-APPROVAL-NONPASS"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

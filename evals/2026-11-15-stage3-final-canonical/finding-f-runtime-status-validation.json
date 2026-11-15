@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-RUNTIME-STATUS-VALIDATION",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Runtime status validity",
+  "claim": "runtime-status trusted a matching checkpoint without validating current records.",
+  "evidence": [
+    "tests/test_cli.py::test_runtime_status_rejects_invalid_records_with_matching_checkpoint"
+  ],
+  "impact": "Runtime or source identity could diverge from reviewed state.",
+  "required_action": "Validate runtime records before trusting any matching checkpoint.",
+  "criterion_ids": [
+    "AC-RUNTIME"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-RUNTIME-STATUS-RECOVERY",
+  "prevention": {
+    "kind": "structure",
+    "action": "Validate runtime records before trusting any matching checkpoint.",
+    "evidence": [
+      "tests/test_cli.py::test_runtime_status_rejects_invalid_records_with_matching_checkpoint"
+    ],
+    "regression_verification_ids": [
+      "V-RUNTIME-STATUS-VALIDATION-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

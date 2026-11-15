@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-CLOCK-SKEW",
+  "kind": "decision",
+  "cycle": 20,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "20"
+  ],
+  "artifact_hashes": {
+    "20": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3"
+  },
+  "decision": "REPAIR",
+  "rationale": "Close the future commit-time denial and remove the remaining schema documentation fragment.",
+  "evidence_refs": [
+    "F-FUTURE-SOURCE-TIME",
+    "F-DOC-ORPHAN"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

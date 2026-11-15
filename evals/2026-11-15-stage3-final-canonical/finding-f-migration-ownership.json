@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-MIGRATION-OWNERSHIP",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Migration recovery ownership",
+  "claim": "A prefix-matching unrelated directory could be deleted without a transaction marker.",
+  "evidence": [
+    "tests/test_cli.py::test_migration_journal_requires_stage_ownership_marker"
+  ],
+  "impact": "Recovery or acceptance could use unscoped or stale evidence.",
+  "required_action": "Require a nonce-bound stage ownership marker before recovery deletes or forwards a stage.",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-MIGRATION-CRASH",
+  "prevention": {
+    "kind": "structure",
+    "action": "Require a nonce-bound stage ownership marker before recovery deletes or forwards a stage.",
+    "evidence": [
+      "tests/test_cli.py::test_migration_journal_requires_stage_ownership_marker"
+    ],
+    "regression_verification_ids": [
+      "V-MIGRATION-OWNERSHIP-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

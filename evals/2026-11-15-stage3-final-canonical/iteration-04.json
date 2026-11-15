@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-04",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 4,
+  "input_versions": [
+    "4"
+  ],
+  "output_versions": [
+    "5"
+  ],
+  "changes": [
+    "Skip Git-dependent source-hash regression when Git is unavailable.",
+    "Retain execution on supported hosts."
+  ],
+  "result": "REPAIR"
+}

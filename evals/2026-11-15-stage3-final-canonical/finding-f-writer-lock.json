@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-WRITER-LOCK",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Migration and Approval lock sharing",
+  "claim": "Migration could swap records while Approval wrote a new file.",
+  "evidence": [
+    "loop_engineering/cli.py::approve_records"
+  ],
+  "impact": "Runtime or records could expose a state inconsistent with strict closure.",
+  "required_action": "Use the same cross-process records lock for Approval and migration.",
+  "criterion_ids": [
+    "AC-MIGRATION",
+    "AC-APPROVAL"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-MIGRATION-OWNERSHIP",
+  "prevention": {
+    "kind": "structure",
+    "action": "Use the same cross-process records lock for Approval and migration.",
+    "evidence": [
+      "loop_engineering/cli.py::approve_records"
+    ],
+    "regression_verification_ids": [
+      "V-WRITER-LOCK-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

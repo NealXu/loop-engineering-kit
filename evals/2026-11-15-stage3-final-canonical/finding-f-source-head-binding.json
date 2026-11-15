@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-SOURCE-HEAD-BINDING",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Source head binding",
+  "claim": "A clean post-review commit could change source without invalidating Artifact.",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+  ],
+  "impact": "Runtime or source identity could diverge from reviewed state.",
+  "required_action": "Require source_revision to HEAD or permit only declared evidence-only descendants.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-WORKTREE-UNLISTED",
+  "prevention": {
+    "kind": "structure",
+    "action": "Require source_revision to HEAD or permit only declared evidence-only descendants.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-SOURCE-HEAD-BINDING-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

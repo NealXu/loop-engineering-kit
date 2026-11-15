@@ -1,0 +1,24 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-STRICT-CLOSURE",
+  "kind": "decision",
+  "cycle": 13,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "13"
+  ],
+  "artifact_hashes": {
+    "13": "6b177c0d44609f2e9abf334e5634a25c0eb55f9a5132478b28f97a17b4765e0a"
+  },
+  "decision": "REPAIR",
+  "rationale": "Reviewer found loose runtime closure, unlisted worktree changes, and writer race.",
+  "evidence_refs": [
+    "F-RUNTIME-PRECLOSURE-ACCEPT",
+    "F-WORKTREE-UNLISTED",
+    "F-WRITER-LOCK"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

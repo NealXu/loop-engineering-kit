@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-PRECLOSURE-TERMINAL-V22",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "finding_id": "F-PRECLOSURE-TERMINAL",
+  "role": "verifier",
+  "check": "Pre-closure without terminal Decision",
+  "method": "python -m unittest tests.test_cli.CliTests.test_pre_closure_check_bootstraps_record_closure_evidence -v",
+  "status": "PASS",
+  "evidence": [
+    "A record set with pending closure evidence and no terminal Decision passed --pre-closure.",
+    "The same set remained invalid without the pre-closure flag."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest tests.test_cli.CliTests.test_pre_closure_check_bootstraps_record_closure_evidence -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:35:37+08:00"
+  }
+}

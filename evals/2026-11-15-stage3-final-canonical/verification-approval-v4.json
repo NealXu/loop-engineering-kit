@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "V-APPROVAL-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "role": "verifier",
+  "check": "Human approval runtime",
+  "method": "Run exact and wrong confirmation cases; validate L3 block and successful approval path.",
+  "status": "PASS",
+  "evidence": [
+    "Wrong confirmation wrote no approval.",
+    "Exact confirmation created an approval record.",
+    "L3 ACCEPT requires Approval, Reviewer, and Challenger evidence."
+  ],
+  "limitations": [
+    "Identity authentication remains a host responsibility."
+  ],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T11:31:31+08:00"
+  }
+}

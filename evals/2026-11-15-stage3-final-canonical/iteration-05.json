@@ -1,0 +1,21 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-05",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 5,
+  "input_versions": [
+    "5"
+  ],
+  "output_versions": [
+    "6"
+  ],
+  "changes": [
+    "Require explicit execution evidence during migration.",
+    "Apply full shared validation to partial records.",
+    "Gate Approval on closed Finding evidence.",
+    "Restore delivery-scope CI evidence and define finite evidence-head CI semantics.",
+    "Forbid publication of pre-closure record state."
+  ],
+  "result": "REPAIR"
+}

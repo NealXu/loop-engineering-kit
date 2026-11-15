@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-14",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 14,
+  "input_versions": [
+    "14"
+  ],
+  "output_versions": [
+    "15"
+  ],
+  "changes": [
+    "Restrict worktree evidence exemptions to declared paths.",
+    "Reject naive, date-only, and future execution times."
+  ],
+  "result": "REPAIR"
+}

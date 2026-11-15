@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "V-RUNTIME-RECORDS-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "finding_id": "F-RUNTIME-RECORDS-REQUIRED",
+  "criterion_ids": [
+    "AC-RUNTIME"
+  ],
+  "role": "verifier",
+  "check": "Fresh runtime status and resume",
+  "method": "Inspect CLI requirements for status and resume.",
+  "status": "PASS",
+  "evidence": [
+    "--records is required, so stale checkpoints alone cannot be resumed."
+  ],
+  "limitations": [],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T11:31:31+08:00"
+  }
+}

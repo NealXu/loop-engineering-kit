@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-EXECUTION-TIME-BOUNDS",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Execution timestamp validation",
+  "claim": "Naive, date-only, or future execution timestamps could pass.",
+  "evidence": [
+    "tests/test_cli.py::test_final_verification_requires_executed_command_metadata"
+  ],
+  "impact": "Unreviewed files or future evidence could satisfy integrity gates.",
+  "required_action": "Require timezone-aware ISO timestamps no more than five minutes in the future.",
+  "criterion_ids": [
+    "AC-INTEGRITY",
+    "AC-APPROVAL"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-CLOSURE-FUTURE-TIME",
+  "prevention": {
+    "kind": "structure",
+    "action": "Require timezone-aware ISO timestamps no more than five minutes in the future.",
+    "evidence": [
+      "tests/test_cli.py::test_final_verification_requires_executed_command_metadata"
+    ],
+    "regression_verification_ids": [
+      "V-EXECUTION-TIME-BOUNDS-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

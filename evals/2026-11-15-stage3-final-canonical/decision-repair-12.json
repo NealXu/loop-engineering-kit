@@ -1,0 +1,22 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-BASE-REV",
+  "kind": "decision",
+  "cycle": 12,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "12"
+  ],
+  "artifact_hashes": {
+    "12": "c23ac040b6354501266f549b52c1721543e413b35d7b43fbff2e80235dcaf2ba"
+  },
+  "decision": "REPAIR",
+  "rationale": "Manual Artifact whitelist omitted base_revision.",
+  "evidence_refs": [
+    "F-BASE-REV-VALIDATOR"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

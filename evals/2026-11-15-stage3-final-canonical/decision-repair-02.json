@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-REVIEW",
+  "kind": "decision",
+  "cycle": 2,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "2"
+  ],
+  "artifact_hashes": {
+    "2": "088b2cc8139131f34dc3f34d81f5e53e75447bfe8174a37ba9aa40352000eba5"
+  },
+  "decision": "REPAIR",
+  "rationale": "Independent review found migration, approval-scope, source-identity, terminal-history, provenance, and evidence-execution blockers in Artifact v2.",
+  "evidence_refs": [
+    "F-V3-IDENTITY-MIGRATION",
+    "F-APPROVAL-REVIEW-SET",
+    "F-SOURCE-FILE-HASH",
+    "F-L3-PROVENANCE-DECOY",
+    "F-TERMINAL-HISTORY",
+    "F-MIGRATION-JOURNAL-TYPES",
+    "F-CANONICAL-PREMATURE-PASS"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

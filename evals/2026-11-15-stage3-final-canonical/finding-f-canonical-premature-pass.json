@@ -1,0 +1,30 @@
+{
+  "id": "F-CANONICAL-PREMATURE-PASS",
+  "severity": "blocking",
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "target": "Audited PASS evidence",
+  "claim": "A canonical Verification was marked PASS before its gate had executed.",
+  "evidence": [
+    "The prior evidence said the check would be rerun in future tense.",
+    "Verification PASS now carries command, exit code, and execution time."
+  ],
+  "impact": "Audited records could claim an executed check that never occurred.",
+  "required_action": "Require execution metadata for final PASS evidence and record canonical closure only after execution.",
+  "recurrence_of": "F-AUDITED-RECORDS",
+  "prevention": {
+    "kind": "structure",
+    "action": "Approval and ACCEPT reject final PASS evidence without execution metadata; canonical closure remains NOT_RUN until executed.",
+    "evidence": [
+      "tests/test_cli.py::test_final_verification_requires_executed_command_metadata"
+    ],
+    "regression_verification_ids": [
+      "V-PREMATURE-PASS-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "schema_version": 3,
+  "kind": "finding",
+  "source_role": "challenger",
+  "status": "resolved"
+}

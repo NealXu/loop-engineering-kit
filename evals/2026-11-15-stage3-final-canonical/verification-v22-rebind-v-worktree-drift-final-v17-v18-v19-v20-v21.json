@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "id": "V-WORKTREE-DRIFT-FINAL-V17-V18-V19-V20-V21-V22",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-WORKTREE-DRIFT",
+  "role": "verifier",
+  "check": "Current working tree bytes",
+  "method": "targeted regression",
+  "status": "PASS",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files passed",
+    "Full suite 110/110 passed on final Artifact version 17.",
+    "Full suite 111/111 passed on final Artifact version 18.",
+    "Full suite 113/113 passed on final Artifact version 19.",
+    "Full suite 113/113 passed on final Artifact version 20.",
+    "Full suite 114/114 passed on final Artifact version 21.",
+    "Full suite 114/114 passed on final Artifact version 22."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:35:37+08:00"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-SOURCE-ROOT-CWD",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "medium",
+  "target": "Explicit source root",
+  "claim": "Source-aware runtime/control-plane calls depended on current working directory.",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+  ],
+  "impact": "Recovery or acceptance could use unscoped or stale evidence.",
+  "required_action": "Add explicit --repo propagation for source-aware commands.",
+  "criterion_ids": [
+    "AC-RUNTIME",
+    "AC-STAGE3"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-SOURCE-FILE-HASH",
+  "prevention": {
+    "kind": "structure",
+    "action": "Add explicit --repo propagation for source-aware commands.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-SOURCE-ROOT-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-17",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 17,
+  "input_versions": [
+    "17"
+  ],
+  "output_versions": [
+    "18"
+  ],
+  "changes": [
+    "Limit evidence-directory exemptions to the actual canonical records directory.",
+    "Require exact evidence-file hashes and an exact Git changed-file set.",
+    "Reject final verification timestamps before the source revision."
+  ],
+  "result": "REPAIR"
+}

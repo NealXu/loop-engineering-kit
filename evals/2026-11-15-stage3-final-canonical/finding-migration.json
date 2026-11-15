@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-MIGRATION-V1-TRANSACTION",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Schema migration",
+  "claim": "v1 records were rejected and per-file replacement could leave mixed versions.",
+  "evidence": [
+    "Real v1 acceptance_criteria failed validation.",
+    "Injected second replacement failure left mixed records."
+  ],
+  "impact": "Migration could reject valid history or partially corrupt a record set.",
+  "required_action": "Convert v1 shapes and commit a staged directory with rollback.",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Test v1 conversion and injected commit failure rollback.",
+    "evidence": [
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-MIGRATION-REGRESSION-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Physical power-loss testing is unavailable; rollback is fault-injected."
+  },
+  "status": "resolved"
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-19",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 19,
+  "input_versions": [
+    "19"
+  ],
+  "output_versions": [
+    "20"
+  ],
+  "changes": [
+    "Require base and source Git ancestry.",
+    "Restrict exact evidence files to the records evidence root and to JSON or Markdown.",
+    "Bind Approval content hashes through the terminal Decision.",
+    "Reject timezone-less final verification timestamps."
+  ],
+  "result": "REPAIR"
+}

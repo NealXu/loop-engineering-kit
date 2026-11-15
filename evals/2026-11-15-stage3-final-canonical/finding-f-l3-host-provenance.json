@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-L3-HOST-PROVENANCE",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "high",
+  "target": "L3 independent review and challenge",
+  "claim": "Independent review and challenge were accepted from a single self-declared enum without host session or model provenance.",
+  "evidence": [
+    "Prior Verification records had no producer or role host context.",
+    "The new gate rejects missing, colliding, and non-independent declarations."
+  ],
+  "impact": "A same-session self-review could be represented as independent.",
+  "required_action": "Record Producer, Reviewer, and Challenger host context and require distinct independent declared sessions.",
+  "criterion_ids": [
+    "AC-PROVENANCE"
+  ],
+  "status": "resolved",
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "L3 validation requires independent host_context for Reviewer and Challenger with sessions distinct from Producer and each other.",
+    "evidence": [
+      "tests/test_cli.py::test_l3_review_provenance_requires_distinct_host_sessions"
+    ],
+    "regression_verification_ids": [
+      "V-L3-HOST-PROVENANCE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "The host does not expose a cryptographically trusted session or model identity to the CLI."
+  }
+}

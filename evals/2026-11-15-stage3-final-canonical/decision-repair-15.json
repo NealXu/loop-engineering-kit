@@ -1,0 +1,24 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-HEAD-BINDING",
+  "kind": "decision",
+  "cycle": 15,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "15"
+  ],
+  "artifact_hashes": {
+    "15": "aa26a238fb15bca137cba23af53fd4f64407c7756d137bcd9e1a3f02965ba39f"
+  },
+  "decision": "REPAIR",
+  "rationale": "Reviewer found runtime-status checkpoint trust, source HEAD drift, and deletion/Unicode gaps.",
+  "evidence_refs": [
+    "F-RUNTIME-STATUS-VALIDATION",
+    "F-SOURCE-HEAD-BINDING",
+    "F-DELETION-UNICODE"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-CONSISTENCY",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Closure identity consistency",
+  "claim": "Closure exemptions used different checks across approval, decision, runtime, and review-set digest.",
+  "evidence": [
+    "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+  ],
+  "impact": "Closure, source, or host identity could be ambiguous.",
+  "required_action": "Use one registered-closure identity function requiring closure_gate, verifier role, and matching Finding prevention ID everywhere.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-CLOSURE-UNREGISTERED",
+  "prevention": {
+    "kind": "structure",
+    "action": "Use one registered-closure identity function requiring closure_gate, verifier role, and matching Finding prevention ID everywhere.",
+    "evidence": [
+      "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-CLOSURE-CONSISTENCY-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

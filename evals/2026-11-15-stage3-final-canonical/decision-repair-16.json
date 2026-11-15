@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-FINAL-FIXPOINT",
+  "kind": "decision",
+  "cycle": 16,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "16"
+  ],
+  "artifact_hashes": {
+    "16": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569"
+  },
+  "decision": "REPAIR",
+  "rationale": "Close the executable evidence-path bypass and the non-terminating CI evidence-ordering loop.",
+  "evidence_refs": [
+    "F-EVIDENCE-EXECUTABLE",
+    "F-CI-SELF-REFERENCE"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

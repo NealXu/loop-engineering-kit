@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-SOURCE-CHANGED-SET",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Changed-file completeness",
+  "claim": "Artifact file hashes did not require all base-to-head changed files to be listed.",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+  ],
+  "impact": "Closure, source, or host identity could be ambiguous.",
+  "required_action": "Require every git diff file between base_revision and source_revision to appear in files.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-WORKTREE-DRIFT",
+  "prevention": {
+    "kind": "structure",
+    "action": "Require every git diff file between base_revision and source_revision to appear in files.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-SOURCE-CHANGED-SET-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

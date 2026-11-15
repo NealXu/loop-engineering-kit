@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-LEGACY-REGISTRY-NULL",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "medium",
+  "target": "Legacy registry validation",
+  "claim": "A null legacy registry entry caused registry-list to traceback.",
+  "evidence": [
+    "tests/test_cli.py::test_registry_list_rejects_malformed_legacy_entries"
+  ],
+  "impact": "Final evidence could bypass review or crash control-plane reads.",
+  "required_action": "Reject non-object legacy entries with a controlled error.",
+  "criterion_ids": [
+    "AC-STAGE3"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-REGISTRY-PROVENANCE",
+  "prevention": {
+    "kind": "structure",
+    "action": "Reject non-object legacy entries with a controlled error.",
+    "evidence": [
+      "tests/test_cli.py::test_registry_list_rejects_malformed_legacy_entries"
+    ],
+    "regression_verification_ids": [
+      "V-LEGACY-REGISTRY-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

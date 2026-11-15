@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-MIGRATION-CRASH",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Migration crash recovery",
+  "claim": "Interruption between directory renames left the active records path missing.",
+  "evidence": [
+    "KeyboardInterrupt after the first rename left backup and stage only before journal recovery."
+  ],
+  "impact": "Automated work could not resume after interruption.",
+  "required_action": "Persist journal and recover on next invocation.",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "prevention": {
+    "kind": "structure",
+    "action": "Recover rollback/forward from persisted journal.",
+    "evidence": [
+      "loop_engineering/cli.py",
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-MIGRATION-CRASH-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

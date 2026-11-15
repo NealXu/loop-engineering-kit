@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-DELETION-APPROVAL",
+  "kind": "decision",
+  "cycle": 18,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "18"
+  ],
+  "artifact_hashes": {
+    "18": "7df1d462475b8a3e3ede0e0c71b1a2f19d0e0a102e33b771b7b8aa0cd8961231"
+  },
+  "decision": "REPAIR",
+  "rationale": "Second independent review and challenge found deletion forgery, closure-digest, approval scope, and time-attestation gaps.",
+  "evidence_refs": [
+    "F-DELETION-FORGERY",
+    "F-CLOSURE-REVIEW-SET",
+    "F-APPROVAL-RECORDS-SCOPE",
+    "F-GIT-TIME-ATTESTATION"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

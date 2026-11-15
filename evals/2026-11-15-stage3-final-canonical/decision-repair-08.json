@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-OWNERSHIP",
+  "kind": "decision",
+  "cycle": 8,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "8"
+  ],
+  "artifact_hashes": {
+    "8": "02d7a36273f34fb8648e8169b2a1bb49ff61cf65499f79a29b2d9831a74e8f34"
+  },
+  "decision": "REPAIR",
+  "rationale": "Reviewer found migration ownership, final failure, stale approval, and source-root issues.",
+  "evidence_refs": [
+    "F-MIGRATION-OWNERSHIP",
+    "F-FINAL-FAIL-ACCEPT",
+    "F-STALE-APPROVAL",
+    "F-SOURCE-ROOT-CWD"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-APPROVAL-FINDING-GATE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Human Approval Finding gate",
+  "claim": "Approval could be written while a closed high Finding lacked PASS regression evidence.",
+  "evidence": [
+    "tests/test_cli.py::test_human_approval_rejects_invalid_closed_finding_evidence"
+  ],
+  "impact": "Final gate could accept incomplete or premature evidence.",
+  "required_action": "Run the same closed-Finding gate before writing Approval.",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-APPROVAL-PRECONDITION",
+  "prevention": {
+    "kind": "structure",
+    "action": "Run the same closed-Finding gate before writing Approval.",
+    "evidence": [
+      "tests/test_cli.py::test_human_approval_rejects_invalid_closed_finding_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-APPROVAL-FINDING-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

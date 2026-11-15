@@ -1,0 +1,43 @@
+{
+  "schema_version": 3,
+  "id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "kind": "artifact",
+  "artifact_type": "working_tree_change",
+  "version": "2",
+  "content": "Completed Stage 1-3 runtime, approval, metrics, registry, improvements, content-addressed Artifact identity, conflict-safe registry provenance, L3 host attestations, and tracked canonical audit records.",
+  "source": "Base 73ea97a; code head ad5d159ba4a9b111bc92951c7e44824f162cd954; canonical evidence set evals/2026-11-15-stage3-final-canonical; diff blob 0f00451a14085951efeba2480138acc9800a97e4 from git diff --binary 73ea97a..ad5d159 | git hash-object --stdin.",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "files": [
+    ".agents/skills/loop-engineering/SKILL.md",
+    ".claude/agents/arbiter.md",
+    ".claude/skills/loop-engineering/SKILL.md",
+    ".codex/agents/arbiter.toml",
+    ".loop-engineering.json",
+    "README.en.md",
+    "README.md",
+    "core/artifact-schema/README.md",
+    "core/artifact-schema/approval.schema.json",
+    "core/artifact-schema/artifact.schema.json",
+    "core/artifact-schema/decision.schema.json",
+    "core/artifact-schema/verification.schema.json",
+    "core/decision-policy.md",
+    "core/protocol.md",
+    "core/state-machine.md",
+    "docs/PROJECT_STATUS.md",
+    "evals/2026-11-14-schema-v3-evidence.json",
+    "evals/2026-11-15-stage3-completion-evidence.json",
+    "evals/2026-11-15-stage3-completion-loop.md",
+    "evals/2026-11-15-stage3-final-canonical",
+    "loop_engineering/cli.py",
+    "packs/software-development/pack.md",
+    "roles/arbiter.md",
+    "tests/test_cli.py",
+    "workflows/continuous-improvement/workflow.md"
+  ],
+  "producer_context": {
+    "session_id": "/root",
+    "model": "gpt-5-codex",
+    "authentication": "unverified_host_attestation"
+  },
+  "content_hash": "088b2cc8139131f34dc3f34d81f5e53e75447bfe8174a37ba9aa40352000eba5"
+}

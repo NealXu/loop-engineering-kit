@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "id": "F-SHARED-VALIDATION",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Partial-run cross validation",
+  "claim": "runtime, approval, metrics, and registry accepted records with foreign Work Item approvals.",
+  "evidence": [
+    "Approval WI-OTHER was counted by metrics."
+  ],
+  "impact": "Audit evidence could be attributed to the wrong run.",
+  "required_action": "Share partial-run cross validation across control-plane commands.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-STAGE3"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Validate Approval, Verification, Finding, Artifact, and Decision references.",
+    "evidence": [
+      "loop_engineering/cli.py",
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-SHARED-VALIDATION-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Full canonical validation remains the final acceptance gate."
+  },
+  "status": "resolved"
+}

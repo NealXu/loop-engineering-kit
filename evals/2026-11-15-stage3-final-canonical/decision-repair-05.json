@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-VALIDATION",
+  "kind": "decision",
+  "cycle": 5,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "5"
+  ],
+  "artifact_hashes": {
+    "5": "07c793e909b6a5043b2ef6e0df680cadb3a6511b8d28b7c0b187359c684a86e7"
+  },
+  "decision": "REPAIR",
+  "rationale": "Independent review found migration evidence synthesis, partial-record validation bypass, Approval Finding bypass, and evidence-scope gaps.",
+  "evidence_refs": [
+    "F-MIGRATION-EXECUTION-FABRICATION",
+    "F-PARTIAL-VALIDATION-BYPASS",
+    "F-APPROVAL-FINDING-GATE",
+    "F-EVIDENCE-SCOPE-AND-TIME",
+    "F-CLOSURE-PUBLICATION"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

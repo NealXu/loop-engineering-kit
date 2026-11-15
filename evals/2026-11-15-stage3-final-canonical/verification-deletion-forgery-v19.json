@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-DELETION-FORGERY-V19",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "19",
+  "artifact_content_hash": "13a6a9f0608ab6e213de3232f507fdb430a1d44d541602e0641c427bfcf4d294",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-DELETION-FORGERY",
+  "role": "verifier",
+  "check": "Forged deletion rejection",
+  "method": "python -m unittest tests.test_cli.CliTests.test_check_records_verifies_working_tree_source_files -v",
+  "status": "PASS",
+  "evidence": [
+    "A modified source file declared as deleted was rejected because it still existed at source and in the worktree.",
+    "Restoring the file hash passed."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest tests.test_cli.CliTests.test_check_records_verifies_working_tree_source_files -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:54:06+08:00"
+  }
+}

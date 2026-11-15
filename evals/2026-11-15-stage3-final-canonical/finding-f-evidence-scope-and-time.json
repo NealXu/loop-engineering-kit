@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-EVIDENCE-SCOPE-AND-TIME",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "CI evidence scope and timing",
+  "claim": "Ordinary CI evidence was excluded from reviewed-set hashing and host evidence described the prior Artifact version.",
+  "evidence": [
+    "tests/test_cli.py::test_approval_binds_the_reviewed_record_set"
+  ],
+  "impact": "Final gate could accept incomplete or premature evidence.",
+  "required_action": "Keep ordinary CI in delivery scope and rerun host evidence for the final code.",
+  "criterion_ids": [
+    "AC-CI",
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-CI-GIT-PROBE",
+  "prevention": {
+    "kind": "structure",
+    "action": "Keep ordinary CI in delivery scope and rerun host evidence for the final code.",
+    "evidence": [
+      "tests/test_cli.py::test_approval_binds_the_reviewed_record_set"
+    ],
+    "regression_verification_ids": [
+      "V-EVIDENCE-SCOPE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

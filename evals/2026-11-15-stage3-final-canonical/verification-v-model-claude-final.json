@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-MODEL-CLAUDE-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "criterion_ids": [
+    "AC-REGRESSION"
+  ],
+  "role": "verifier",
+  "check": "Real Claude Code installed Skill",
+  "method": "Claude Code 2.1.311 through CCR qwen3.7-plus verifier agent",
+  "status": "PASS",
+  "evidence": [
+    "No-session-persistence run executed installed doctor with exit 0 and returned LOOP-ENGINEERING-CLAUDE-V16-PASS."
+  ],
+  "limitations": [
+    "Host session and model identity remain unverified attestations."
+  ],
+  "execution": {
+    "command": "ccr default-claude-code cli -- -p --model qwen3.7-plus --agent verifier --permission-mode auto --allowedTools Read,Grep,Glob,Bash --no-session-persistence",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T13:58:50+08:00"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-DELETION-FORGERY",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Forged deleted file",
+  "claim": "A modified file could be declared deleted, removing its hash and worktree comparison while still existing at source and in the worktree.",
+  "evidence": [
+    "An isolated probe set deleted_files=[source.txt] and file_hashes={} for a modified source file; check-records returned no errors."
+  ],
+  "impact": "The accepted source could differ from reviewed source.",
+  "required_action": "Require every deleted file to be absent at source_revision and in the working tree.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Validate deleted_files with git cat-file and a worktree absence check.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-DELETION-FORGERY-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

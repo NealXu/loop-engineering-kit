@@ -1,0 +1,32 @@
+{
+  "schema_version": 3,
+  "id": "V-MIGRATION-REGRESSION-FINAL-V17-V18-V19-V20",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "20",
+  "finding_id": "F-MIGRATION-V1-TRANSACTION",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "role": "verifier",
+  "check": "v1 migration and transaction rollback",
+  "method": "Run real v1 conversion and injected second-replace failure tests.",
+  "status": "PASS",
+  "evidence": [
+    "v1 criteria and evidence map into v3.",
+    "Injected commit failure restores the original directory.",
+    "Full suite 110/110 passed on final Artifact version 17.",
+    "Full suite 111/111 passed on final Artifact version 18.",
+    "Full suite 113/113 passed on final Artifact version 19.",
+    "Full suite 113/113 passed on final Artifact version 20."
+  ],
+  "limitations": [
+    "Physical power loss is not simulated."
+  ],
+  "artifact_content_hash": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:11:48+08:00"
+  }
+}

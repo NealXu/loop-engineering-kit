@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-APPROVAL-ORDER-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "finding_id": "F-APPROVAL-PRECONDITION",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "role": "verifier",
+  "check": "Approval precondition ordering",
+  "method": "Run approve before Reviewer and Challenger PASS and inspect filesystem.",
+  "status": "PASS",
+  "evidence": [
+    "Premature approval returns non-zero and writes no approval file."
+  ],
+  "limitations": [
+    "Human deliberation is outside machine verification."
+  ],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T11:31:31+08:00"
+  }
+}

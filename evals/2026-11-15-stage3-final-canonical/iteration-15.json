@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-15",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 15,
+  "input_versions": [
+    "15"
+  ],
+  "output_versions": [
+    "16"
+  ],
+  "changes": [
+    "Validate records before runtime-status checkpoint trust.",
+    "Bind source_revision to HEAD or evidence-only descendants.",
+    "Support NUL-safe deletions and Unicode paths."
+  ],
+  "result": "REPAIR"
+}

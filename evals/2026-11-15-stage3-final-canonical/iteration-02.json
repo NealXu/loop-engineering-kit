@@ -1,0 +1,21 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-02",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 2,
+  "input_versions": [
+    "2"
+  ],
+  "output_versions": [
+    "3"
+  ],
+  "changes": [
+    "Bound Approval/ACCEPT to reviewed_set_digest.",
+    "Bound working-tree changes to Git revision and file hashes.",
+    "Closed legacy v3 migration and journal type gaps.",
+    "Rejected terminal-history and L3 provenance collisions.",
+    "Required execution metadata for final PASS evidence."
+  ],
+  "result": "REPAIR"
+}

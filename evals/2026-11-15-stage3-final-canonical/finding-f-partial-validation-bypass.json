@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-PARTIAL-VALIDATION-BYPASS",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Runtime and Stage 3 partial records",
+  "claim": "In-progress records skipped full cross-record validation unless ACCEPT existed.",
+  "evidence": [
+    "tests/test_cli.py::test_runtime_and_control_plane_reject_invalid_closed_findings"
+  ],
+  "impact": "Final gate could accept incomplete or premature evidence.",
+  "required_action": "Share cross-record checks across runtime, metrics, registry, and improvements.",
+  "criterion_ids": [
+    "AC-RUNTIME",
+    "AC-STAGE3"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-SHARED-VALIDATION",
+  "prevention": {
+    "kind": "structure",
+    "action": "Share cross-record checks across runtime, metrics, registry, and improvements.",
+    "evidence": [
+      "tests/test_cli.py::test_runtime_and_control_plane_reject_invalid_closed_findings"
+    ],
+    "regression_verification_ids": [
+      "V-PARTIAL-VALIDATION-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

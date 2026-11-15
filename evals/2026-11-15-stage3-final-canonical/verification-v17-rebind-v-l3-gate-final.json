@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "V-L3-GATE-FINAL-V17",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "17",
+  "finding_id": "F-L3-CHALLENGER-BYPASS",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "role": "verifier",
+  "check": "Final-version L3 evidence gates",
+  "method": "Run Finding-only Challenger, premature approval, exact approval, and final L3 ACCEPT tests.",
+  "status": "PASS",
+  "evidence": [
+    "Challenger Finding-only fails.",
+    "Premature approval writes no file.",
+    "Reviewer+Challenger PASS plus Approval succeeds.",
+    "Full suite 110/110 passed on final Artifact version 17."
+  ],
+  "limitations": [
+    "Independence and identity remain host responsibilities."
+  ],
+  "artifact_content_hash": "8abf9cde807b6c201ca55dd66099f6456027d0efadc4878103f93443858a49f2",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:20:07+08:00"
+  }
+}

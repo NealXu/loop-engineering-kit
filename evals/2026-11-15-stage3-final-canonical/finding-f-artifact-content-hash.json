@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-ARTIFACT-CONTENT-HASH",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "blocking",
+  "target": "Artifact identity and approval binding",
+  "claim": "A same id/version could be replaced after review and reuse prior Verification, approval, and ACCEPT evidence.",
+  "evidence": [
+    "Prior schema bound evidence only to Artifact id/version.",
+    "The new regression changes content in place and check-records fails."
+  ],
+  "impact": "A human could approve one payload while a different payload is released under the same version.",
+  "required_action": "Bind Artifact identity to a canonical content hash across every final gate and runtime recovery check.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "prevention": {
+    "kind": "structure",
+    "action": "Artifact content_hash is required and repeated by Verification, Decision, and Approval records.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_rejects_stale_artifact_hashes",
+      "tests/test_cli.py::test_migration_binds_artifact_hashes"
+    ],
+    "regression_verification_ids": [
+      "V-HASH-BINDING-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

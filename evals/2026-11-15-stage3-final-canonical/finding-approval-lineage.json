@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-APPROVAL-LINEAGE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Approval target version",
+  "claim": "Approval fell back to a guessed highest version when lineage was ambiguous.",
+  "evidence": [
+    "Two Artifacts without Iterations still produced an approval."
+  ],
+  "impact": "Approval could bind to the wrong final version.",
+  "required_action": "Require unambiguous iteration lineage for approval.",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Use lineage_final_artifact and reject all lineage errors.",
+    "evidence": [
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-APPROVAL-LINEAGE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Natural order only supports incomplete non-approval runtime snapshots."
+  },
+  "status": "resolved"
+}

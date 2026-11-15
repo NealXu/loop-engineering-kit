@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-DOCS-V19",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "19",
+  "artifact_content_hash": "13a6a9f0608ab6e213de3232f507fdb430a1d44d541602e0641c427bfcf4d294",
+  "criterion_ids": [
+    "AC-DOCS"
+  ],
+  "role": "verifier",
+  "check": "Documentation and status ledger contract",
+  "method": "python -m unittest discover -s tests -v",
+  "status": "PASS",
+  "evidence": [
+    "Documentation and status-ledger checks passed in the full 113-test suite.",
+    "The status ledger separates local Git time and host provenance from trusted identity or clock evidence.",
+    "Schema documentation names the exact changed set, evidence hashes, forged-deletion rejection, and source-time lower bound."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:55:47+08:00"
+  }
+}

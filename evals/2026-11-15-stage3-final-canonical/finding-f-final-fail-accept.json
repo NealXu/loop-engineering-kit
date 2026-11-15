@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-FINAL-FAIL-ACCEPT",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Final failure evidence",
+  "claim": "An unreferenced final FAIL could coexist with ACCEPT.",
+  "evidence": [
+    "tests/test_cli.py::test_final_fail_blocks_accept_even_when_unreferenced"
+  ],
+  "impact": "Recovery or acceptance could use unscoped or stale evidence.",
+  "required_action": "Reject any final-version delivery FAIL/BLOCKED/NOT_RUN before ACCEPT.",
+  "criterion_ids": [
+    "AC-RUNTIME",
+    "AC-STAGE3"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-SHARED-ACCEPT-GATE",
+  "prevention": {
+    "kind": "structure",
+    "action": "Reject any final-version delivery FAIL/BLOCKED/NOT_RUN before ACCEPT.",
+    "evidence": [
+      "tests/test_cli.py::test_final_fail_blocks_accept_even_when_unreferenced"
+    ],
+    "regression_verification_ids": [
+      "V-FINAL-FAIL-ACCEPT-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

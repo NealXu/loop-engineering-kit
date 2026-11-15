@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-REGISTRY-PROVENANCE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Persistent version registry",
+  "claim": "Registering the same Work Item and record digest with a different label or commit silently overwrote the first provenance.",
+  "evidence": [
+    "The registry filename was derived only from Work Item and digest.",
+    "A conflicting second registration previously returned success."
+  ],
+  "impact": "Audit metadata could be silently replaced for the same immutable record set.",
+  "required_action": "Make identical registration idempotent and reject conflicting provenance atomically.",
+  "criterion_ids": [
+    "AC-STAGE3"
+  ],
+  "status": "resolved",
+  "prevention": {
+    "kind": "structure",
+    "action": "Registry entries use an atomic create-once file and compare canonical provenance before accepting an existing entry.",
+    "evidence": [
+      "tests/test_cli.py::test_registry_rejects_same_digest_provenance_conflict",
+      "tests/test_cli.py::test_registry_same_digest_concurrent_conflict_keeps_one_provenance"
+    ],
+    "regression_verification_ids": [
+      "V-REGISTRY-PROVENANCE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-13",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 13,
+  "input_versions": [
+    "13"
+  ],
+  "output_versions": [
+    "14"
+  ],
+  "changes": [
+    "Use strict closure for Approval and terminal runtime.",
+    "Detect unlisted tracked/untracked worktree changes.",
+    "Share migration lock with Approval."
+  ],
+  "result": "REPAIR"
+}

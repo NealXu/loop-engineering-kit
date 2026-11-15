@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-PARTIAL-VALIDATION-FINAL-V17",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "17",
+  "artifact_content_hash": "8abf9cde807b6c201ca55dd66099f6456027d0efadc4878103f93443858a49f2",
+  "criterion_ids": [
+    "AC-RUNTIME",
+    "AC-STAGE3"
+  ],
+  "finding_id": "F-PARTIAL-VALIDATION-BYPASS",
+  "role": "verifier",
+  "check": "Runtime and Stage 3 partial records",
+  "method": "targeted regression test",
+  "status": "PASS",
+  "evidence": [
+    "tests/test_cli.py::test_runtime_and_control_plane_reject_invalid_closed_findings passed",
+    "Full suite 110/110 passed on final Artifact version 17."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:20:07+08:00"
+  }
+}

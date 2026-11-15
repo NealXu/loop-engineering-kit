@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "V-EVIDENCE-JSON-SCOPE-V18",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "18",
+  "artifact_content_hash": "7df1d462475b8a3e3ede0e0c71b1a2f19d0e0a102e33b771b7b8aa0cd8961231",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-EVIDENCE-JSON-SCOPE",
+  "role": "verifier",
+  "check": "Actual canonical records directory scope",
+  "method": "python -m unittest tests.test_cli.CliTests.test_evidence_scope_and_source_binding -v",
+  "status": "PASS",
+  "evidence": [
+    "The targeted test passed on code head 407685d.",
+    "An unrelated configs/critical.json path was rejected as evidence_path.",
+    "Only the actual records directory and exact hashed evidence files remained exempt."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:38:47+08:00"
+  }
+}

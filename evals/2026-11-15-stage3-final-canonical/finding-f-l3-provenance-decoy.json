@@ -1,0 +1,31 @@
+{
+  "id": "F-L3-PROVENANCE-DECOY",
+  "severity": "high",
+  "criterion_ids": [
+    "AC-PROVENANCE"
+  ],
+  "target": "L3 host context selection",
+  "claim": "Unreferenced decoy Reviewer evidence could hide a same-session or same-model role collision.",
+  "evidence": [
+    "All PASS Reviewer/Challenger records now participate in session/model set checks.",
+    "Producer, Reviewer, and Challenger model equality is rejected."
+  ],
+  "impact": "A non-independent review pair could satisfy an independent gate.",
+  "required_action": "Require disjoint Reviewer/Challenger session and model sets and reject producer collisions.",
+  "recurrence_of": "F-L3-HOST-PROVENANCE",
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "L3 provenance validation checks every final-version PASS host context and disjoint role sets.",
+    "evidence": [
+      "tests/test_cli.py::test_l3_review_provenance_rejects_same_model_and_decoys"
+    ],
+    "regression_verification_ids": [
+      "V-L3-PROVENANCE-COLLISION-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "The CLI can validate declarations, but cannot cryptographically attest a host session."
+  },
+  "schema_version": 3,
+  "kind": "finding",
+  "source_role": "challenger",
+  "status": "resolved"
+}

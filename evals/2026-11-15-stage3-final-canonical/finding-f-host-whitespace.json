@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-HOST-WHITESPACE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Host context normalization",
+  "claim": "Trailing whitespace could make identical session/model values appear distinct.",
+  "evidence": [
+    "tests/test_cli.py::test_l3_review_provenance_rejects_same_model_and_decoys"
+  ],
+  "impact": "Closure, source, or host identity could be ambiguous.",
+  "required_action": "Reject surrounding whitespace before comparing host context values.",
+  "criterion_ids": [
+    "AC-PROVENANCE"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-L3-PROVENANCE-DECOY",
+  "prevention": {
+    "kind": "structure",
+    "action": "Reject surrounding whitespace before comparing host context values.",
+    "evidence": [
+      "tests/test_cli.py::test_l3_review_provenance_rejects_same_model_and_decoys"
+    ],
+    "regression_verification_ids": [
+      "V-HOST-WHITESPACE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

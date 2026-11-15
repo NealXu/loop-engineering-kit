@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "V-BASE-REV-VALIDATOR-FINAL-V17-V18-V19",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "19",
+  "artifact_content_hash": "13a6a9f0608ab6e213de3232f507fdb430a1d44d541602e0641c427bfcf4d294",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-BASE-REV-VALIDATOR",
+  "role": "verifier",
+  "check": "base_revision manual validator",
+  "method": "targeted regression",
+  "status": "PASS",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files passed",
+    "Full suite 110/110 passed on final Artifact version 17.",
+    "Full suite 111/111 passed on final Artifact version 18.",
+    "Full suite 113/113 passed on final Artifact version 19."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:55:47+08:00"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-APPROVAL-NONPASS",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "blocking",
+  "target": "Approval final evidence",
+  "claim": "Approval could be issued while a final non-closure FAIL/BLOCKED/NOT_RUN existed, and removing it did not refresh approval.",
+  "evidence": [
+    "tests/test_cli.py::test_human_approval_rejects_final_nonpass_evidence"
+  ],
+  "impact": "Human approval could cover a failed evidence set.",
+  "required_action": "Reject final non-PASS evidence before Approval and bind every final verification state into reviewed_set_digest.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-STALE-APPROVAL",
+  "prevention": {
+    "kind": "structure",
+    "action": "Approval checks all final delivery evidence and reviewed-set hashes all final states.",
+    "evidence": [
+      "tests/test_cli.py::test_human_approval_rejects_final_nonpass_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-APPROVAL-NONPASS-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

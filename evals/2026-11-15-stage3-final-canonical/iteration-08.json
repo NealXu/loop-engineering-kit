@@ -1,0 +1,20 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-08",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 8,
+  "input_versions": [
+    "8"
+  ],
+  "output_versions": [
+    "9"
+  ],
+  "changes": [
+    "Require nonce-bound stage ownership before recovery deletion.",
+    "Reject final delivery failure evidence in ACCEPT.",
+    "Validate stale Approvals in shared record checks.",
+    "Add explicit --repo to source-aware commands."
+  ],
+  "result": "REPAIR"
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-REGISTRY-CONCURRENCY",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Version registry",
+  "claim": "Concurrent registry updates overwrote one another.",
+  "evidence": [
+    "Two concurrent runs left one entry."
+  ],
+  "impact": "Version evidence was silently lost.",
+  "required_action": "Persist each run in an atomic per-run file.",
+  "criterion_ids": [
+    "AC-STAGE3"
+  ],
+  "prevention": {
+    "kind": "structure",
+    "action": "Use digest-addressed registry run files and aggregate on list.",
+    "evidence": [
+      "loop_engineering/cli.py",
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-REGISTRY-CONCURRENCY-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

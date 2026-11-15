@@ -1,0 +1,30 @@
+{
+  "id": "F-MIGRATION-JOURNAL-TYPES",
+  "severity": "medium",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "target": "Migration journal recovery",
+  "claim": "Non-string backup or stage fields caused a traceback instead of fail-closed recovery.",
+  "evidence": [
+    "A journal with integer and array paths raised TypeError.",
+    "Type validation now runs before Path construction."
+  ],
+  "impact": "Corrupt recovery state could crash migration diagnostics.",
+  "required_action": "Validate all journal paths as non-blank strings before filesystem access.",
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Journal path types are validated before any Path or filesystem operation.",
+    "evidence": [
+      "tests/test_cli.py::test_migration_journal_non_string_paths_fail_closed"
+    ],
+    "regression_verification_ids": [
+      "V-MIGRATION-JOURNAL-TYPES-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "The journal is external persisted state, so runtime validation remains necessary."
+  },
+  "schema_version": 3,
+  "kind": "finding",
+  "source_role": "reviewer",
+  "status": "resolved"
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-DOCS-V17",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "17",
+  "artifact_content_hash": "8abf9cde807b6c201ca55dd66099f6456027d0efadc4878103f93443858a49f2",
+  "criterion_ids": [
+    "AC-DOCS"
+  ],
+  "role": "verifier",
+  "check": "Documentation and status ledger contract",
+  "method": "python -m unittest discover -s tests -v; git diff --check",
+  "status": "PASS",
+  "evidence": [
+    "Documentation contract tests passed in the full 110-test suite.",
+    "The status ledger now labels implemented capabilities without claiming the pending final audit.",
+    "git diff --check passed with exit code 0."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "git diff --check",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:22:41+08:00"
+  }
+}

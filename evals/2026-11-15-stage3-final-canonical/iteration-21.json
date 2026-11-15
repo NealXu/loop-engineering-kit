@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-21",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 21,
+  "input_versions": [
+    "21"
+  ],
+  "output_versions": [
+    "22"
+  ],
+  "changes": [
+    "Allow --pre-closure to validate pending closure evidence without a terminal Decision."
+  ],
+  "result": "REPAIR"
+}

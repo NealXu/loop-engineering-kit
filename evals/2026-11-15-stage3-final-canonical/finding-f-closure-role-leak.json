@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-ROLE-LEAK",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Closure gate authorization",
+  "claim": "Reviewer/Challenger evidence could self-label closure and leave the reviewed-set digest.",
+  "evidence": [
+    "tests/test_cli.py::test_l3_review_provenance_rejects_same_model_and_decoys"
+  ],
+  "impact": "Reviewed source or evidence could differ from the approved state.",
+  "required_action": "Require closure_gate only on verifier evidence paired with a closure-gate finding; delivery criteria exclude it.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-CLOSURE-GATE-BYPASS",
+  "prevention": {
+    "kind": "structure",
+    "action": "Require closure_gate only on verifier evidence paired with a closure-gate finding; delivery criteria exclude it.",
+    "evidence": [
+      "tests/test_cli.py::test_l3_review_provenance_rejects_same_model_and_decoys"
+    ],
+    "regression_verification_ids": [
+      "V-CLOSURE-ROLE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

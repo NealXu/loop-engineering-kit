@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "V-REGRESSION-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "criterion_ids": [
+    "AC-REGRESSION"
+  ],
+  "role": "verifier",
+  "check": "Complete regression",
+  "method": "python loop_engineering/cli.py verify --root . --config evals/2026-11-15-stage3-final-run-config.json --report-dir <temp>",
+  "status": "PASS",
+  "evidence": [
+    "109 tests passed.",
+    "configured verify PASS; run config SHA256 46F851180FFCB23C14B67C7FCA0BF3090F07C7D1DA01E693A245D16971658C6A; JSON report SHA256 2D8B67A6C5A2C643B0D03BBAE38A1A3446AE3F71D224AD3AB5B7A100B4417031."
+  ],
+  "limitations": [],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python loop_engineering/cli.py verify --root . --config evals/2026-11-15-stage3-final-run-config.json --report-dir C:/Users/xuqi/AppData/Local/Temp/loop-engineering-v16-20261115-135144",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T13:51:44+08:00"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-EVIDENCE-PATH-WILDCARD",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Evidence path scope",
+  "claim": "The worktree validator skipped every path under evals, not only declared evidence.",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+  ],
+  "impact": "Unreviewed files or future evidence could satisfy integrity gates.",
+  "required_action": "Allow only the Artifact-declared evidence directory and files.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-WORKTREE-UNLISTED",
+  "prevention": {
+    "kind": "structure",
+    "action": "Allow only the Artifact-declared evidence directory and files.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-EVIDENCE-PATH-WILDCARD-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

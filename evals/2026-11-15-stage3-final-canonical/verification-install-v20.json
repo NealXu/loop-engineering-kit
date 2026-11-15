@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-INSTALL-V20",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "20",
+  "artifact_content_hash": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3",
+  "criterion_ids": [
+    "AC-REGRESSION"
+  ],
+  "role": "verifier",
+  "check": "Final user-scope installation",
+  "method": "scripts/install.ps1 -Target Both -Scope User -Upgrade; compare cli.py hashes; run both installed doctors",
+  "status": "PASS",
+  "evidence": [
+    "User-scope upgrade completed with backup stamp 20261115-151327.",
+    "Source, Codex, and Claude cli.py all have SHA-256 8FE4AA566C980DBDA58DB4C9E73711BDC67D8904C18E1F1CC8998DE0195BF44B.",
+    "Both installed doctor commands exited 0 with every required file present.",
+    "Managed-file .bak-20261115-151327 backups were retained."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Target Both -Scope User -Upgrade",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:13:28+08:00"
+  }
+}

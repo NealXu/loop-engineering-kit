@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "F-STALE-EXECUTION-TIME",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "medium",
+  "target": "Execution freshness",
+  "claim": "Executed-at values before the source commit were accepted.",
+  "evidence": [
+    "A 1970 timestamp passed the prior execution metadata validation."
+  ],
+  "impact": "Stale execution evidence could be rebound to a current content hash.",
+  "required_action": "Reject final evidence executed before source_revision.",
+  "criterion_ids": [
+    "AC-INTEGRITY",
+    "AC-APPROVAL"
+  ],
+  "status": "resolved"
+}

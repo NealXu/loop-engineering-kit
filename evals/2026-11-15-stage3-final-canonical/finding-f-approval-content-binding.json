@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-APPROVAL-CONTENT-BINDING",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "high",
+  "target": "Approval record content identity",
+  "claim": "Approval statement and timestamp could be rewritten without invalidating the final Decision.",
+  "evidence": [
+    "The previous Decision referenced Approval by ID only."
+  ],
+  "impact": "The human-approval evidence was not content-addressed after creation.",
+  "required_action": "Require ACCEPT approval_hashes to map every referenced Approval ID to its canonical record digest.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Hash referenced Approval records in the terminal Decision.",
+    "evidence": [
+      "tests/test_cli.py::test_human_approval_runtime_unblocks_l3_accept"
+    ],
+    "regression_verification_ids": [
+      "V-APPROVAL-CONTENT-BINDING-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

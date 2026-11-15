@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-MIGRATION-V1-COVERAGE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Legacy criterion coverage",
+  "claim": "Unmapped v1 Verification and Finding records were assigned every criterion.",
+  "evidence": [
+    "An unreferenced Verification received AC-1 and AC-2."
+  ],
+  "impact": "Migration could fabricate coverage.",
+  "required_action": "Require explicit --record-criteria mappings.",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Block unmapped legacy coverage.",
+    "evidence": [
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-MIGRATION-V1-COVERAGE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Historical semantic coverage requires operator knowledge."
+  },
+  "status": "resolved"
+}

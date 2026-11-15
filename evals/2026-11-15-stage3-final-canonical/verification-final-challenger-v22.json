@@ -1,0 +1,44 @@
+{
+  "schema_version": 3,
+  "id": "V-FINAL-CHALLENGER-V22",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "criterion_ids": [
+    "AC-MIGRATION",
+    "AC-RUNTIME",
+    "AC-APPROVAL",
+    "AC-STAGE3",
+    "AC-DOCS",
+    "AC-REGRESSION",
+    "AC-CI",
+    "AC-INTEGRITY",
+    "AC-PROVENANCE",
+    "AC-RECORDS"
+  ],
+  "role": "challenger",
+  "host_context": {
+    "session_id": "01a1de30-4515-7510-a2dc-2bbcbea3f9d0",
+    "model": "deepseek-v4-pro",
+    "independence": "independent",
+    "authentication": "unverified_host_attestation"
+  },
+  "check": "Independent final L3 challenge",
+  "method": "codex exec read-only with deepseek-v4-pro from the repository root",
+  "status": "PASS",
+  "evidence": [
+    "External Challenger returned CHALLENGE PASS for Artifact v22 with no blocking or high finding.",
+    "A live --pre-closure run passed with pending closure and no terminal Decision; strict mode failed only on the expected pending closure and terminal evidence.",
+    "Artifact content hash, normalized evidence hashes, ancestry, exact changed set, deletion controls, future-time bounds, approval_hashes, and closure digest behavior were checked."
+  ],
+  "limitations": [
+    "Session and model identity remain unverified host attestations.",
+    "The Challenger could not rerun the full suite because its read-only sandbox had no writable temporary directory; CI evidence remains external."
+  ],
+  "execution": {
+    "command": "codex exec -C D:/Codes/innovation/loop-engineering-kit --model deepseek-v4-pro --skip-git-repo-check --sandbox read-only --ephemeral --color never -",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:57:30+08:00"
+  }
+}

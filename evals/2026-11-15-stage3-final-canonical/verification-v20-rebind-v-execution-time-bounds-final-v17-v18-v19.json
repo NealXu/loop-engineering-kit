@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "V-EXECUTION-TIME-BOUNDS-FINAL-V17-V18-V19-V20",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "20",
+  "artifact_content_hash": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3",
+  "criterion_ids": [
+    "AC-INTEGRITY",
+    "AC-APPROVAL"
+  ],
+  "finding_id": "F-EXECUTION-TIME-BOUNDS",
+  "role": "verifier",
+  "check": "Execution timestamp validation",
+  "method": "targeted regression",
+  "status": "PASS",
+  "evidence": [
+    "tests/test_cli.py::test_final_verification_requires_executed_command_metadata passed",
+    "Full suite 110/110 passed on final Artifact version 17.",
+    "Full suite 111/111 passed on final Artifact version 18.",
+    "Full suite 113/113 passed on final Artifact version 19.",
+    "Full suite 113/113 passed on final Artifact version 20."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:11:48+08:00"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "V-LEGACY-REGISTRY-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "criterion_ids": [
+    "AC-STAGE3"
+  ],
+  "finding_id": "F-LEGACY-REGISTRY-NULL",
+  "role": "verifier",
+  "check": "Legacy registry validation",
+  "method": "targeted regression / final snapshot",
+  "status": "PASS",
+  "evidence": [
+    "tests/test_cli.py::test_registry_list_rejects_malformed_legacy_entries passed"
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T12:32:08+08:00"
+  }
+}

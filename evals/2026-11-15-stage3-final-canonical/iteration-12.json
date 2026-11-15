@@ -1,0 +1,17 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-12",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 12,
+  "input_versions": [
+    "12"
+  ],
+  "output_versions": [
+    "13"
+  ],
+  "changes": [
+    "Allow base_revision in manual Artifact validation."
+  ],
+  "result": "REPAIR"
+}

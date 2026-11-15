@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-RUNTIME-PRECLOSURE-ACCEPT",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Strict runtime closure",
+  "claim": "Runtime and Approval could use a looser pre-closure view and report ACCEPT before closure PASS.",
+  "evidence": [
+    "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+  ],
+  "impact": "Runtime or records could expose a state inconsistent with strict closure.",
+  "required_action": "Use strict closure for Approval and for runtime once ACCEPT exists; pre-closure only bootstraps evidence.",
+  "criterion_ids": [
+    "AC-RUNTIME",
+    "AC-APPROVAL"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-CLOSURE-PUBLICATION",
+  "prevention": {
+    "kind": "structure",
+    "action": "Use strict closure for Approval and for runtime once ACCEPT exists; pre-closure only bootstraps evidence.",
+    "evidence": [
+      "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-RUNTIME-PRECLOSURE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

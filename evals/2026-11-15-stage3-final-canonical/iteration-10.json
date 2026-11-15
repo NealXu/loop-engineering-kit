@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-10",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 10,
+  "input_versions": [
+    "10"
+  ],
+  "output_versions": [
+    "11"
+  ],
+  "changes": [
+    "Derive closure exemptions only from closure Finding prevention IDs.",
+    "Include unregistered final states in review-set and Approval gates."
+  ],
+  "result": "REPAIR"
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-18",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 18,
+  "input_versions": [
+    "18"
+  ],
+  "output_versions": [
+    "19"
+  ],
+  "changes": [
+    "Reject forged deleted-file declarations at source and in the worktree.",
+    "Bind registered closure PASS evidence into reviewed-set digests.",
+    "Keep records scope through approval and exempt only the stable records lock.",
+    "Disclose Git committer time as a local attestation."
+  ],
+  "result": "REPAIR"
+}

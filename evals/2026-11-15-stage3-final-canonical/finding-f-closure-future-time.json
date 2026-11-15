@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-FUTURE-TIME",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Closure execution chronology",
+  "claim": "NOT_RUN closure records contained claimed future exit-zero execution metadata.",
+  "evidence": [
+    "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+  ],
+  "impact": "Final evidence could bypass review or crash control-plane reads.",
+  "required_action": "Closure records remain without execution metadata until the final command actually runs.",
+  "criterion_ids": [
+    "AC-RECORDS",
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-CANONICAL-PREMATURE-PASS",
+  "prevention": {
+    "kind": "structure",
+    "action": "Closure records remain without execution metadata until the final command actually runs.",
+    "evidence": [
+      "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-CLOSURE-TIME-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "F-DOC-ORPHAN",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "low",
+  "target": "Schema documentation",
+  "claim": "The schema README contained an orphaned duplicate sentence fragment.",
+  "evidence": [
+    "An isolated 'increasing; a CONTINUE Iteration may remain undecided.' line remained."
+  ],
+  "impact": "The documentation was harder to parse.",
+  "required_action": "Remove the duplicated fragment.",
+  "criterion_ids": [
+    "AC-DOCS"
+  ],
+  "status": "resolved"
+}

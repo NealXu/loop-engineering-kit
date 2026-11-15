@@ -1,0 +1,31 @@
+{
+  "id": "F-TERMINAL-HISTORY",
+  "severity": "high",
+  "criterion_ids": [
+    "AC-RUNTIME",
+    "AC-STAGE3"
+  ],
+  "target": "Runtime and control-plane Decision history",
+  "claim": "Multiple terminal Decisions and history after a terminal state were accepted by runtime, metrics, and registry.",
+  "evidence": [
+    "Two STOP Decisions previously produced a valid checkpoint and registry entry.",
+    "Shared decision-history validation now rejects them."
+  ],
+  "impact": "Resumed or registered runs could claim conflicting terminal outcomes.",
+  "required_action": "Apply unique-cycle and exactly-one-terminal validation to every partial record consumer.",
+  "recurrence_of": "F-SHARED-ACCEPT-GATE",
+  "prevention": {
+    "kind": "structure",
+    "action": "runtime, metrics, registry, and improvements share partial Decision-history validation.",
+    "evidence": [
+      "tests/test_cli.py::test_runtime_and_control_plane_reject_multiple_terminal_decisions"
+    ],
+    "regression_verification_ids": [
+      "V-TERMINAL-HISTORY-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "schema_version": 3,
+  "kind": "finding",
+  "source_role": "reviewer",
+  "status": "resolved"
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-EVIDENCE-TIME",
+  "kind": "decision",
+  "cycle": 14,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "14"
+  ],
+  "artifact_hashes": {
+    "14": "b620d3395072351d3ad2d09e8acfe885fcb2db2a038359156fdbeffd9a03912a"
+  },
+  "decision": "REPAIR",
+  "rationale": "Unscoped evidence path exemption and unbounded execution timestamps weakened integrity.",
+  "evidence_refs": [
+    "F-EVIDENCE-PATH-WILDCARD",
+    "F-EXECUTION-TIME-BOUNDS"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

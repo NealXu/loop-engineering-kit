@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-PUBLICATION",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Premature publication state",
+  "claim": "A transient pre-closure ACCEPT could exist before the final canonical gate.",
+  "evidence": [
+    "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+  ],
+  "impact": "Final gate could accept incomplete or premature evidence.",
+  "required_action": "Forbid committing or publishing any pre-closure record state.",
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "status": "resolved",
+  "closure_gate": true,
+  "recurrence_of": "F-CANONICAL-PREMATURE-PASS",
+  "prevention": {
+    "kind": "structure",
+    "action": "Forbid committing or publishing any pre-closure record state.",
+    "evidence": [
+      "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-PUBLICATION-CLOSURE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

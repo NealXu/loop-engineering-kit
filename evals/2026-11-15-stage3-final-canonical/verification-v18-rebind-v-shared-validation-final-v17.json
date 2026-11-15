@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "V-SHARED-VALIDATION-FINAL-V17-V18",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "18",
+  "finding_id": "F-SHARED-VALIDATION",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-STAGE3"
+  ],
+  "role": "verifier",
+  "check": "Shared partial-run validation",
+  "method": "Run foreign-Work-Item Approval through metrics and inspect runtime_record_errors.",
+  "status": "PASS",
+  "evidence": [
+    "Foreign Approval is rejected before metrics aggregation.",
+    "Full suite 110/110 passed on final Artifact version 17.",
+    "Full suite 111/111 passed on final Artifact version 18."
+  ],
+  "limitations": [
+    "Full check-records remains the final acceptance gate."
+  ],
+  "artifact_content_hash": "7df1d462475b8a3e3ede0e0c71b1a2f19d0e0a102e33b771b7b8aa0cd8961231",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:38:47+08:00"
+  }
+}

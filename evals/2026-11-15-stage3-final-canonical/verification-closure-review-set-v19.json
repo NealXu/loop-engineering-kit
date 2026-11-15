@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-CLOSURE-REVIEW-SET-V19",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "19",
+  "artifact_content_hash": "13a6a9f0608ab6e213de3232f507fdb430a1d44d541602e0641c427bfcf4d294",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-CLOSURE-REVIEW-SET",
+  "role": "verifier",
+  "check": "Closure evidence reviewed-set binding",
+  "method": "python -m unittest tests.test_cli.CliTests.test_approval_binds_closure_pass_evidence -v",
+  "status": "PASS",
+  "evidence": [
+    "Changing registered closure PASS evidence after approval caused a reviewed_set_digest failure."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest tests.test_cli.CliTests.test_approval_binds_closure_pass_evidence -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:54:06+08:00"
+  }
+}

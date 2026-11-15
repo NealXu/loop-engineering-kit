@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "id": "F-CI-GIT-PROBE",
+  "kind": "finding",
+  "source_role": "verifier",
+  "severity": "high",
+  "target": "Rocky Linux CI",
+  "claim": "The source-hash regression assumed Git existed in every CI runtime.",
+  "evidence": [
+    "Rocky 8 test container lacked git and errored.",
+    "The test now skips only when git is absent and executes normally when present."
+  ],
+  "impact": "A portability-only test could block all five CI jobs.",
+  "required_action": "Make the source-hash probe conditional on Git availability and rerun the matrix.",
+  "criterion_ids": [
+    "AC-CI",
+    "AC-REGRESSION"
+  ],
+  "status": "resolved",
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "The Git-dependent test uses an explicit environment skip; supported hosts still execute it.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-CI-GIT-PROBE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Rocky 8 python38 image does not include Git by default."
+  }
+}

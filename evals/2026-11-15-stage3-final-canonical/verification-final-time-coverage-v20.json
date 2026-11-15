@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "V-FINAL-TIME-COVERAGE-V20",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "20",
+  "artifact_content_hash": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-FINAL-TIME-COVERAGE",
+  "role": "verifier",
+  "check": "Final verification timezone coverage",
+  "method": "python -m unittest tests.test_cli.CliTests.test_evidence_scope_and_source_binding -v",
+  "status": "PASS",
+  "evidence": [
+    "An unreferenced final-version Verification with a naive executed_at failed with a timezone error."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest tests.test_cli.CliTests.test_evidence_scope_and_source_binding -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:10:14+08:00"
+  }
+}

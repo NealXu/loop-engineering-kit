@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "V-MIGRATION-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "role": "verifier",
+  "check": "Safe schema migration",
+  "method": "Run dry-run, valid write, backup, check-records, and invalid no-write tests.",
+  "status": "PASS",
+  "evidence": [
+    "Dry-run preserved bytes.",
+    "Valid write created a backup and migrated records.",
+    "Invalid output was not written."
+  ],
+  "limitations": [
+    "Semantically unknown legacy roles use explicit overrides or deterministic inference."
+  ],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T11:31:31+08:00"
+  }
+}

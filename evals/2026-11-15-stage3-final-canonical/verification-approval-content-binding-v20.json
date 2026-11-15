@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-APPROVAL-CONTENT-BINDING-V20",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "20",
+  "artifact_content_hash": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-APPROVAL-CONTENT-BINDING",
+  "role": "verifier",
+  "check": "Approval content hash",
+  "method": "python -m unittest tests.test_cli.CliTests.test_human_approval_runtime_unblocks_l3_accept -v",
+  "status": "PASS",
+  "evidence": [
+    "Changing the Approval statement after ACCEPT caused approval_hashes validation to fail."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest tests.test_cli.CliTests.test_human_approval_runtime_unblocks_l3_accept -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:10:14+08:00"
+  }
+}

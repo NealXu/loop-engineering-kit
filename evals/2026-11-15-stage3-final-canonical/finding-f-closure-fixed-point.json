@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-FIXED-POINT",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Canonical closure evidence",
+  "claim": "The record-closure verification participated in the reviewed-set digest that it was supposed to validate, creating a fixed-point deadlock.",
+  "evidence": [
+    "The canonical Verification could not become PASS until ACCEPT existed.",
+    "ACCEPT digest changed when canonical Verification became PASS."
+  ],
+  "impact": "A valid audited record set could not be closed.",
+  "required_action": "Separate record-closure evidence from reviewed-set hashing and add an explicit pre-closure phase.",
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-AUDITED-RECORDS",
+  "prevention": {
+    "kind": "structure",
+    "action": "record_closure evidence is excluded from reviewed_set_digest; check-records --pre-closure bootstraps the final full check.",
+    "evidence": [
+      "tests/test_cli.py::test_pre_closure_check_bootstraps_record_closure_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-PRECLOSURE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

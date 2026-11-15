@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-CLOSURE-REVIEW-SET",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Reviewed-set closure evidence",
+  "claim": "Registered closure PASS evidence was excluded from reviewed_set_digest.",
+  "evidence": [
+    "Changing a closure Verification evidence or execution command left reviewed_set_sha256 unchanged."
+  ],
+  "impact": "Approval and ACCEPT could remain valid after replacing critical closure evidence.",
+  "required_action": "Include final-version closure PASS evidence in the reviewed-set digest.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-INTEGRITY"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Hash all final-version verifier/reviewer/challenger records, including registered closure PASS records.",
+    "evidence": [
+      "tests/test_cli.py::test_approval_binds_closure_pass_evidence"
+    ],
+    "regression_verification_ids": [
+      "V-CLOSURE-REVIEW-SET-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

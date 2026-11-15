@@ -1,0 +1,22 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-CLOSURE-REGISTRATION",
+  "kind": "decision",
+  "cycle": 10,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "10"
+  ],
+  "artifact_hashes": {
+    "10": "1c4773ee8f32365748b33a0eb0f1e678db8e72fb390fd517fa1b557447dc2ead"
+  },
+  "decision": "REPAIR",
+  "rationale": "Closure marker was broader than explicit Finding registration.",
+  "evidence_refs": [
+    "F-CLOSURE-UNREGISTERED"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

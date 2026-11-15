@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-FINAL",
+  "kind": "decision",
+  "cycle": 1,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "1"
+  ],
+  "artifact_hashes": {
+    "1": "d16214aec6d4864facded468405c1b3ff2b57981db60a42fff5e2bcb4d6b1913"
+  },
+  "decision": "REPAIR",
+  "rationale": "New blocking/high evidence-integrity, provenance, and persistence findings require Artifact version 2.",
+  "evidence_refs": [
+    "F-ARTIFACT-CONTENT-HASH",
+    "F-REGISTRY-PROVENANCE",
+    "F-L3-HOST-PROVENANCE",
+    "F-AUDITED-RECORDS"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

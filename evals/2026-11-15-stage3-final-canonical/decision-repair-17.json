@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-EVIDENCE-BINDING",
+  "kind": "decision",
+  "cycle": 17,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "17"
+  ],
+  "artifact_hashes": {
+    "17": "8abf9cde807b6c201ca55dd66099f6456027d0efadc4878103f93443858a49f2"
+  },
+  "decision": "REPAIR",
+  "rationale": "Independent review and challenge found evidence-path, evidence-hash, changed-set, and timestamp binding gaps.",
+  "evidence_refs": [
+    "F-EVIDENCE-JSON-SCOPE",
+    "F-EVIDENCE-CONTENT-HASH",
+    "F-SOURCE-CHANGED-OVERDECLARE",
+    "F-STALE-EXECUTION-TIME"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

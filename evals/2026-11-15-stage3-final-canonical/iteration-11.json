@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-11",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 11,
+  "input_versions": [
+    "11"
+  ],
+  "output_versions": [
+    "12"
+  ],
+  "changes": [
+    "Unify closure identity checks.",
+    "Require complete base-to-head changed file coverage.",
+    "Reject surrounding host-context whitespace."
+  ],
+  "result": "REPAIR"
+}

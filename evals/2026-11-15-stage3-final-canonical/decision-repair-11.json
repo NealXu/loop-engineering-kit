@@ -1,0 +1,24 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-CLOSURE-CONSISTENCY",
+  "kind": "decision",
+  "cycle": 11,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "11"
+  ],
+  "artifact_hashes": {
+    "11": "a34db88027d68eb7d9a12f9d2967313b2c6ba3ea2b55c7068ed8a5711c98021b"
+  },
+  "decision": "REPAIR",
+  "rationale": "Reviewer found closure identity divergence, changed-file omission risk, and host whitespace ambiguity.",
+  "evidence_refs": [
+    "F-CLOSURE-CONSISTENCY",
+    "F-SOURCE-CHANGED-SET",
+    "F-HOST-WHITESPACE"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

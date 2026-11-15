@@ -1,0 +1,31 @@
+{
+  "schema_version": 3,
+  "id": "F-AUDITED-RECORDS",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "L3 audited evidence persistence",
+  "claim": "The project declared an L3 audited route while canonical role records existed only outside the repository.",
+  "evidence": [
+    "Prior evals files were summary reports, not seven canonical record types.",
+    "The persisted directory is checked by check-records in this Work Item."
+  ],
+  "impact": "A reviewer could not independently resolve Findings, criteria, Reviewer/Challenger PASS, or Human Approval after the session.",
+  "required_action": "Persist schema-valid canonical records in the repository and make their validation part of the project evidence.",
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "status": "resolved",
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "The audited record directory is tracked and validated by the project verification configuration.",
+    "evidence": [
+      "evals/2026-11-15-stage3-final-canonical",
+      "check-records --dir evals/2026-11-15-stage3-final-canonical"
+    ],
+    "regression_verification_ids": [
+      "V-CANONICAL-RECORDS-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "id": "F-V3-IDENTITY-MIGRATION",
+  "severity": "blocking",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "target": "Old v3 record compatibility",
+  "claim": "The new identity fields made previously valid v3 records unreadable without a migration path.",
+  "evidence": [
+    "Current schema rejected an older v3 record set.",
+    "migrate-records previously skipped every v3 record."
+  ],
+  "impact": "Historical v3 evidence could not be preserved or audited.",
+  "required_action": "Add deterministic in-place v3 migration for identity fields and roleless evidence.",
+  "prevention": {
+    "kind": "structure",
+    "action": "migrate-records upgrades legacy v3 identity fields and uses the frozen manifest for roleless evidence.",
+    "evidence": [
+      "tests/test_cli.py::test_migration_upgrades_legacy_v3_identity_fields"
+    ],
+    "regression_verification_ids": [
+      "V-V3-MIGRATION-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "schema_version": 3,
+  "kind": "finding",
+  "source_role": "reviewer",
+  "status": "resolved"
+}

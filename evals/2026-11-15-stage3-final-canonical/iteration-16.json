@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-16",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 16,
+  "input_versions": [
+    "16"
+  ],
+  "output_versions": [
+    "17"
+  ],
+  "changes": [
+    "Restrict evidence-directory exemptions to canonical JSON records or exact declared files.",
+    "Define code-head CI as canonical delivery evidence and the evidence-only CI result as an external immutable receipt."
+  ],
+  "result": "REPAIR"
+}

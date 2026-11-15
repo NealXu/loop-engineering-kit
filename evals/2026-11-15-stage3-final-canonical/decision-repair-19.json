@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-SOURCE-APPROVAL",
+  "kind": "decision",
+  "cycle": 19,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "19"
+  ],
+  "artifact_hashes": {
+    "19": "13a6a9f0608ab6e213de3232f507fdb430a1d44d541602e0641c427bfcf4d294"
+  },
+  "decision": "REPAIR",
+  "rationale": "Final independent review and challenge found source ancestry, evidence classification, approval content, and final-time coverage gaps.",
+  "evidence_refs": [
+    "F-SOURCE-LINEAGE",
+    "F-EVIDENCE-CLASSIFICATION",
+    "F-APPROVAL-CONTENT-BINDING",
+    "F-FINAL-TIME-COVERAGE"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

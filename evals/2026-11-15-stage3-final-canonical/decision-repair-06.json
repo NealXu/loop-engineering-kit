@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-CLOSURE-GATE",
+  "kind": "decision",
+  "cycle": 6,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "6"
+  ],
+  "artifact_hashes": {
+    "6": "19323daa552ea789e0d7ea5532727dafc880cc999f7d56f7ad35ad6cee4c7051"
+  },
+  "decision": "REPAIR",
+  "rationale": "Reviewer found closure self-labeling, future execution metadata, malformed registry crash, and unstable review snapshot.",
+  "evidence_refs": [
+    "F-CLOSURE-GATE-BYPASS",
+    "F-CLOSURE-FUTURE-TIME",
+    "F-LEGACY-REGISTRY-NULL",
+    "F-REVIEW-SNAPSHOT-FREEZE"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

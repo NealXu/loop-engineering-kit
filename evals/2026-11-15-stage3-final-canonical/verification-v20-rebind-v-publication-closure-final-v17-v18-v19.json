@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "id": "V-PUBLICATION-CLOSURE-FINAL-V17-V18-V19-V20",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "20",
+  "artifact_content_hash": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "finding_id": "F-CLOSURE-PUBLICATION",
+  "role": "verifier",
+  "check": "Final publication closure",
+  "method": "full check-records before commit",
+  "status": "NOT_RUN",
+  "evidence": [
+    "Pending final full check-records."
+  ],
+  "limitations": [
+    "Must be PASS in the committed final state."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "F-GIT-TIME-ATTESTATION",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "medium",
+  "target": "Git committer time trust",
+  "claim": "The execution freshness lower bound depended on a mutable Git committer timestamp without a stated trust boundary.",
+  "evidence": [
+    "Git committer time can be rewritten through commit environment or history operations."
+  ],
+  "impact": "The freshness check could be mistaken for trusted clock evidence.",
+  "required_action": "Disclose Git committer time as a local attestation and preserve it as a best-effort ordering check only.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved"
+}

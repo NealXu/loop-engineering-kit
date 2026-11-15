@@ -1,0 +1,134 @@
+{
+  "schema_version": 3,
+  "id": "D-ACCEPT-STAGE3-FINAL-22",
+  "kind": "decision",
+  "cycle": 22,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "22"
+  ],
+  "artifact_hashes": {
+    "22": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89"
+  },
+  "approval_hashes": {
+    "AP-20261115-155834-779326-af7b04fe": "d54147ff9da65135a7644b400941658b05b23e6541ce3c9660d3a2cf2489b14e"
+  },
+  "decision": "ACCEPT",
+  "rationale": "Independent Reviewer and Challenger PASS, all applicable Finding gates PASS, exact Artifact v22 identity, code-head CI, installation, and real-host checks are complete.",
+  "evidence_refs": [
+    "V-REGRESSION-V22",
+    "V-INSTALL-V22",
+    "V-MODEL-CODEX-V22",
+    "V-MODEL-CLAUDE-V22",
+    "V-CI-V22",
+    "V-DOCS-V22",
+    "V-MIGRATION-CRASH-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-RUNTIME-STATE-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-APPROVAL-LINEAGE-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-STAGE3-OUTPUT-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-BASE-REV-VALIDATOR-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-SOURCE-CHANGED-SET-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-SOURCE-FILES-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-APPROVAL-CONTENT-BINDING-V20-V21-V22",
+    "V-HASH-BINDING-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-EVIDENCE-CONTENT-HASH-V18-V19-V20-V21-V22",
+    "V-DELETION-FORGERY-V19-V20-V21-V22",
+    "V-SOURCE-LINEAGE-V20-V21-V22",
+    "V-L3-HOST-PROVENANCE-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-L3-PROVENANCE-COLLISION-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-PRECLOSURE-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-PREMATURE-PASS-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-CLOSURE-TIME-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-CANONICAL-RECORDS-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-PUBLICATION-CLOSURE-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-SNAPSHOT-FREEZE-FINAL-V17-V18-V19-V20-V21-V22",
+    "V-FINAL-REVIEWER-V22",
+    "V-FINAL-CHALLENGER-V22",
+    "AP-20261115-155834-779326-af7b04fe"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "xuqi",
+  "criteria_evidence": {
+    "AC-MIGRATION": {
+      "verification_ids": [
+        "V-MIGRATION-CRASH-FINAL-V17-V18-V19-V20-V21-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-RUNTIME": {
+      "verification_ids": [
+        "V-RUNTIME-STATE-FINAL-V17-V18-V19-V20-V21-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-APPROVAL": {
+      "verification_ids": [
+        "V-APPROVAL-LINEAGE-FINAL-V17-V18-V19-V20-V21-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-STAGE3": {
+      "verification_ids": [
+        "V-STAGE3-OUTPUT-FINAL-V17-V18-V19-V20-V21-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-DOCS": {
+      "verification_ids": [
+        "V-DOCS-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-REGRESSION": {
+      "verification_ids": [
+        "V-REGRESSION-V22",
+        "V-INSTALL-V22",
+        "V-MODEL-CODEX-V22",
+        "V-MODEL-CLAUDE-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-CI": {
+      "verification_ids": [
+        "V-CI-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-INTEGRITY": {
+      "verification_ids": [
+        "V-HASH-BINDING-FINAL-V17-V18-V19-V20-V21-V22",
+        "V-BASE-REV-VALIDATOR-FINAL-V17-V18-V19-V20-V21-V22",
+        "V-SOURCE-CHANGED-SET-FINAL-V17-V18-V19-V20-V21-V22",
+        "V-SOURCE-FILES-FINAL-V17-V18-V19-V20-V21-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-PROVENANCE": {
+      "verification_ids": [
+        "V-L3-HOST-PROVENANCE-FINAL-V17-V18-V19-V20-V21-V22",
+        "V-L3-PROVENANCE-COLLISION-FINAL-V17-V18-V19-V20-V21-V22"
+      ],
+      "result": "PASS"
+    },
+    "AC-RECORDS": {
+      "verification_ids": [
+        "V-PRECLOSURE-FINAL-V17-V18-V19-V20-V21-V22",
+        "V-PREMATURE-PASS-FINAL-V17-V18-V19-V20-V21-V22",
+        "V-CLOSURE-TIME-FINAL-V17-V18-V19-V20-V21-V22"
+      ],
+      "result": "PASS"
+    }
+  },
+  "residual_risks": [
+    {
+      "risk": "Session/model identity and the external CI receipt remain unverified trust-on-first-use attestations.",
+      "owner": "xuqi"
+    },
+    {
+      "risk": "The final evidence set is anchored externally by the evidence-only Git commit; a writer with local filesystem access can rewrite records before that publication boundary.",
+      "owner": "xuqi"
+    }
+  ],
+  "review_independence": "independent",
+  "reviewed_set_digest": "5dbae96c694b39a4699844a0f1d478dafdb289089935b0991ebd6539ce699da6"
+}

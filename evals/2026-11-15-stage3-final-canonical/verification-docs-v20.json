@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-DOCS-V20",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "20",
+  "artifact_content_hash": "5b8b815dad05f5be4dae6db1fef4fe48b51eec86644cc3f0e465820457c4cbf3",
+  "criterion_ids": [
+    "AC-DOCS"
+  ],
+  "role": "verifier",
+  "check": "Documentation and status ledger contract",
+  "method": "python -m unittest discover -s tests -v",
+  "status": "PASS",
+  "evidence": [
+    "Documentation and status-ledger checks passed in the full 113-test suite.",
+    "Schema documentation covers Git ancestry, evidence classification, exact deletions, approval hashes, and timezone-bound freshness.",
+    "Project status separates local Git time and host provenance from trusted identity or clock evidence."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:11:48+08:00"
+  }
+}

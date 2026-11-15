@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-STAGE3-OUTPUT-CONTAINMENT",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "medium",
+  "target": "Stage 3 output location",
+  "claim": "metrics/improvements could write into records and break validation.",
+  "evidence": [
+    "metrics output inside records caused record-kind failures before containment."
+  ],
+  "impact": "A valid record set could become unreadable.",
+  "required_action": "Reject output paths inside records.",
+  "criterion_ids": [
+    "AC-STAGE3"
+  ],
+  "prevention": {
+    "kind": "structure",
+    "action": "Compare resolved output path against records root.",
+    "evidence": [
+      "loop_engineering/cli.py",
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-STAGE3-OUTPUT-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

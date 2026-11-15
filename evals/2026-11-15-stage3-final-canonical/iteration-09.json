@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-09",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 9,
+  "input_versions": [
+    "9"
+  ],
+  "output_versions": [
+    "10"
+  ],
+  "changes": [
+    "Include all final delivery Verification states in reviewed_set_digest.",
+    "Reject final FAIL/BLOCKED/NOT_RUN before Approval."
+  ],
+  "result": "REPAIR"
+}

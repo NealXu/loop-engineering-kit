@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-APPROVAL-RECORDS-SCOPE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "blocking",
+  "target": "Approval source check context",
+  "claim": "The second source check in approve omitted the canonical records directory.",
+  "evidence": [
+    "The scoped check returned no errors while the unscoped check reported every JSON record as an unlisted worktree change."
+  ],
+  "impact": "L3 approval could not complete with valid uncommitted canonical records.",
+  "required_action": "Pass records_dir to every approval source check and test approval with an actual in-repository records set.",
+  "criterion_ids": [
+    "AC-APPROVAL",
+    "AC-RECORDS"
+  ],
+  "closure_gate": true,
+  "prevention": {
+    "kind": "structure",
+    "action": "Keep records scope through approval and exempt only the exact records lock file.",
+    "evidence": [
+      "tests/test_cli.py::test_approval_keeps_records_scope"
+    ],
+    "regression_verification_ids": [
+      "V-APPROVAL-RECORDS-SCOPE-V19-V20-V21-V22"
+    ]
+  },
+  "status": "resolved"
+}

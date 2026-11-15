@@ -1,0 +1,22 @@
+{
+  "schema_version": 3,
+  "id": "D-REPAIR-STAGE3-CLOSURE",
+  "kind": "decision",
+  "cycle": 3,
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_versions": [
+    "3"
+  ],
+  "artifact_hashes": {
+    "3": "bf63c9b52af9b101569f2f311dc3c34eb1ebb90a16d9d07e0edc39b21f0dc64f"
+  },
+  "decision": "REPAIR",
+  "rationale": "Canonical closure introduced a fixed-point dependency and requires Artifact v4.",
+  "evidence_refs": [
+    "F-CLOSURE-FIXED-POINT"
+  ],
+  "unresolved_disagreements": [],
+  "approver": "controller",
+  "next_state": "PRODUCE",
+  "repair_kind": "artifact"
+}

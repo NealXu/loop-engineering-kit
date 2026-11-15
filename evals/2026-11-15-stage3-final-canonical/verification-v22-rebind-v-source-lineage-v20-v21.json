@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "V-SOURCE-LINEAGE-V20-V21-V22",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-INTEGRITY",
+    "AC-CI"
+  ],
+  "finding_id": "F-SOURCE-LINEAGE",
+  "role": "verifier",
+  "check": "Git source ancestry",
+  "method": "python -m unittest tests.test_cli.CliTests.test_evidence_scope_and_source_binding -v",
+  "status": "PASS",
+  "evidence": [
+    "A tree-equal orphan source_revision failed the ancestor-of-HEAD gate.",
+    "Restoring source_revision to HEAD passed.",
+    "Full suite 114/114 passed on final Artifact version 21.",
+    "Full suite 114/114 passed on final Artifact version 22."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:35:37+08:00"
+  }
+}

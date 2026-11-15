@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "id": "V-CANONICAL-RECORDS-FINAL-V17",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "17",
+  "artifact_content_hash": "8abf9cde807b6c201ca55dd66099f6456027d0efadc4878103f93443858a49f2",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "finding_id": "F-AUDITED-RECORDS",
+  "role": "verifier",
+  "check": "Tracked canonical record gate",
+  "method": "python -m unittest / targeted CLI probe",
+  "status": "NOT_RUN",
+  "evidence": [
+    "Pending final full check-records after Reviewer, Challenger, Approval, and ACCEPT."
+  ],
+  "limitations": [
+    "Must be replaced with executed check-records and check-finding evidence."
+  ]
+}

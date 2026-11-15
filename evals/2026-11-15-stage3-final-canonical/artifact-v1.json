@@ -1,0 +1,38 @@
+{
+  "schema_version": 3,
+  "id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "kind": "artifact",
+  "artifact_type": "working_tree_change",
+  "version": "1",
+  "content": "Final semantic hardening for Stage 1-3 control-plane completion.",
+  "source": "Base 73ea97a; code head 17c92ef9378018d835d6db1508bdd084cd703639; evidence head a77fb0f28cb430d4d0fe8de2178da5d71d08e4fa; diff blob 7c80760016ea219fea3b5a3a073152c813bc20fd from git diff --binary 73ea97a..a77fb0f | git hash-object --stdin.",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "files": [
+    ".agents/skills/loop-engineering/SKILL.md",
+    ".claude/agents/arbiter.md",
+    ".claude/skills/loop-engineering/SKILL.md",
+    ".codex/agents/arbiter.toml",
+    "README.en.md",
+    "README.md",
+    "core/artifact-schema/README.md",
+    "core/artifact-schema/approval.schema.json",
+    "core/decision-policy.md",
+    "core/protocol.md",
+    "core/state-machine.md",
+    "docs/PROJECT_STATUS.md",
+    "evals/2026-11-14-schema-v3-evidence.json",
+    "evals/2026-11-15-stage3-completion-evidence.json",
+    "evals/2026-11-15-stage3-completion-loop.md",
+    "packs/software-development/pack.md",
+    "loop_engineering/cli.py",
+    "roles/arbiter.md",
+    "tests/test_cli.py",
+    "workflows/continuous-improvement/workflow.md"
+  ],
+  "producer_context": {
+    "session_id": "/root",
+    "model": "gpt-5-codex",
+    "authentication": "unverified_host_attestation"
+  },
+  "content_hash": "d16214aec6d4864facded468405c1b3ff2b57981db60a42fff5e2bcb4d6b1913"
+}

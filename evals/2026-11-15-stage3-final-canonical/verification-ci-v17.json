@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-CI-V17",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "17",
+  "artifact_content_hash": "8abf9cde807b6c201ca55dd66099f6456027d0efadc4878103f93443858a49f2",
+  "criterion_ids": [
+    "AC-CI"
+  ],
+  "role": "verifier",
+  "check": "Canonical code-head remote matrix",
+  "method": "GitHub Actions run 43684800338",
+  "status": "PASS",
+  "evidence": [
+    "Run 43684800338 completed successfully at code head 3c610bf8ab82f46505fb3e2c6ede903387400f8c.",
+    "Ubuntu 22.04 Python 3.8/3.12, Windows Python 3.8/3.12, and Rocky Linux 8 all passed.",
+    "The evidence-only records commit CI receipt is reported externally and is not written back into this reviewed record set."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "GitHub Actions run 43684800338",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:22:00+08:00"
+  }
+}

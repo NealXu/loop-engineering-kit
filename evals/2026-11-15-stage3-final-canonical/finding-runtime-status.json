@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-RUNTIME-STATUS-RECOVERY",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "medium",
+  "target": "Runtime status recovery",
+  "claim": "runtime-status refused recovery when every checkpoint was corrupt even with canonical records.",
+  "evidence": [
+    "Only-corrupt checkpoint store returned an error from status but resumed from records."
+  ],
+  "impact": "One promised recovery entrance was unavailable.",
+  "required_action": "Rebuild from records when --records is supplied and no checkpoint is valid.",
+  "criterion_ids": [
+    "AC-RUNTIME"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Test a store containing only invalid checkpoints.",
+    "evidence": [
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-RUNTIME-STATUS-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Filesystem permissions may still block checkpoint writes."
+  },
+  "status": "resolved"
+}

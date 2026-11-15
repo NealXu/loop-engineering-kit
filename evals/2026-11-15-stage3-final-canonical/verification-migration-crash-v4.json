@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-MIGRATION-CRASH-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "finding_id": "F-MIGRATION-CRASH",
+  "criterion_ids": [
+    "AC-MIGRATION"
+  ],
+  "role": "verifier",
+  "check": "Restart-safe migration journal",
+  "method": "Persist after-first-rename state and run migration recovery.",
+  "status": "PASS",
+  "evidence": [
+    "Recovery restores the original records path and removes journal/stage."
+  ],
+  "limitations": [
+    "Physical power loss is simulated through persisted state."
+  ],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T11:31:31+08:00"
+  }
+}

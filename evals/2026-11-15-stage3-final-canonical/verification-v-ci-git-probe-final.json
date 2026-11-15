@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-CI-GIT-PROBE-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "criterion_ids": [
+    "AC-CI",
+    "AC-REGRESSION"
+  ],
+  "finding_id": "F-CI-GIT-PROBE",
+  "role": "verifier",
+  "check": "Five-job CI after portability fix",
+  "method": "GitHub Actions five-job matrix",
+  "status": "PASS",
+  "evidence": [
+    "Run 43683007064 passed Rocky 8 and all other four jobs on the final code head.",
+    "Rocky 8 skipped only the Git-dependent test because Python 3.8 image had no git."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "GitHub Actions run 43683007064",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T13:55:00+08:00"
+  }
+}

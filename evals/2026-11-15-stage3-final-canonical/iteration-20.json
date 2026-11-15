@@ -1,0 +1,18 @@
+{
+  "schema_version": 3,
+  "id": "I-STAGE3-FINAL-20",
+  "kind": "iteration",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "cycle": 20,
+  "input_versions": [
+    "20"
+  ],
+  "output_versions": [
+    "21"
+  ],
+  "changes": [
+    "Handle future Git committer clock skew without rejecting current evidence.",
+    "Remove the orphaned schema documentation fragment."
+  ],
+  "result": "REPAIR"
+}

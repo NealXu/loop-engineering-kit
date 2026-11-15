@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-METRICS-NONFINITE",
+  "kind": "finding",
+  "source_role": "challenger",
+  "severity": "medium",
+  "target": "Host metrics",
+  "claim": "NaN host metrics were accepted and emitted as non-standard JSON.",
+  "evidence": [
+    "{\"turns\": NaN} returned success."
+  ],
+  "impact": "Metrics consumers could reject or misinterpret the report.",
+  "required_action": "Reject non-finite metric values.",
+  "criterion_ids": [
+    "AC-STAGE3"
+  ],
+  "prevention": {
+    "kind": "automatic_check",
+    "action": "Use math.isfinite and strict JSON output.",
+    "evidence": [
+      "tests/test_cli.py"
+    ],
+    "regression_verification_ids": [
+      "V-METRICS-NONFINITE-FINAL-V17-V18-V19-V20-V21-V22"
+    ],
+    "fallback_reason": "Host metric sources may still need their own validation."
+  },
+  "status": "resolved"
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": 3,
+  "id": "V-CI-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "criterion_ids": [
+    "AC-CI"
+  ],
+  "role": "verifier",
+  "check": "Remote five-job matrix",
+  "method": "GitHub Actions run 43683007064, five jobs, head 07afe16.",
+  "status": "PASS",
+  "evidence": [
+    "Run 43683007064 completed successfully at 07afe16e9f663fd63dbab607c39712a1d84a5c33.",
+    "rocky8, Ubuntu 22.04 Python 3.8/3.12, and Windows Python 3.8/3.12 all succeeded."
+  ],
+  "limitations": [
+    "Literal CentOS 8 is not booted; Rocky Linux 8 is the executed compatibility target."
+  ],
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "execution": {
+    "command": "GitHub Actions run 43683007064",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T13:55:00+08:00"
+  }
+}

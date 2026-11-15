@@ -1,0 +1,15 @@
+{
+  "schema_version": 3,
+  "id": "AP-20261115-155834-779326-af7b04fe",
+  "kind": "approval",
+  "work_item_id": "WI-LE-STAGE3-FINAL-SEMANTICS-20261115",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "22",
+  "artifact_content_hash": "f47f09349a2e6087fcfe54d8305863dfda513e4aaed29436e8fe81a94d460c89",
+  "reviewed_set_digest": "5dbae96c694b39a4699844a0f1d478dafdb289089935b0991ebd6539ce699da6",
+  "approver": "xuqi",
+  "statement": "User xuqi authorized completing all unfinished work and committing/pushing after the final independent gates pass.",
+  "approved_at": "2026-11-15T15:58:34.779326+08:00",
+  "confirmation": "APPROVE A-LE-STAGE3-FINAL-SEMANTICS@22",
+  "authentication": "unverified_host_attestation"
+}

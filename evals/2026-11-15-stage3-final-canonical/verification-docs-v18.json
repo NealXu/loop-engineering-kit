@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "id": "V-DOCS-V18",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "18",
+  "artifact_content_hash": "7df1d462475b8a3e3ede0e0c71b1a2f19d0e0a102e33b771b7b8aa0cd8961231",
+  "criterion_ids": [
+    "AC-DOCS"
+  ],
+  "role": "verifier",
+  "check": "Documentation and status ledger contract",
+  "method": "python -m unittest discover -s tests -v",
+  "status": "PASS",
+  "evidence": [
+    "Documentation and status-ledger checks passed in the full 111-test suite.",
+    "The status ledger labels implemented capabilities without claiming the pending final audit.",
+    "Schema documentation names the exact changed set, evidence hashes, and source-time lower bound."
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T14:38:47+08:00"
+  }
+}

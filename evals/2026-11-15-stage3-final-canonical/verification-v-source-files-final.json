@@ -1,0 +1,25 @@
+{
+  "schema_version": 3,
+  "id": "V-SOURCE-FILES-FINAL",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "16",
+  "artifact_content_hash": "2f9783d68d26565ec6de8ea601dba12a928db0f5753b9a6867004df3325b6569",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-SOURCE-FILE-HASH",
+  "role": "verifier",
+  "check": "Git source file hash verification",
+  "method": "python -m unittest",
+  "status": "PASS",
+  "evidence": [
+    "check-records --repo source hash test passed"
+  ],
+  "limitations": [],
+  "execution": {
+    "command": "python -m unittest discover -s tests -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T11:31:31+08:00"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-BASE-REV-VALIDATOR",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Artifact manual validation",
+  "claim": "The manual Artifact field whitelist rejected the newly required base_revision.",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+  ],
+  "impact": "A valid changed-file-checked Artifact could not pass record validation.",
+  "required_action": "Accept and validate base_revision in the manual Artifact checker.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-SOURCE-CHANGED-SET",
+  "prevention": {
+    "kind": "structure",
+    "action": "The artifact_required optional field set includes base_revision.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-BASE-REV-VALIDATOR-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

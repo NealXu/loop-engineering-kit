@@ -1,0 +1,31 @@
+{
+  "id": "F-APPROVAL-REVIEW-SET",
+  "severity": "blocking",
+  "criterion_ids": [
+    "AC-APPROVAL"
+  ],
+  "target": "Human approval scope",
+  "claim": "Approval previously covered only Artifact id/version and could be reused after accepted criteria or evidence changed.",
+  "evidence": [
+    "Changing a criterion or Verification after approval did not invalidate approval.",
+    "Approval could be written with an open high Finding."
+  ],
+  "impact": "A human could approve one evidence set while final records contained another.",
+  "required_action": "Bind Approval and ACCEPT to a canonical reviewed-set digest and reject blockers before approval.",
+  "recurrence_of": "F-APPROVAL-PRECONDITION",
+  "prevention": {
+    "kind": "structure",
+    "action": "Approval and Decision repeat reviewed_set_digest; approve rejects blockers and incomplete execution evidence.",
+    "evidence": [
+      "tests/test_cli.py::test_approval_binds_the_reviewed_record_set",
+      "tests/test_cli.py::test_human_approval_rejects_open_high_and_roleless_verifier"
+    ],
+    "regression_verification_ids": [
+      "V-REVIEW-SET-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "schema_version": 3,
+  "kind": "finding",
+  "source_role": "challenger",
+  "status": "resolved"
+}

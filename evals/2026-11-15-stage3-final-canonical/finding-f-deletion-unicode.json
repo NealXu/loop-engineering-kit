@@ -1,0 +1,29 @@
+{
+  "schema_version": 3,
+  "id": "F-DELETION-UNICODE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "medium",
+  "target": "Deletion and Unicode paths",
+  "claim": "Changed-file checks failed on deleted or escaped non-ASCII paths and deletion-only file maps.",
+  "evidence": [
+    "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+  ],
+  "impact": "Runtime or source identity could diverge from reviewed state.",
+  "required_action": "Use NUL-safe diff output, explicit deleted_files, and allow empty file_hashes for deletion-only changes.",
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-SOURCE-CHANGED-SET",
+  "prevention": {
+    "kind": "structure",
+    "action": "Use NUL-safe diff output, explicit deleted_files, and allow empty file_hashes for deletion-only changes.",
+    "evidence": [
+      "tests/test_cli.py::test_check_records_verifies_working_tree_source_files"
+    ],
+    "regression_verification_ids": [
+      "V-DELETION-UNICODE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  }
+}

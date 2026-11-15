@@ -1,0 +1,30 @@
+{
+  "schema_version": 3,
+  "id": "F-REVIEW-SNAPSHOT-FREEZE",
+  "kind": "finding",
+  "source_role": "reviewer",
+  "severity": "high",
+  "target": "Stable final review snapshot",
+  "claim": "Canonical evidence changed while Reviewer/Challenger were evaluating it.",
+  "evidence": [
+    "evals/2026-11-15-stage3-final-canonical"
+  ],
+  "impact": "Final evidence could bypass review or crash control-plane reads.",
+  "required_action": "Freeze one manifest digest for final review and do not change accepted evidence afterward.",
+  "criterion_ids": [
+    "AC-RECORDS"
+  ],
+  "status": "resolved",
+  "recurrence_of": "F-AUDITED-RECORDS",
+  "prevention": {
+    "kind": "structure",
+    "action": "Freeze one manifest digest for final review and do not change accepted evidence afterward.",
+    "evidence": [
+      "evals/2026-11-15-stage3-final-canonical"
+    ],
+    "regression_verification_ids": [
+      "V-SNAPSHOT-FREEZE-FINAL-V17-V18-V19-V20-V21-V22"
+    ]
+  },
+  "closure_gate": true
+}

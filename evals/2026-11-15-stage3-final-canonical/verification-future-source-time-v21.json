@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "V-FUTURE-SOURCE-TIME-V21",
+  "kind": "verification",
+  "artifact_id": "A-LE-STAGE3-FINAL-SEMANTICS",
+  "artifact_version": "21",
+  "artifact_content_hash": "57efc95716bb0e0b2dfea996504ceb7f718e774647088e0e7cf79b831b5c832d",
+  "closure_gate": true,
+  "criterion_ids": [
+    "AC-INTEGRITY"
+  ],
+  "finding_id": "F-FUTURE-SOURCE-TIME",
+  "role": "verifier",
+  "check": "Future source timestamp",
+  "method": "python -m unittest tests.test_cli.CliTests.test_future_committer_time_does_not_block_evidence -v",
+  "status": "PASS",
+  "evidence": [
+    "A source commit dated 2030 no longer rejected current timezone-aware evidence."
+  ],
+  "limitations": [
+    "Git committer time remains a local best-effort ordering attestation."
+  ],
+  "execution": {
+    "command": "python -m unittest tests.test_cli.CliTests.test_future_committer_time_does_not_block_evidence -v",
+    "exit_code": 0,
+    "executed_at": "2026-11-15T15:25:20+08:00"
+  }
+}
