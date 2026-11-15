@@ -213,6 +213,33 @@ def legacy_v2_records():
     }
 
 
+def l3_records():
+    records = stage2_records()
+    records["work-item.json"].update({
+        "risk_level": "high",
+        "control_tier": "L3",
+    })
+    records["work-item.json"]["route_flags"]["irreversible"] = True
+    records["decision.json"]["approver"] = "human-reviewer"
+    records["verification-challenger.json"] = {
+        "schema_version": 3,
+        "id": "V-CHALLENGE",
+        "kind": "verification",
+        "artifact_id": "A-1",
+        "artifact_version": "2",
+        "criterion_ids": ["AC-1"],
+        "role": "challenger",
+        "check": "independent challenge",
+        "method": "inspect boundary cases",
+        "status": "PASS",
+        "evidence": ["challenge completed"],
+        "limitations": [],
+    }
+    records["decision.json"]["evidence_refs"] = [
+        "V-1", "V-REVIEW", "V-CHALLENGE"]
+    return records
+
+
 def write_records(root, records):
     for path in root.rglob("*.json"):
         path.unlink()
@@ -223,6 +250,42 @@ def write_records(root, records):
 
 
 class CliTests(unittest.TestCase):
+    def test_human_approval_runtime_unblocks_l3_accept(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, l3_records())
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "Review complete; approve release.",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            approval = json.loads(p.stdout)
+            self.assertEqual(approval["kind"], "approval")
+            records = {
+                path.relative_to(root).as_posix(): json.loads(
+                    path.read_text(encoding="utf-8"))
+                for path in root.rglob("*.json")
+            }
+            records["decision.json"]["evidence_refs"].append(approval["id"])
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+    def test_human_approval_requires_exact_confirmation(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, l3_records())
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "Review complete.",
+                "--confirm", "APPROVE A-1@1")
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertEqual(list(root.glob("approval-*.json")), [])
+
     def test_migrate_records_dry_run_preserves_legacy_files(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -478,6 +541,7 @@ class CliTests(unittest.TestCase):
             "verification.schema.json",
             "decision.schema.json",
             "iteration.schema.json",
+            "approval.schema.json",
         }
         self.assertEqual({p.name for p in schema_root.glob("*.schema.json")}, expected)
         for path in schema_root.glob("*.schema.json"):
@@ -1689,8 +1753,9 @@ class CliTests(unittest.TestCase):
             records["decision.json"]["approver"] = "human-reviewer"
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
-            self.assertEqual(p.returncode, 3, p.stdout + p.stderr)
-            self.assertIn("[BLOCKED]", p.stderr)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("Challenger evidence", p.stderr)
+            self.assertIn("human approval record", p.stderr)
 
         for flag, tier, expected in (
                 ("ambiguous", "L1", 1),

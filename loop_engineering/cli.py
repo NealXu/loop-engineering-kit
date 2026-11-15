@@ -25,6 +25,7 @@ SCHEMA_FILES = {
     "verification": "verification.schema.json",
     "decision": "decision.schema.json",
     "iteration": "iteration.schema.json",
+    "approval": "approval.schema.json",
 }
 
 
@@ -730,7 +731,7 @@ def records_errors(records):
             continue
         if kind in {
                 "work_item", "artifact", "finding", "verification",
-                "decision", "iteration"}:
+                "decision", "iteration", "approval"}:
             groups.setdefault(kind, []).append(record)
             try:
                 schema = load_json(SCHEMA_ROOT / SCHEMA_FILES[kind])
@@ -787,7 +788,8 @@ def records_errors(records):
         errors.append("Work Item acceptance_criteria must be a non-empty object")
         criteria = {}
 
-    for kind in ("finding", "verification", "decision", "iteration"):
+    for kind in (
+            "finding", "verification", "decision", "iteration", "approval"):
         seen = set()
         for record in groups.get(kind, []):
             record_id = record.get("id")
@@ -925,6 +927,31 @@ def records_errors(records):
             errors.append(
                 "legacy roleless Verification {} declares a role".format(
                     verification_id))
+    approvals = {}
+    for approval in groups.get("approval", []):
+        approval_id = approval.get("id")
+        approvals[approval_id] = approval
+        if approval.get("work_item_id") != work_item_id:
+            errors.append("Approval work_item_id does not match Work Item")
+        artifact_id = approval.get("artifact_id")
+        artifact_version = approval.get("artifact_version")
+        if (artifact_id, artifact_version) not in artifact_keys:
+            errors.append("Approval {} Artifact version not found".format(
+                approval_id))
+        expected = "APPROVE {}@{}".format(artifact_id, artifact_version)
+        if approval.get("confirmation") != expected:
+            errors.append("Approval {} confirmation is invalid".format(
+                approval_id))
+        approver = approval.get("approver")
+        if (not isinstance(approver, str)
+                or approver.strip().lower() == "controller"):
+            errors.append("Approval {} requires a human approver".format(
+                approval_id))
+        try:
+            datetime.datetime.fromisoformat(approval.get("approved_at", ""))
+        except (TypeError, ValueError):
+            errors.append("Approval {} approved_at is invalid".format(
+                approval_id))
 
     final_artifact = None
     if len(final_versions) == 1:
@@ -1018,7 +1045,8 @@ def records_errors(records):
         refs = decision.get("evidence_refs")
         if isinstance(refs, list):
             for ref in refs:
-                if ref not in findings and ref not in verifications:
+                if (ref not in findings and ref not in verifications
+                        and ref not in approvals):
                     errors.append(
                         "Decision evidence_ref {} does not resolve".format(
                             json.dumps(ref, ensure_ascii=True)))
@@ -1027,6 +1055,12 @@ def records_errors(records):
                       not in versions):
                     errors.append(
                         "Decision evidence_ref {} targets a future Artifact version".format(
+                            json.dumps(ref, ensure_ascii=True)))
+                elif (ref in approvals
+                      and approvals[ref].get("artifact_version")
+                      not in versions):
+                    errors.append(
+                        "Decision approval_ref {} targets a future Artifact version".format(
                             json.dumps(ref, ensure_ascii=True)))
         if decision is final_decision and decision.get("decision") == "ACCEPT":
             if work_item.get("open_questions"):
@@ -1044,6 +1078,9 @@ def records_errors(records):
             ref_verifications = [
                 verifications[ref] for ref in decision.get("evidence_refs", [])
                 if ref in verifications]
+            ref_approvals = [
+                approvals[ref] for ref in decision.get("evidence_refs", [])
+                if ref in approvals]
             reviewer_evidence = (
                 final_artifact is not None
                 and any(
@@ -1057,18 +1094,37 @@ def records_errors(records):
             if control_tier in {"L2", "L3"} and not reviewer_evidence:
                 errors.append(
                     "ACCEPT requires a final-version PASS Reviewer Verification")
-            if control_tier == "L3" and not any(
-                    finding.get("source_role") == "challenger"
-                    for finding in ref_findings):
+            challenger_evidence = (
+                any(finding.get("source_role") == "challenger"
+                    for finding in ref_findings)
+                or any(
+                    verification.get("role") == "challenger"
+                    and verification.get("status") == "PASS"
+                    and final_artifact is not None
+                    and verification.get("artifact_id")
+                    == final_artifact.get("id")
+                    and verification.get("artifact_version")
+                    == final_artifact.get("version")
+                    for verification in ref_verifications))
+            if control_tier == "L3" and not challenger_evidence:
                 errors.append(
-                    "L3 ACCEPT requires referenced Challenger evidence")
+                    "L3 ACCEPT requires final-version PASS Challenger evidence")
             if (control_tier == "L3"
                     and (not isinstance(approver, str)
                          or approver.strip().lower() == "controller")):
                 errors.append("L3 ACCEPT requires human approval")
             if control_tier == "L3":
-                errors.append(
-                    "BLOCKED: L3 ACCEPT requires verified human approval runtime")
+                human_approval = (
+                    final_artifact is not None
+                    and any(
+                        item.get("artifact_id") == final_artifact.get("id")
+                        and item.get("artifact_version")
+                        == final_artifact.get("version")
+                        and item.get("approver") == approver
+                        for item in ref_approvals))
+                if not human_approval:
+                    errors.append(
+                        "L3 ACCEPT requires referenced human approval record")
             if decision.get("unresolved_disagreements"):
                 errors.append("unresolved disagreements block ACCEPT")
             if any(
@@ -1778,6 +1834,80 @@ def runtime_resume(store, records_dir=None):
     return 0
 
 
+def approve_records(records_dir, artifact_path, approver, statement,
+                    confirmation):
+    try:
+        root, records = load_runtime_records(records_dir)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = runtime_record_errors(records)
+    if errors:
+        print("[FAIL] approval records", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    artifact_path = Path(artifact_path).resolve()
+    try:
+        if Path(os.path.commonpath((str(root), str(artifact_path)))) != root:
+            raise ValueError("artifact must be inside the records directory")
+        artifact = load_json(artifact_path)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    if artifact.get("kind") != "artifact":
+        print("ERROR: approval target must be an Artifact", file=sys.stderr)
+        return 2
+    expected = "APPROVE {}@{}".format(
+        artifact.get("id"), artifact.get("version"))
+    if confirmation != expected:
+        print("ERROR: confirmation must equal {}".format(
+            json.dumps(expected)), file=sys.stderr)
+        return 2
+    if not isinstance(approver, str) or not approver.strip() or (
+            approver.strip().lower() == "controller"):
+        print("ERROR: --approver must identify a human", file=sys.stderr)
+        return 2
+    if not isinstance(statement, str) or not statement.strip():
+        print("ERROR: --statement must be non-blank", file=sys.stderr)
+        return 2
+    work_item = next(
+        record for record in records if record.get("kind") == "work_item")
+    approval = {
+        "schema_version": 3,
+        "id": "AP-{}-{}".format(
+            datetime.datetime.now().astimezone().strftime(
+                "%Y%m%d-%H%M%S-%f"),
+            uuid.uuid4().hex[:8]),
+        "kind": "approval",
+        "work_item_id": work_item.get("id"),
+        "artifact_id": artifact.get("id"),
+        "artifact_version": artifact.get("version"),
+        "approver": approver.strip(),
+        "statement": statement.strip(),
+        "approved_at": datetime.datetime.now().astimezone().isoformat(),
+        "confirmation": confirmation,
+    }
+    schema = load_json(SCHEMA_ROOT / SCHEMA_FILES["approval"])
+    approval_errors = schema_errors(approval, schema)
+    if approval_errors:
+        print("[FAIL] approval", file=sys.stderr)
+        for error in approval_errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    target = root / "approval-{}.json".format(uuid.uuid4().hex[:12])
+    temporary = target.with_name(
+        ".{}.{}.tmp".format(target.name, uuid.uuid4().hex))
+    temporary.write_text(
+        json.dumps(approval, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    os.replace(str(temporary), str(target))
+    print(json.dumps(approval, indent=2, ensure_ascii=False))
+    return 0
+
+
 def doctor(root, mode="kit"):
     root = Path(root).resolve()
     print("Loop Engineering Kit doctor")
@@ -1814,6 +1944,7 @@ def doctor(root, mode="kit"):
         "core/artifact-schema/verification.schema.json",
         "core/artifact-schema/decision.schema.json",
         "core/artifact-schema/iteration.schema.json",
+        "core/artifact-schema/approval.schema.json",
         "core/artifact-schema/README.md",
         "core/artifact-schema/migrations/v2-to-v3.json",
         "roles/producer.md",
@@ -2056,6 +2187,12 @@ def main():
     rr = subs.add_parser("runtime-resume")
     rr.add_argument("--store", required=True)
     rr.add_argument("--records", default=None)
+    ap = subs.add_parser("approve")
+    ap.add_argument("--records", required=True)
+    ap.add_argument("--artifact", required=True)
+    ap.add_argument("--approver", required=True)
+    ap.add_argument("--statement", required=True)
+    ap.add_argument("--confirm", required=True)
     r = subs.add_parser("report")
     r.add_argument("--input", required=True)
     r.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -2090,6 +2227,9 @@ def main():
         return runtime_status(a.store, a.records)
     if a.command == "runtime-resume":
         return runtime_resume(a.store, a.records)
+    if a.command == "approve":
+        return approve_records(
+            a.records, a.artifact, a.approver, a.statement, a.confirm)
     try:
         data = load_json(a.input)
     except ValueError as exc:
