@@ -36,8 +36,10 @@ The v3 schema family contains:
 - Human Approval
 
 `migrate-records` defaults to dry-run and requires explicit Verification role
-mapping. `--write` validates a complete staged copy, retains the original as a
-sibling backup, and swaps directories only after validation.
+mapping. Missing legacy criterion coverage requires explicit
+`--record-criteria`; ambiguous coverage is never guessed. `--write` validates a
+complete staged copy, retains the original as a sibling backup, writes a
+recovery journal, and swaps directories only after validation.
 
 ## Runtime and control plane
 
@@ -69,8 +71,9 @@ Candidate generation does not modify artifacts or promote rules automatically.
 - The kit does not launch models or sub-agents; Codex, Claude Code, or another
   orchestrator supplies the execution host.
 - Human approval records operator intent but do not cryptographically
-  authenticate the person. Regulated deployments must add host identity and
-  access controls.
+  authenticate the person. They are local host attestations, not an identity
+  security boundary. Regulated deployments must expose approval only through a
+  trusted host channel with identity and access controls.
 - The default GLM provider remains an external availability constraint; the
   validated Claude path is `qwen3.7-plus`.
 - Literal CentOS 8 is not booted; Rocky Linux 8 is the executed compatibility

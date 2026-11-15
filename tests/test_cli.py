@@ -382,6 +382,22 @@ class CliTests(unittest.TestCase):
             self.assertIn("reviewer, challenger", p.stderr)
             self.assertEqual(list(root.glob("approval-*.json")), [])
 
+    def test_human_approval_rejects_ambiguous_lineage(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = l3_records()
+            records.pop("iterations/iteration-01.json")
+            write_records(root, records)
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "ambiguous target",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("lineage", p.stderr)
+            self.assertEqual(list(root.glob("approval-*.json")), [])
+
     def test_challenger_finding_cannot_replace_pass(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -561,6 +577,68 @@ class CliTests(unittest.TestCase):
             }
             self.assertEqual(before, after)
 
+    def test_migrate_records_requires_explicit_unmapped_coverage(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = legacy_v1_records()
+            records["verification-extra.json"] = {
+                "schema_version": 1,
+                "id": "V-EXTRA",
+                "kind": "verification",
+                "artifact_id": "A-V1",
+                "artifact_version": "1",
+                "check": "extra",
+                "method": "run",
+                "status": "PASS",
+                "evidence": ["executed"],
+            }
+            write_records(root, records)
+            p = run_cli(
+                "migrate-records", "--dir", root,
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer",
+                "--verification-role", "V-EXTRA=verifier")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("record-criteria", p.stderr)
+            p = run_cli(
+                "migrate-records", "--dir", root, "--write",
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer",
+                "--verification-role", "V-EXTRA=verifier",
+                "--record-criteria", "V-EXTRA=AC-1")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            shutil.rmtree(json.loads(p.stdout)["backup"])
+
+    def test_migrate_records_recovers_interrupted_journal(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            root = base / "records"
+            root.mkdir()
+            write_records(root, legacy_v2_records())
+            backup = base / "records.migration-backup-test"
+            stage = base / "records.migration-stage-test"
+            shutil.copytree(root, backup)
+            shutil.copytree(root, stage)
+            journal = cli_module.migration_journal_path(root)
+            journal.write_text(json.dumps({
+                "schema_version": 1,
+                "root": str(root.resolve()),
+                "backup": str(backup.resolve()),
+                "stage": str(stage.resolve()),
+                "phase": "backed_up",
+            }), encoding="utf-8")
+            shutil.rmtree(root)
+            stderr = io.StringIO()
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(stderr):
+                code = cli_module.migrate_records(
+                    root, False,
+                    ["V-1=verifier", "V-REVIEW=reviewer"])
+            self.assertEqual(code, 0, stderr.getvalue())
+            self.assertTrue((root / "work-item.json").exists())
+            self.assertFalse(stage.exists())
+            self.assertFalse(journal.exists())
+
     def test_runtime_checkpoint_resumes_from_canonical_records(self):
         with tempfile.TemporaryDirectory() as t:
             base = Path(t)
@@ -589,7 +667,9 @@ class CliTests(unittest.TestCase):
             resumed = json.loads(p.stdout)
             self.assertTrue(resumed["recovered"])
             self.assertEqual(resumed["checkpoint"]["state"], "ACCEPT")
-            p = run_cli("runtime-status", "--store", store)
+            p = run_cli(
+                "runtime-status", "--store", store,
+                "--records", records_dir)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             self.assertEqual(json.loads(p.stdout)["state"], "ACCEPT")
 
@@ -648,6 +728,8 @@ class CliTests(unittest.TestCase):
             self.assertEqual(checkpoint["state"], "ACCEPT")
 
             records["verification.json"]["status"] = "FAIL"
+            records.pop("decision.json")
+            records.pop("decision-repair.json")
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -663,6 +745,8 @@ class CliTests(unittest.TestCase):
             records_dir.mkdir()
             records = l3_records()
             records.pop("verification-challenger.json")
+            records.pop("decision.json")
+            records.pop("decision-repair.json")
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -671,6 +755,8 @@ class CliTests(unittest.TestCase):
             self.assertEqual(json.loads(p.stdout)["state"], "CHALLENGE")
 
             records = l3_records()
+            records.pop("decision.json")
+            records.pop("decision-repair.json")
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -694,6 +780,40 @@ class CliTests(unittest.TestCase):
             status = json.loads(p.stdout)
             self.assertEqual(status["state"], "ACCEPT")
             self.assertEqual(status["source"], "canonical_records_recovery")
+
+    def test_runtime_metrics_registry_reject_invalid_terminal_records(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            write_records(records_dir, l3_records())
+            p = run_cli(
+                "approve", "--records", records_dir,
+                "--artifact", records_dir / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "approved",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records = {
+                path.relative_to(records_dir).as_posix(): json.loads(
+                    path.read_text(encoding="utf-8"))
+                for path in records_dir.rglob("*.json")
+            }
+            records["decision.json"]["evidence_refs"] = ["V-1"]
+            write_records(records_dir, records)
+            p = run_cli("check-records", "--dir", records_dir)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            p = run_cli("metrics", "--dir", records_dir)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            p = run_cli(
+                "registry-update", "--store", store,
+                "--records", records_dir)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
 
     def test_metrics_and_improvement_candidates(self):
         with tempfile.TemporaryDirectory() as t:
@@ -729,6 +849,8 @@ class CliTests(unittest.TestCase):
                 "evidence": ["network unavailable"],
                 "limitations": ["network unavailable"],
             }
+            records.pop("decision.json")
+            records.pop("decision-repair.json")
             write_records(records_dir, records)
             host_metrics = base / "host-metrics.json"
             host_metrics.write_text(json.dumps({
@@ -743,7 +865,7 @@ class CliTests(unittest.TestCase):
                 "--host-metrics", host_metrics, "--output", output)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             metrics = json.loads(p.stdout)
-            self.assertEqual(metrics["record_count"], 11)
+            self.assertEqual(metrics["record_count"], 9)
             self.assertEqual(metrics["artifact_versions"], ["1", "2"])
             self.assertEqual(metrics["verification_statuses"]["BLOCKED"], 1)
             self.assertEqual(metrics["host_metrics"]["total_tokens"], 1400)
@@ -815,6 +937,14 @@ class CliTests(unittest.TestCase):
                 "--host-metrics", host)
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
             self.assertIn("non-negative number", p.stderr)
+
+            p = run_cli(
+                "metrics", "--dir", records_dir,
+                "--output", records_dir / "metrics.json")
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertIn("inside the records directory", p.stderr)
+            p = run_cli("check-records", "--dir", records_dir)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
     def test_registry_concurrent_updates_preserve_both_runs(self):
         with tempfile.TemporaryDirectory() as t:

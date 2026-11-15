@@ -163,8 +163,8 @@ migrate-records --dir <records> \
   --verification-role V-1=verifier --verification-role V-REVIEW=reviewer \
   [--write]
 runtime-checkpoint --records <records> --store <store>
-runtime-status --store <store> [--records <records>]
-runtime-resume --store <store> [--records <records>]
+runtime-status --store <store> --records <records>
+runtime-resume --store <store> --records <records>
 approve --records <records> --artifact <artifact.json> \
   --approver <human> --statement <text> --confirm "APPROVE <id>@<version>"
 metrics --dir <records> [--host-metrics <json>]

@@ -59,6 +59,8 @@ This is a breaking schema upgrade. The repository ships only version 3
 schemas. Version 1 and 2 records can be migrated with `migrate-records`; the
 command requires explicit Verification role mappings, defaults to dry-run,
 validates a complete staged copy, and swaps directories only after validation.
+Legacy criterion coverage without an evidence mapping requires explicit
+`--record-criteria`; it is never guessed.
 Version 3 adds explicit control tiers and route flags, typed evidence
 references, Decision cycles, Verification role labels, and Human Approval.
 

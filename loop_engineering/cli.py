@@ -1325,8 +1325,53 @@ def check_records(directory):
     return 0
 
 
-def migrate_records(directory, write=False, verification_roles=None):
+def migration_journal_path(root):
+    root = Path(root).resolve()
+    return root.parent / ".{}.migration-transaction.json".format(root.name)
+
+
+def recover_migration_transaction(root):
+    root = Path(root).resolve()
+    journal = migration_journal_path(root)
+    if not journal.exists():
+        return None, None
+    try:
+        data = load_json(journal)
+    except ValueError as exc:
+        return None, str(exc)
+    if Path(data.get("root", "")).resolve() != root:
+        return None, "migration journal root does not match"
+    backup = Path(data.get("backup", ""))
+    stage = Path(data.get("stage", ""))
+    try:
+        if root.exists():
+            if stage.exists():
+                shutil.rmtree(stage)
+            journal.unlink()
+            return "kept_current", None
+        if backup.exists():
+            os.replace(str(backup), str(root))
+            if stage.exists():
+                shutil.rmtree(stage)
+            journal.unlink()
+            return "rolled_back", None
+        if stage.exists():
+            os.replace(str(stage), str(root))
+            journal.unlink()
+            return "rolled_forward", None
+    except OSError as exc:
+        return None, str(exc)
+    return None, "migration journal has no recoverable directory"
+
+
+def migrate_records(directory, write=False, verification_roles=None,
+                    record_criteria=None):
     root = Path(directory)
+    recovered, recovery_error = recover_migration_transaction(root)
+    if recovery_error:
+        print("ERROR: migration recovery failed: {}".format(recovery_error),
+              file=sys.stderr)
+        return 2
     if not root.is_dir():
         print("ERROR: Records directory not found: {}".format(root),
               file=sys.stderr)
@@ -1345,6 +1390,25 @@ def migrate_records(directory, write=False, verification_roles=None):
                   file=sys.stderr)
             return 2
         roles[record_id] = role
+    criteria_overrides = {}
+    for spec in record_criteria or []:
+        if "=" not in spec:
+            print("ERROR: --record-criteria must be ID=AC-1,AC-2",
+                  file=sys.stderr)
+            return 2
+        record_id, criteria_text = spec.split("=", 1)
+        criteria_ids = [
+            item for item in criteria_text.split(",") if item
+        ]
+        if (not STABLE_ID.fullmatch(record_id)
+                or not criteria_ids
+                or not all(STABLE_ID.fullmatch(item)
+                           for item in criteria_ids)
+                or len(criteria_ids) != len(set(criteria_ids))):
+            print("ERROR: invalid --record-criteria {}".format(spec),
+                  file=sys.stderr)
+            return 2
+        criteria_overrides[record_id] = criteria_ids
     paths = sorted(root.rglob("*.json"))
     if not paths:
         print("ERROR: Records directory contains no JSON files",
@@ -1479,13 +1543,30 @@ def migrate_records(directory, write=False, verification_roles=None):
                             record_id),
                         file=sys.stderr)
                     return 1
-            record.setdefault(
-                "criterion_ids",
-                sorted(criteria_for_verification.get(
-                    record_id, set(criteria_map.values()))))
+            if "criterion_ids" not in record:
+                if record_id in criteria_overrides:
+                    record["criterion_ids"] = (
+                        criteria_overrides[record_id])
+                elif record_id in criteria_for_verification:
+                    record["criterion_ids"] = sorted(
+                        criteria_for_verification[record_id])
+                else:
+                    print(
+                        "ERROR: Verification {} requires --record-criteria".format(
+                            record_id),
+                        file=sys.stderr)
+                    return 1
             record.setdefault("limitations", [])
         elif kind == "finding":
-            record.setdefault("criterion_ids", sorted(criteria_map.values()))
+            if "criterion_ids" not in record:
+                record_id = record.get("id")
+                if record_id not in criteria_overrides:
+                    print(
+                        "ERROR: Finding {} requires --record-criteria".format(
+                            record_id),
+                        file=sys.stderr)
+                    return 1
+                record["criterion_ids"] = criteria_overrides[record_id]
         elif kind == "decision":
             if record.get("cycle") is None:
                 record["cycle"] = decision_cycles[path]
@@ -1559,6 +1640,7 @@ def migrate_records(directory, write=False, verification_roles=None):
             root.name, uuid.uuid4().hex)
         backup = root.parent / "{}.migration-backup-{}".format(
             root.name, stamp)
+        journal = migration_journal_path(root)
         try:
             shutil.copytree(root, stage)
             for path in sorted(migrated):
@@ -1572,23 +1654,46 @@ def migrate_records(directory, write=False, verification_roles=None):
                 raise ValueError(
                     "staged migration validation failed: {}".format(
                         _quoted_names(errors)))
+            write_json_file(journal, {
+                "schema_version": 1,
+                "root": str(root.resolve()),
+                "backup": str(backup.resolve()),
+                "stage": str(stage.resolve()),
+                "phase": "prepared",
+            })
             os.replace(str(root), str(backup))
-            try:
-                os.replace(str(stage), str(root))
-            except OSError:
-                os.replace(str(backup), str(root))
-                raise
-        except (OSError, ValueError) as exc:
-            if stage.exists():
+            write_json_file(journal, {
+                "schema_version": 1,
+                "root": str(root.resolve()),
+                "backup": str(backup.resolve()),
+                "stage": str(stage.resolve()),
+                "phase": "backed_up",
+            })
+            os.replace(str(stage), str(root))
+            write_json_file(journal, {
+                "schema_version": 1,
+                "root": str(root.resolve()),
+                "backup": str(backup.resolve()),
+                "stage": str(stage.resolve()),
+                "phase": "committed",
+            })
+            journal.unlink()
+        except BaseException as exc:
+            _, recovery_error = recover_migration_transaction(root)
+            if stage.exists() and root.exists():
                 shutil.rmtree(stage)
             print("ERROR: migration commit failed: {}".format(exc),
                   file=sys.stderr)
+            if recovery_error:
+                print("ERROR: migration recovery failed: {}".format(
+                    recovery_error), file=sys.stderr)
             return 1
     print(json.dumps({
         "mode": "write" if write else "dry-run",
         "directory": str(root.resolve()),
         "changed": len(migrated),
         "backup": str(backup) if backup else None,
+        "recovery": recovered,
         "transforms": transforms,
     }, indent=2, ensure_ascii=False))
     return 0
@@ -1639,6 +1744,34 @@ def final_artifact_record(records):
         artifacts, key=lambda record: version_key(record.get("version")))[-1]
 
 
+def lineage_final_artifact(records):
+    work_items = [
+        record for record in records if record.get("kind") == "work_item"
+    ]
+    artifacts = [
+        record for record in records if record.get("kind") == "artifact"
+    ]
+    if len(work_items) != 1 or not artifacts:
+        return None, ["final Artifact lineage is unavailable"]
+    work_item = work_items[0]
+    final_versions, errors = iteration_lineage(
+        [record for record in records if record.get("kind") == "iteration"],
+        {record.get("version") for record in artifacts},
+        work_item.get("max_repair_iterations", 0),
+        work_item.get("id"))
+    if errors:
+        return None, errors
+    if len(final_versions) != 1:
+        return None, ["final Artifact lineage is ambiguous"]
+    version = next(iter(final_versions))
+    artifact = next(
+        (record for record in artifacts
+         if record.get("version") == version), None)
+    if artifact is None:
+        return None, ["final Artifact lineage does not resolve"]
+    return artifact, []
+
+
 def role_pass_exists(records, artifact, role):
     return bool(artifact) and any(
         record.get("kind") == "verification"
@@ -1658,7 +1791,7 @@ def approval_exists(records, artifact, approver=None):
         for record in records)
 
 
-def runtime_record_errors(records):
+def runtime_record_errors(records, accept_gate=True):
     errors = []
     work_items = []
     for record in records:
@@ -1735,6 +1868,13 @@ def runtime_record_errors(records):
             errors.append("cross-record ID conflict {}".format(record_id))
         else:
             seen[record_id] = record.get("kind")
+    if accept_gate and any(
+            record.get("kind") == "decision"
+            and record.get("decision") == "ACCEPT"
+            for record in records):
+        for error in records_errors(records):
+            if error not in errors:
+                errors.append(error)
     return errors
 
 
@@ -1926,6 +2066,21 @@ def checkpoint_store_path(records, store):
     return store
 
 
+def external_output_path(records, output):
+    if output is None:
+        return None
+    records = Path(records).resolve()
+    output = Path(output).resolve()
+    try:
+        common = Path(os.path.commonpath((str(records), str(output))))
+    except ValueError:
+        return output
+    if common == records:
+        raise ValueError(
+            "output must not be inside the records directory")
+    return output
+
+
 def valid_checkpoints(store):
     root = Path(store).resolve() / "checkpoints"
     checkpoints = []
@@ -2046,7 +2201,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = runtime_record_errors(records)
+    errors = runtime_record_errors(records, accept_gate=False)
     if errors:
         print("[FAIL] approval records", file=sys.stderr)
         for error in errors:
@@ -2066,7 +2221,13 @@ def approve_records(records_dir, artifact_path, approver, statement,
         return 2
     work_item = next(
         record for record in records if record.get("kind") == "work_item")
-    final_artifact = final_artifact_record(records)
+    final_artifact, lineage_errors = lineage_final_artifact(records)
+    if lineage_errors:
+        print(
+            "ERROR: approval requires unambiguous final Artifact lineage: {}".format(
+                "; ".join(lineage_errors)),
+            file=sys.stderr)
+        return 1
     if (work_item.get("control_tier") != "L3"
             or final_artifact is None
             or artifact.get("id") != final_artifact.get("id")
@@ -2212,6 +2373,7 @@ def metrics_data(records, host_metrics=None):
 
 def metrics(records_dir, host_metrics_path=None, output=None):
     try:
+        output = external_output_path(records_dir, output)
         _, records = load_runtime_records(records_dir)
         host = load_host_metrics(host_metrics_path)
     except ValueError as exc:
@@ -2302,6 +2464,7 @@ def improvement_candidates(records):
 
 def improvements(records_dir, output=None):
     try:
+        output = external_output_path(records_dir, output)
         _, records = load_runtime_records(records_dir)
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
@@ -2667,15 +2830,16 @@ def main():
     mr.add_argument("--dir", required=True)
     mr.add_argument("--write", action="store_true")
     mr.add_argument("--verification-role", action="append", default=[])
+    mr.add_argument("--record-criteria", action="append", default=[])
     rc = subs.add_parser("runtime-checkpoint")
     rc.add_argument("--records", required=True)
     rc.add_argument("--store", required=True)
     rs = subs.add_parser("runtime-status")
     rs.add_argument("--store", required=True)
-    rs.add_argument("--records", default=None)
+    rs.add_argument("--records", required=True)
     rr = subs.add_parser("runtime-resume")
     rr.add_argument("--store", required=True)
-    rr.add_argument("--records", default=None)
+    rr.add_argument("--records", required=True)
     ap = subs.add_parser("approve")
     ap.add_argument("--records", required=True)
     ap.add_argument("--artifact", required=True)
@@ -2723,7 +2887,7 @@ def main():
         return check_records(a.dir)
     if a.command == "migrate-records":
         return migrate_records(
-            a.dir, a.write, a.verification_role)
+            a.dir, a.write, a.verification_role, a.record_criteria)
     if a.command == "runtime-checkpoint":
         return runtime_checkpoint(a.records, a.store)
     if a.command == "runtime-status":

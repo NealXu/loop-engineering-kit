@@ -126,6 +126,7 @@ py -3 loop_engineering\cli.py migrate-records --dir <记录目录>
 py -3 loop_engineering\cli.py migrate-records --dir <记录目录> `
   --verification-role V-1=verifier --verification-role V-REVIEW=reviewer `
   --write
+# 旧记录缺少 criterion 映射时，再传 --record-criteria <ID>=<AC-1,AC-2>
 
 # 持久化、恢复与状态查询
 py -3 loop_engineering\cli.py runtime-checkpoint --records <记录目录> --store <状态目录>
