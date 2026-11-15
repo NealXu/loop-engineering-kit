@@ -1339,10 +1339,26 @@ def recover_migration_transaction(root):
         data = load_json(journal)
     except ValueError as exc:
         return None, str(exc)
+    if type(data.get("schema_version")) is not int or (
+            data.get("schema_version") != 1):
+        return None, "migration journal schema_version is invalid"
+    if data.get("phase") not in {"prepared", "backed_up", "committed"}:
+        return None, "migration journal phase is invalid"
+    if not Path(data.get("root", "")).is_absolute():
+        return None, "migration journal root must be absolute"
     if Path(data.get("root", "")).resolve() != root:
         return None, "migration journal root does not match"
     backup = Path(data.get("backup", ""))
     stage = Path(data.get("stage", ""))
+    backup_prefix = root.name + ".migration-backup-"
+    stage_prefix = root.name + ".migration-stage-"
+    if (not backup.is_absolute() or not stage.is_absolute()
+            or backup.parent.resolve() != root.parent
+            or stage.parent.resolve() != root.parent
+            or not backup.name.startswith(backup_prefix)
+            or not stage.name.startswith(stage_prefix)
+            or backup == stage or backup.is_symlink() or stage.is_symlink()):
+        return None, "migration journal paths are invalid"
     try:
         if root.exists():
             if stage.exists():
@@ -1393,10 +1409,6 @@ def release_migration_lock(fd, path):
             fcntl.flock(fd, fcntl.LOCK_UN)
     finally:
         os.close(fd)
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass
 
 
 def migrate_records(directory, write=False, verification_roles=None,
@@ -1438,6 +1450,10 @@ def _migrate_records(directory, write=False, verification_roles=None,
             print("ERROR: invalid --verification-role {}".format(spec),
                   file=sys.stderr)
             return 2
+        if record_id in roles:
+            print("ERROR: duplicate --verification-role {}".format(record_id),
+                  file=sys.stderr)
+            return 2
         roles[record_id] = role
     criteria_overrides = {}
     for spec in record_criteria or []:
@@ -1455,6 +1471,10 @@ def _migrate_records(directory, write=False, verification_roles=None,
                            for item in criteria_ids)
                 or len(criteria_ids) != len(set(criteria_ids))):
             print("ERROR: invalid --record-criteria {}".format(spec),
+                  file=sys.stderr)
+            return 2
+        if record_id in criteria_overrides:
+            print("ERROR: duplicate --record-criteria {}".format(record_id),
                   file=sys.stderr)
             return 2
         criteria_overrides[record_id] = criteria_ids
@@ -1932,6 +1952,11 @@ def runtime_record_errors(records, accept_gate=True):
             errors.append("cross-record ID conflict {}".format(record_id))
         else:
             seen[record_id] = record.get("kind")
+    if artifacts:
+        _, lineage_errors = lineage_final_artifact(records)
+        for error in lineage_errors:
+            if error not in errors:
+                errors.append(error)
     if accept_gate and any(
             record.get("kind") == "decision"
             and record.get("decision") == "ACCEPT"
@@ -1976,6 +2001,14 @@ def derive_runtime_state(records, digest):
         and record.get("artifact_id") == latest_artifact.get("id")
         and record.get("artifact_version") == latest_artifact.get("version")
     ]
+    criteria = set(work_item.get("acceptance_criteria", {}))
+    verifier_coverage = {
+        criterion_id
+        for record in final_verifications
+        if (record.get("role") in {None, "verifier"}
+            and record.get("status") == "PASS")
+        for criterion_id in record.get("criterion_ids", [])
+    }
     final_failed = any(
         record.get("status") == "FAIL" for record in final_verifications)
     final_pending = (
@@ -1986,7 +2019,8 @@ def derive_runtime_state(records, digest):
         or not any(
             record.get("role") in {None, "verifier"}
             and record.get("status") == "PASS"
-            for record in final_verifications))
+            for record in final_verifications)
+        or not criteria.issubset(verifier_coverage))
     tier = work_item.get("control_tier")
     reviewer_pass = role_pass_exists(
         records, latest_artifact, "reviewer")
@@ -2341,6 +2375,24 @@ def approve_records(records_dir, artifact_path, approver, statement,
         print(
             "ERROR: approval requires final-version PASS evidence for {}".format(
                 ", ".join(missing)),
+            file=sys.stderr)
+        return 1
+    criteria = set(work_item.get("acceptance_criteria", {}))
+    verifier_coverage = {
+        criterion_id
+        for record in records
+        if record.get("kind") == "verification"
+        and record.get("artifact_id") == artifact.get("id")
+        and record.get("artifact_version") == artifact.get("version")
+        and record.get("role") in {None, "verifier"}
+        and record.get("status") == "PASS"
+        for criterion_id in record.get("criterion_ids", [])
+    }
+    uncovered = sorted(criteria - verifier_coverage)
+    if uncovered:
+        print(
+            "ERROR: approval requires Verifier coverage for {}".format(
+                ", ".join(uncovered)),
             file=sys.stderr)
         return 1
     expected = "APPROVE {}@{}".format(
