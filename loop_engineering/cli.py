@@ -1364,8 +1364,57 @@ def recover_migration_transaction(root):
     return None, "migration journal has no recoverable directory"
 
 
+def acquire_migration_lock(root):
+    root = Path(root).resolve()
+    path = root.parent / ".{}.migration.lock".format(root.name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(path), os.O_CREAT | os.O_RDWR)
+    try:
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        return None, path
+    return fd, path
+
+
+def release_migration_lock(fd, path):
+    try:
+        if os.name == "nt":
+            import msvcrt
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_UN)
+    finally:
+        os.close(fd)
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+
+
 def migrate_records(directory, write=False, verification_roles=None,
                     record_criteria=None):
+    fd, lock_path = acquire_migration_lock(directory)
+    if fd is None:
+        print("ERROR: migration already active for {}".format(directory),
+              file=sys.stderr)
+        return 2
+    try:
+        return _migrate_records(
+            directory, write, verification_roles, record_criteria)
+    finally:
+        release_migration_lock(fd, lock_path)
+
+
+def _migrate_records(directory, write=False, verification_roles=None,
+                     record_criteria=None):
     root = Path(directory)
     recovered, recovery_error = recover_migration_transaction(root)
     if recovery_error:
@@ -1496,11 +1545,24 @@ def migrate_records(directory, write=False, verification_roles=None,
                             json.dumps(criterion, ensure_ascii=True)),
                         file=sys.stderr)
                     return 1
+                verification_ids = item.get("verification_ids")
+                if (not isinstance(verification_ids, list)
+                        or not verification_ids
+                        or not all(
+                            isinstance(value, str)
+                            and STABLE_ID.fullmatch(value)
+                            for value in verification_ids)
+                        or len(verification_ids) != len(
+                            set(verification_ids))):
+                    print(
+                        "ERROR: v1 criteria_evidence verification_ids are invalid",
+                        file=sys.stderr)
+                    return 1
                 converted[criterion_id] = {
-                    "verification_ids": item.get("verification_ids"),
+                    "verification_ids": verification_ids,
                     "result": item.get("result"),
                 }
-                for verification_id in item.get("verification_ids", []):
+                for verification_id in verification_ids:
                     criteria_for_verification.setdefault(
                         verification_id, set()).add(criterion_id)
             record["criteria_evidence"] = converted
@@ -1809,6 +1871,8 @@ def runtime_record_errors(records, accept_gate=True):
             for error in schema_errors(record, schema))
         if kind == "work_item":
             work_items.append(record)
+    if errors:
+        return errors
     if len(work_items) != 1:
         errors.append("runtime requires exactly one Work Item")
         return errors
@@ -2040,6 +2104,17 @@ def checkpoint_errors(checkpoint):
     return errors
 
 
+def checkpoint_semantic_errors(checkpoint, records, digest):
+    expected = derive_runtime_state(records, digest)
+    errors = []
+    for field in (
+            "records_digest", "work_item_id", "state", "next_action",
+            "artifact_versions", "open_findings", "last_decision"):
+        if checkpoint.get(field) != expected.get(field):
+            errors.append("checkpoint {} does not match records".format(field))
+    return errors
+
+
 def write_checkpoint(store, checkpoint):
     root = Path(store).resolve()
     checkpoints = root / "checkpoints"
@@ -2121,6 +2196,12 @@ def runtime_checkpoint(records_dir, store):
 
 
 def runtime_status(store, records_dir=None):
+    if records_dir:
+        try:
+            store = checkpoint_store_path(records_dir, store)
+        except ValueError as exc:
+            print("ERROR: {}".format(exc), file=sys.stderr)
+            return 2
     checkpoints, skipped = valid_checkpoints(store)
     checkpoint = checkpoints[0] if checkpoints else None
     if records_dir:
@@ -2133,6 +2214,10 @@ def runtime_status(store, records_dir=None):
         matching = next(
             (item for item in checkpoints
              if item.get("records_digest") == digest), None)
+        if matching is not None and checkpoint_semantic_errors(
+                matching, records, digest):
+            matching = None
+            skipped += 1
         if matching is None:
             errors = runtime_record_errors(records)
             if errors:
@@ -2152,6 +2237,12 @@ def runtime_status(store, records_dir=None):
 
 
 def runtime_resume(store, records_dir=None):
+    if records_dir:
+        try:
+            store = checkpoint_store_path(records_dir, store)
+        except ValueError as exc:
+            print("ERROR: {}".format(exc), file=sys.stderr)
+            return 2
     checkpoints, skipped = valid_checkpoints(store)
     if not records_dir:
         if not checkpoints:
@@ -2179,6 +2270,10 @@ def runtime_resume(store, records_dir=None):
     matching = next(
         (item for item in checkpoints
          if item.get("records_digest") == digest), None)
+    if matching is not None and checkpoint_semantic_errors(
+            matching, records, digest):
+        matching = None
+        skipped += 1
     recovered = matching is None
     if matching is None:
         matching = derive_runtime_state(records, digest)

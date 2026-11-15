@@ -609,6 +609,21 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             shutil.rmtree(json.loads(p.stdout)["backup"])
 
+    def test_migrate_records_rejects_malformed_v1_evidence_ids(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = legacy_v1_records()
+            records["decision.json"]["criteria_evidence"][0][
+                "verification_ids"] = None
+            write_records(root, records)
+            p = run_cli(
+                "migrate-records", "--dir", root,
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("verification_ids", p.stderr)
+            self.assertNotIn("Traceback", p.stderr)
+
     def test_migrate_records_recovers_interrupted_journal(self):
         with tempfile.TemporaryDirectory() as t:
             base = Path(t)
@@ -638,6 +653,22 @@ class CliTests(unittest.TestCase):
             self.assertTrue((root / "work-item.json").exists())
             self.assertFalse(stage.exists())
             self.assertFalse(journal.exists())
+
+    def test_migrate_records_rejects_concurrent_writer(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, legacy_v2_records())
+            fd, lock_path = cli_module.acquire_migration_lock(root)
+            self.assertIsNotNone(fd)
+            try:
+                p = run_cli(
+                    "migrate-records", "--dir", root,
+                    "--verification-role", "V-1=verifier",
+                    "--verification-role", "V-REVIEW=reviewer")
+                self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+                self.assertIn("already active", p.stderr)
+            finally:
+                cli_module.release_migration_lock(fd, lock_path)
 
     def test_runtime_checkpoint_resumes_from_canonical_records(self):
         with tempfile.TemporaryDirectory() as t:
@@ -781,6 +812,51 @@ class CliTests(unittest.TestCase):
             self.assertEqual(status["state"], "ACCEPT")
             self.assertEqual(status["source"], "canonical_records_recovery")
 
+    def test_runtime_rejects_tampered_semantics_and_embedded_resume_store(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            write_records(records_dir, stage2_records())
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            checkpoint_path = next((store / "checkpoints").glob("*.json"))
+            checkpoint = json.loads(
+                checkpoint_path.read_text(encoding="utf-8"))
+            checkpoint["state"] = "STOP"
+            checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
+            p = run_cli(
+                "runtime-status", "--store", store,
+                "--records", records_dir)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            status = json.loads(p.stdout)
+            self.assertEqual(status["state"], "ACCEPT")
+            self.assertEqual(status["source"], "canonical_records_recovery")
+
+            p = run_cli(
+                "runtime-resume", "--store", records_dir / "runtime",
+                "--records", records_dir)
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertIn("inside the records directory", p.stderr)
+
+    def test_runtime_schema_errors_do_not_traceback(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            records_dir.mkdir()
+            records = stage2_records()
+            records["work-item.json"]["acceptance_criteria"] = None
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", base / "store")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("schema", p.stderr)
+            self.assertNotIn("Traceback", p.stderr)
+
     def test_runtime_metrics_registry_reject_invalid_terminal_records(self):
         with tempfile.TemporaryDirectory() as t:
             base = Path(t)
@@ -922,6 +998,7 @@ class CliTests(unittest.TestCase):
                 "statement": "other run",
                 "approved_at": "2026-11-15T09:00:00+08:00",
                 "confirmation": "APPROVE A-1@2",
+                "authentication": "unverified_host_attestation",
             }
             write_records(records_dir, records)
             p = run_cli("metrics", "--dir", records_dir)
@@ -941,6 +1018,11 @@ class CliTests(unittest.TestCase):
             p = run_cli(
                 "metrics", "--dir", records_dir,
                 "--output", records_dir / "metrics.json")
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertIn("inside the records directory", p.stderr)
+            p = run_cli(
+                "improvements", "--dir", records_dir,
+                "--output", records_dir / "improvements.json")
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
             self.assertIn("inside the records directory", p.stderr)
             p = run_cli("check-records", "--dir", records_dir)
