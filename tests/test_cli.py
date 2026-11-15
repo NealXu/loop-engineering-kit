@@ -591,6 +591,10 @@ class CliTests(unittest.TestCase):
                     })
             }),
              "distinct host sessions"),
+            ("closure-challenger", lambda records: records[
+                "verification-challenger.json"].update(
+                    closure_gate=True),
+             "role"),
         ]
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -1852,6 +1856,25 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("not PASS", p.stderr)
 
+            records["verification-closure.json"]["status"] = "PASS"
+            records["verification-closure.json"]["evidence"] = [
+                "closure check executed"
+            ]
+            rebind_record_hashes(records)
+            write_records(root, records)
+            p = run_cli(
+                "check-finding", "--input", root / "finding-closure.json",
+                "--work-item", root / "work-item.json",
+                "--artifact", root / "artifact-2.json",
+                "--verifications-dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["verification-closure.json"]["status"] = "NOT_RUN"
+            records["verification-closure.json"]["evidence"] = [
+                "bootstrap phase"
+            ]
+            rebind_record_hashes(records)
+            write_records(root, records)
+
             records["decision.json"]["criteria_evidence"]["AC-1"][
                 "verification_ids"] = ["V-CLOSURE"]
             write_records(root, records)
@@ -1900,6 +1923,13 @@ class CliTests(unittest.TestCase):
             p = run_cli(
                 "check-records", "--dir", records_dir, "--repo", repo)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            source.write_text("UNREVIEWED replacement\n", encoding="utf-8")
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("working tree", p.stderr)
+            source.write_text("reviewed content\n", encoding="utf-8")
 
             for name, record in records.items():
                 if record.get("kind") == "artifact":

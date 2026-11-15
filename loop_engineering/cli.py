@@ -120,13 +120,21 @@ def reviewed_set_sha256(records, artifact):
     selected.extend(
         record for record in records
         if record.get("kind") == "finding")
+    closure_finding_ids = {
+        record.get("id") for record in records
+        if record.get("kind") == "finding"
+        and record.get("closure_gate") is True
+    }
     selected.extend(
         record for record in records
         if record.get("kind") == "verification"
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
         and record.get("status") == "PASS"
-        and not record.get("closure_gate")
+        and not (
+            record.get("closure_gate") is True
+            and record.get("role") == "verifier"
+            and record.get("finding_id") in closure_finding_ids)
         and record.get("role") in {"verifier", "reviewer", "challenger"})
     return records_sha256(selected)
 
@@ -239,6 +247,20 @@ def artifact_source_errors(artifact, repo_root):
         if actual != expected:
             errors.append("Artifact source file hash does not match: {}".format(
                 relative))
+            continue
+        worktree = repo_root / relative
+        try:
+            worktree_bytes = worktree.read_bytes().replace(b"\r\n", b"\n")
+        except OSError as exc:
+            errors.append(
+                "Unable to read Artifact working tree file {}: {}".format(
+                    relative, exc))
+            continue
+        worktree_hash = hashlib.sha256(worktree_bytes).hexdigest()
+        if worktree_hash != actual:
+            errors.append(
+                "Artifact working tree file hash does not match: {}".format(
+                    relative))
     return errors
 
 
@@ -416,7 +438,7 @@ def finding_errors(value):
         "claim", "evidence", "impact", "required_action", "criterion_ids",
         "status",
     }
-    optional = {"recurrence_of", "prevention"}
+    optional = {"recurrence_of", "prevention", "closure_gate"}
     errors = []
     missing = sorted(required - set(value))
     if missing:
@@ -531,6 +553,9 @@ def finding_errors(value):
         errors.append("recurrence_of must be a stable ID")
     elif recurrence == value.get("id"):
         errors.append("recurrence_of must not be self-referential")
+    if "closure_gate" in value and not isinstance(
+            value.get("closure_gate"), bool):
+        errors.append("closure_gate must be a boolean")
     return errors
 
 
@@ -709,6 +734,7 @@ def verification_errors(
             verification.get("status") == "PASS"
             or (pre_closure
                 and verification.get("closure_gate") is True
+                and verification.get("role") == "verifier"
                 and finding.get("closure_gate") is True))
         if not status_passes:
             errors.append(
@@ -735,6 +761,7 @@ def verification_errors(
         if not (
                 pre_closure
                 and verification.get("closure_gate") is True
+                and verification.get("role") == "verifier"
                 and verification.get("status") != "PASS"):
             errors.extend(execution_errors(verification))
         verification_criteria = verification.get("criterion_ids")
@@ -1409,6 +1436,7 @@ def records_errors(records, repo_root=None, pre_closure=False):
                 if not (
                         pre_closure
                         and verification.get("closure_gate") is True
+                        and verification.get("role") == "verifier"
                         and verification.get("status") != "PASS"):
                     errors.extend(execution_errors(verification))
             reviewer_evidence = (
@@ -1538,6 +1566,7 @@ def records_errors(records, repo_root=None, pre_closure=False):
                     if not (
                             pre_closure
                             and verification.get("closure_gate") is True
+                            and verification.get("role") == "verifier"
                             and verification.get("status") != "PASS"):
                         errors.extend(execution_errors(verification))
                     has_verifier_role = (

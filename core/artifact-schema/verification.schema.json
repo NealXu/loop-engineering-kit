@@ -113,5 +113,14 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["closure_gate"] },
+      "then": {
+        "required": ["role"],
+        "properties": { "role": { "const": "verifier" } }
+      }
+    }
+  ]
 }
