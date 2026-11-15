@@ -418,6 +418,92 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
             self.assertIn("inside the records directory", p.stderr)
 
+    def test_metrics_and_improvement_candidates(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            records_dir.mkdir()
+            records = stage2_records()
+            records["finding-medium.json"] = {
+                "schema_version": 3,
+                "id": "F-MEDIUM",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "medium",
+                "target": "latency",
+                "claim": "latency is bounded but high",
+                "evidence": ["observed 900 ms"],
+                "impact": "slower than target",
+                "required_action": "reduce latency",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            records["verification-blocked.json"] = {
+                "schema_version": 3,
+                "id": "V-BLOCKED",
+                "kind": "verification",
+                "artifact_id": "A-1",
+                "artifact_version": "2",
+                "criterion_ids": ["AC-1"],
+                "role": "verifier",
+                "check": "network check",
+                "method": "run",
+                "status": "BLOCKED",
+                "evidence": ["network unavailable"],
+                "limitations": ["network unavailable"],
+            }
+            write_records(records_dir, records)
+            host_metrics = base / "host-metrics.json"
+            host_metrics.write_text(json.dumps({
+                "turns": 4,
+                "tool_calls": 12,
+                "total_tokens": 1400,
+                "cost_usd": 0.25,
+            }), encoding="utf-8")
+            output = base / "metrics.json"
+            p = run_cli(
+                "metrics", "--dir", records_dir,
+                "--host-metrics", host_metrics, "--output", output)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            metrics = json.loads(p.stdout)
+            self.assertEqual(metrics["record_count"], 11)
+            self.assertEqual(metrics["artifact_versions"], ["1", "2"])
+            self.assertEqual(metrics["verification_statuses"]["BLOCKED"], 1)
+            self.assertEqual(metrics["host_metrics"]["total_tokens"], 1400)
+            self.assertEqual(
+                json.loads(output.read_text(encoding="utf-8"))["state"],
+                "ACCEPT")
+
+            p = run_cli("improvements", "--dir", records_dir)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            candidates = json.loads(p.stdout)["candidates"]
+            categories = {item["category"] for item in candidates}
+            self.assertIn("resolve_medium_finding", categories)
+            self.assertIn("stabilize_check", categories)
+
+    def test_version_registry_deduplicates_runs(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            write_records(records_dir, stage2_records())
+            p = run_cli(
+                "registry-update", "--store", store,
+                "--records", records_dir, "--label", "local")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            p = run_cli(
+                "registry-update", "--store", store,
+                "--records", records_dir, "--label", "local")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            p = run_cli("registry-list", "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            registry = json.loads(p.stdout)
+            self.assertEqual(len(registry["runs"]), 1)
+            self.assertEqual(
+                registry["runs"][0]["artifact_versions"], ["1", "2"])
+            self.assertEqual(registry["runs"][0]["state"], "ACCEPT")
+
     def test_legacy_migration_manifest_metadata_is_enforced(self):
         records = [
             {"id": "V-1", "kind": "verification"},

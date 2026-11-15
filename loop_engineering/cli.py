@@ -60,6 +60,17 @@ def load_json(path):
     return value
 
 
+def write_json_file(path, value):
+    path = Path(path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(
+        ".{}.{}.tmp".format(path.name, uuid.uuid4().hex))
+    temporary.write_text(
+        json.dumps(value, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    os.replace(str(temporary), str(path))
+
+
 def load_verify_config(path):
     config = load_json(path)
     commands = config.get("commands")
@@ -1908,6 +1919,269 @@ def approve_records(records_dir, artifact_path, approver, statement,
     return 0
 
 
+def load_host_metrics(path):
+    if path is None:
+        return {}
+    value = load_json(path)
+    allowed = {
+        "turns", "tool_calls", "total_tokens", "cost_usd",
+        "elapsed_seconds",
+    }
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise ValueError("host metrics unknown fields: {}".format(
+            _quoted_names(unknown)))
+    for key, item in value.items():
+        if (isinstance(item, bool)
+                or not isinstance(item, (int, float))
+                or item < 0):
+            raise ValueError(
+                "host metric {} must be a non-negative number".format(key))
+    return value
+
+
+def metrics_data(records, host_metrics=None):
+    digest = records_sha256(records)
+    runtime = derive_runtime_state(records, digest)
+    verification_statuses = {
+        status: 0 for status in ("PASS", "FAIL", "BLOCKED", "NOT_RUN")
+    }
+    findings_by_status = {}
+    findings_by_severity = {}
+    for record in records:
+        if record.get("kind") == "verification":
+            status = record.get("status")
+            if status in verification_statuses:
+                verification_statuses[status] += 1
+        elif record.get("kind") == "finding":
+            status = record.get("status")
+            if status in {
+                    "open", "resolved", "accepted_risk",
+                    "not_reproducible"}:
+                findings_by_status[status] = (
+                    findings_by_status.get(status, 0) + 1)
+            severity = record.get("severity")
+            if severity in {"low", "medium", "high", "blocking"}:
+                findings_by_severity[severity] = (
+                    findings_by_severity.get(severity, 0) + 1)
+    decisions = [
+        record for record in records if record.get("kind") == "decision"
+    ]
+    iterations = [
+        record for record in records if record.get("kind") == "iteration"
+    ]
+    return {
+        "schema_version": 1,
+        "work_item_id": runtime["work_item_id"],
+        "record_count": len(records),
+        "records_digest": digest,
+        "state": runtime["state"],
+        "artifact_versions": runtime["artifact_versions"],
+        "decision_count": len(decisions),
+        "terminal_decision": next(
+            (record.get("decision") for record in reversed(decisions)
+             if record.get("decision") in {"ACCEPT", "STOP", "ESCALATE"}),
+            None),
+        "iteration_count": len(iterations),
+        "repair_iterations": sum(
+            record.get("result") == "REPAIR" for record in iterations),
+        "approval_count": sum(
+            record.get("kind") == "approval" for record in records),
+        "open_findings": runtime["open_findings"],
+        "findings_by_status": findings_by_status,
+        "findings_by_severity": findings_by_severity,
+        "verification_statuses": verification_statuses,
+        "host_metrics": host_metrics or {},
+    }
+
+
+def metrics(records_dir, host_metrics_path=None, output=None):
+    try:
+        _, records = load_runtime_records(records_dir)
+        host = load_host_metrics(host_metrics_path)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = runtime_record_errors(records)
+    if errors:
+        print("[FAIL] metrics records", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    data = metrics_data(records, host)
+    if output:
+        write_json_file(output, data)
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+    return 0
+
+
+def candidate_id(category, evidence_refs):
+    encoded = json.dumps(
+        [category, sorted(evidence_refs)],
+        sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return "IMP-{}".format(hashlib.sha256(encoded).hexdigest()[:12].upper())
+
+
+def improvement_candidates(records):
+    candidates = []
+
+    def add(category, priority, evidence_refs, action):
+        evidence_refs = sorted(evidence_refs)
+        candidates.append({
+            "id": candidate_id(category, evidence_refs),
+            "category": category,
+            "priority": priority,
+            "evidence_refs": evidence_refs,
+            "action": action,
+            "source": "canonical_records",
+        })
+
+    findings = [
+        record for record in records if record.get("kind") == "finding"
+    ]
+    for finding in findings:
+        if finding.get("recurrence_of"):
+            add(
+                "recurring_finding", "high", [finding.get("id")],
+                "Replace the repeated correction with a structural guard.")
+        elif (finding.get("severity") == "medium"
+              and finding.get("status") in {"open", "accepted_risk"}):
+            add(
+                "resolve_medium_finding", "medium", [finding.get("id")],
+                "Repair the bounded risk or record explicit residual ownership.")
+        prevention = finding.get("prevention")
+        if (finding.get("severity") in {"high", "blocking"}
+                and isinstance(prevention, dict)
+                and prevention.get("kind") in {
+                    "automatic_check", "skill_rule", "human_review"}):
+            add(
+                "prefer_structural_prevention", "low", [finding.get("id")],
+                "Prefer a structural guard over repeat-only prevention.")
+    failed = [
+        record for record in records
+        if record.get("kind") == "verification"
+        and record.get("status") in {"FAIL", "BLOCKED", "NOT_RUN"}
+    ]
+    for verification in failed:
+        add(
+            "stabilize_check", "high", [verification.get("id")],
+            "Make the check deterministic or restore its required dependency.")
+    iterations = [
+        record for record in records if record.get("kind") == "iteration"
+    ]
+    repairs = [
+        record for record in iterations if record.get("result") == "REPAIR"
+    ]
+    if len(repairs) >= 2:
+        add(
+            "reduce_repair_cycles", "medium",
+            [record.get("id") for record in repairs],
+            "Find the shared root cause behind repeated repairs.")
+    rank = {"high": 0, "medium": 1, "low": 2}
+    return sorted(
+        candidates,
+        key=lambda item: (
+            rank.get(item["priority"], 3), item["category"], item["id"]))
+
+
+def improvements(records_dir, output=None):
+    try:
+        _, records = load_runtime_records(records_dir)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = runtime_record_errors(records)
+    if errors:
+        print("[FAIL] improvement records", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    data = {
+        "schema_version": 1,
+        "candidates": improvement_candidates(records),
+    }
+    if output:
+        write_json_file(output, data)
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+    return 0
+
+
+def registry_update(store, records_dir, label=None, commit=None):
+    try:
+        store = checkpoint_store_path(records_dir, store)
+        _, records = load_runtime_records(records_dir)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    errors = runtime_record_errors(records)
+    if errors:
+        print("[FAIL] registry records", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    digest = records_sha256(records)
+    runtime = derive_runtime_state(records, digest)
+    entry = {
+        "work_item_id": runtime["work_item_id"],
+        "records_digest": digest,
+        "artifact_versions": runtime["artifact_versions"],
+        "state": runtime["state"],
+        "approval_count": sum(
+            record.get("kind") == "approval" for record in records),
+        "label": label or "",
+        "commit": commit or "",
+        "registered_at": datetime.datetime.now().astimezone().isoformat(),
+    }
+    path = Path(store).resolve() / "registry.json"
+    if path.exists():
+        try:
+            registry = load_json(path)
+        except ValueError as exc:
+            print("ERROR: {}".format(exc), file=sys.stderr)
+            return 1
+        runs = registry.get("runs")
+        if not isinstance(runs, list):
+            print("ERROR: registry runs must be an array", file=sys.stderr)
+            return 1
+    else:
+        registry = {
+            "schema_version": 1,
+            "runs": [],
+        }
+        runs = registry["runs"]
+    key = (entry["work_item_id"], digest)
+    runs[:] = [
+        run for run in runs
+        if (run.get("work_item_id"), run.get("records_digest")) != key
+    ]
+    runs.append(entry)
+    registry["updated_at"] = datetime.datetime.now().astimezone().isoformat()
+    write_json_file(path, registry)
+    print(json.dumps(entry, indent=2, ensure_ascii=False))
+    return 0
+
+
+def registry_list(store):
+    path = Path(store).resolve() / "registry.json"
+    if not path.exists():
+        print("ERROR: registry not found: {}".format(path), file=sys.stderr)
+        return 1
+    try:
+        registry = load_json(path)
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 1
+    if registry.get("schema_version") != 1 or not isinstance(
+            registry.get("runs"), list):
+        print("ERROR: registry format is invalid", file=sys.stderr)
+        return 1
+    print(json.dumps(registry, indent=2, ensure_ascii=False))
+    return 0
+
+
 def doctor(root, mode="kit"):
     root = Path(root).resolve()
     print("Loop Engineering Kit doctor")
@@ -2193,6 +2467,20 @@ def main():
     ap.add_argument("--approver", required=True)
     ap.add_argument("--statement", required=True)
     ap.add_argument("--confirm", required=True)
+    met = subs.add_parser("metrics")
+    met.add_argument("--dir", required=True)
+    met.add_argument("--host-metrics", default=None)
+    met.add_argument("--output", default=None)
+    imp = subs.add_parser("improvements")
+    imp.add_argument("--dir", required=True)
+    imp.add_argument("--output", default=None)
+    ru = subs.add_parser("registry-update")
+    ru.add_argument("--store", required=True)
+    ru.add_argument("--records", required=True)
+    ru.add_argument("--label", default=None)
+    ru.add_argument("--commit", default=None)
+    rl = subs.add_parser("registry-list")
+    rl.add_argument("--store", required=True)
     r = subs.add_parser("report")
     r.add_argument("--input", required=True)
     r.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -2230,6 +2518,15 @@ def main():
     if a.command == "approve":
         return approve_records(
             a.records, a.artifact, a.approver, a.statement, a.confirm)
+    if a.command == "metrics":
+        return metrics(a.dir, a.host_metrics, a.output)
+    if a.command == "improvements":
+        return improvements(a.dir, a.output)
+    if a.command == "registry-update":
+        return registry_update(
+            a.store, a.records, a.label, a.commit)
+    if a.command == "registry-list":
+        return registry_list(a.store)
     try:
         data = load_json(a.input)
     except ValueError as exc:
