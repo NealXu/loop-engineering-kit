@@ -62,6 +62,10 @@
       "type": "string",
       "pattern": "^[0-9a-f]{40}$"
     },
+    "base_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
     "file_hashes": {
       "type": "object",
       "minProperties": 1,

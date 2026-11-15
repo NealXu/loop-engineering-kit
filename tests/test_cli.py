@@ -543,6 +543,10 @@ class CliTests(unittest.TestCase):
                 "verification-challenger.json"]["host_context"].update(
                     session_id="reviewer-session"),
              "distinct host sessions"),
+            ("session-whitespace", lambda records: records[
+                "verification-challenger.json"]["host_context"].update(
+                    session_id="reviewer-session "),
+             "whitespace"),
         ]
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -595,6 +599,10 @@ class CliTests(unittest.TestCase):
                 "verification-challenger.json"].update(
                     closure_gate=True),
              "role"),
+            ("model-whitespace", lambda records: records[
+                "verification-challenger.json"]["host_context"].update(
+                    model="reviewer-model "),
+             "whitespace"),
         ]
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -1972,6 +1980,15 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("not PASS", p.stderr)
 
+            changed = json.loads(json.dumps(records))
+            changed["verification-closure.json"].pop("closure_gate")
+            write_records(root, changed)
+            p = run_cli(
+                "check-records", "--dir", root, "--pre-closure")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("closure_gate", p.stderr)
+            write_records(root, records)
+
             records["verification-closure.json"]["status"] = "PASS"
             records["verification-closure.json"]["evidence"] = [
                 "closure check executed"
@@ -2020,6 +2037,17 @@ class CliTests(unittest.TestCase):
                     argv, cwd=repo, text=True,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            base_revision = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
+            (repo / "hidden.txt").write_text("hidden\n", encoding="utf-8")
+            for argv in (
+                ("git", "add", "hidden.txt"),
+                ("git", "commit", "-m", "hidden"),
+            ):
+                p = subprocess.run(
+                    argv, cwd=repo, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             revision = subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()
             source_hash = hashlib.sha256(subprocess.check_output(
@@ -2031,9 +2059,24 @@ class CliTests(unittest.TestCase):
                     record.update({
                         "artifact_type": "working_tree_change",
                         "files": ["source.txt"],
+                        "base_revision": base_revision,
                         "source_revision": revision,
                         "file_hashes": {"source.txt": source_hash},
                     })
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("changed file set", p.stderr)
+
+            hidden_hash = hashlib.sha256(subprocess.check_output(
+                ["git", "show", "{}:hidden.txt".format(revision)],
+                cwd=repo)).hexdigest()
+            for name, record in records.items():
+                if record.get("kind") == "artifact":
+                    record["files"].append("hidden.txt")
+                    record["file_hashes"]["hidden.txt"] = hidden_hash
             rebind_record_hashes(records)
             write_records(records_dir, records)
             p = run_cli(

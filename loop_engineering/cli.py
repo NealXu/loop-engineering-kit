@@ -113,7 +113,7 @@ def artifact_content_hash(artifact):
 
 
 def registered_closure_verification_ids(records):
-    registered = set()
+    registered = {}
     for finding in records:
         if (finding.get("kind") != "finding"
                 or finding.get("closure_gate") is not True):
@@ -122,10 +122,18 @@ def registered_closure_verification_ids(records):
         ids = prevention.get("regression_verification_ids") if isinstance(
             prevention, dict) else []
         if isinstance(ids, list):
-            registered.update(
-                record_id for record_id in ids
-                if isinstance(record_id, str))
+            for record_id in ids:
+                if isinstance(record_id, str):
+                    registered[record_id] = finding.get("id")
     return registered
+
+
+def is_registered_closure_verification(verification, registered):
+    return (
+        verification.get("closure_gate") is True
+        and verification.get("role") == "verifier"
+        and verification.get("id") in registered
+        and verification.get("finding_id") == registered[verification.get("id")])
 
 
 def reviewed_set_sha256(records, artifact):
@@ -142,10 +150,8 @@ def reviewed_set_sha256(records, artifact):
         if record.get("kind") == "verification"
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
-        and not (
-            record.get("closure_gate") is True
-            and record.get("role") == "verifier"
-            and record.get("id") in registered_closures)
+        and not is_registered_closure_verification(
+            record, registered_closures)
         and record.get("role") in {"verifier", "reviewer", "challenger"})
     return records_sha256(selected)
 
@@ -234,11 +240,33 @@ def artifact_source_errors(artifact, repo_root):
         errors.append(
             "working_tree_change Artifact file_hashes must match files")
         return errors
+    base_revision = artifact.get("base_revision")
+    if not isinstance(base_revision, str) or not re.fullmatch(
+            r"[0-9a-f]{40}", base_revision):
+        errors.append(
+            "working_tree_change Artifact base_revision is invalid")
+        return errors
     if repo_root is None:
         errors.append(
             "working_tree_change Artifact requires --repo for file verification")
         return errors
     repo_root = Path(repo_root).resolve()
+    try:
+        changed = subprocess.run(
+            ["git", "diff", "--name-only",
+             "{}..{}".format(base_revision, revision)],
+            cwd=str(repo_root), stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, check=False)
+    except OSError as exc:
+        return ["Unable to run git for changed file set: {}".format(exc)]
+    if changed.returncode != 0:
+        return ["Unable to resolve Artifact changed file set"]
+    changed_files = {
+        line for line in changed.stdout.splitlines() if line
+    }
+    if not changed_files.issubset(set(files)):
+        errors.append(
+            "Artifact changed file set does not match base_revision..source_revision")
     for relative, expected in sorted(file_hashes.items()):
         try:
             process = subprocess.run(
@@ -948,9 +976,14 @@ def _host_context_errors(context, label, require_independence=False):
         errors.append("{} unknown fields: {}".format(
             label, _quoted_names(extra)))
     for field in ("session_id", "model"):
-        if (not isinstance(context.get(field), str)
-                or not context.get(field).strip()):
+        value = context.get(field)
+        if (not isinstance(value, str)
+                or not value.strip()):
             errors.append("{} {} must be non-blank".format(label, field))
+        elif value != value.strip():
+            errors.append(
+                "{} {} must not contain surrounding whitespace".format(
+                    label, field))
     if context.get("authentication") != "unverified_host_attestation":
         errors.append(
             "{} must use unverified_host_attestation".format(label))
@@ -1063,6 +1096,7 @@ def records_errors(records, repo_root=None, pre_closure=False):
     if not schema_valid:
         return errors
 
+    registered_closures = registered_closure_verification_ids(records)
     global_ids = {}
     for kind, kind_records in groups.items():
         if kind == "artifact":
@@ -1254,6 +1288,18 @@ def records_errors(records, repo_root=None, pre_closure=False):
             errors.append(
                 "legacy roleless Verification {} declares a role".format(
                     verification_id))
+    for verification_id, finding_id in registered_closures.items():
+        verification = verifications.get(verification_id)
+        if verification is None:
+            errors.append(
+                "closure Verification {} does not resolve".format(
+                    verification_id))
+        elif not is_registered_closure_verification(
+                verification, registered_closures):
+            errors.append(
+                "closure Verification {} requires closure_gate, verifier role, "
+                "and matching finding_id {}".format(
+                    verification_id, finding_id))
     approvals = {}
     for approval in groups.get("approval", []):
         approval_id = approval.get("id")
@@ -1303,7 +1349,6 @@ def records_errors(records, repo_root=None, pre_closure=False):
             None)
     errors.extend(l3_host_provenance_errors(
         work_item, final_artifact, list(verifications.values())))
-    registered_closures = registered_closure_verification_ids(records)
     if final_artifact is not None:
         errors.extend(artifact_source_errors(
             final_artifact, repo_root or Path.cwd()))
@@ -1448,7 +1493,8 @@ def records_errors(records, repo_root=None, pre_closure=False):
                 and verification.get("artifact_id") == final_artifact.get("id")
                 and verification.get("artifact_version")
                 == final_artifact.get("version")
-                and verification.get("id") not in registered_closures
+                and not is_registered_closure_verification(
+                    verification, registered_closures)
                 and verification.get("status") in {
                     "FAIL", "BLOCKED", "NOT_RUN"}
             ]
@@ -2618,7 +2664,8 @@ def derive_runtime_state(records, digest):
     registered_closures = registered_closure_verification_ids(records)
     delivery_verifications = [
         record for record in final_verifications
-        if record.get("id") not in registered_closures
+        if not is_registered_closure_verification(
+            record, registered_closures)
     ]
     criteria = set(work_item.get("acceptance_criteria", {}))
     verifier_coverage = {
@@ -3022,7 +3069,8 @@ def approve_records(records_dir, artifact_path, approver, statement,
         and record.get("artifact_version") == artifact.get("version")
         and record.get("role") == "verifier"
         and record.get("status") == "PASS"
-        and record.get("id") not in registered_closures
+        and not is_registered_closure_verification(
+            record, registered_closures)
         for criterion_id in record.get("criterion_ids", [])
     }
     uncovered = sorted(criteria - verifier_coverage)
@@ -3051,14 +3099,16 @@ def approve_records(records_dir, artifact_path, approver, statement,
         and record.get("artifact_version") == artifact.get("version")
         and record.get("status") == "PASS"
         and record.get("role") in {"verifier", "reviewer", "challenger"}
-        and record.get("id") not in registered_closures
+        and not is_registered_closure_verification(
+            record, registered_closures)
     ]
     final_bad = [
         record for record in records
         if record.get("kind") == "verification"
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
-        and record.get("id") not in registered_closures
+        and not is_registered_closure_verification(
+            record, registered_closures)
         and record.get("status") in {"FAIL", "BLOCKED", "NOT_RUN"}
     ]
     if final_bad:
