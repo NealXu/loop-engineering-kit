@@ -697,6 +697,38 @@ class CliTests(unittest.TestCase):
             self.assertIn("V-MISSING", p.stderr)
             self.assertEqual(list(root.glob("approval-*.json")), [])
 
+    def test_human_approval_rejects_final_nonpass_evidence(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = l3_preapproval_records()
+            records["verification-fail.json"] = {
+                "schema_version": 3,
+                "id": "V-FINAL-FAIL",
+                "kind": "verification",
+                "artifact_id": "A-1",
+                "artifact_version": "2",
+                "artifact_content_hash": records["artifact-2.json"][
+                    "content_hash"],
+                "criterion_ids": ["AC-1"],
+                "role": "verifier",
+                "check": "final failure",
+                "method": "run",
+                "status": "FAIL",
+                "evidence": ["failed"],
+                "limitations": [],
+                "execution": execution("python -m unittest", 1),
+            }
+            write_records(root, records)
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "must fail",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("final FAIL/BLOCKED/NOT_RUN", p.stderr)
+            self.assertEqual(list(root.glob("approval-*.json")), [])
+
     def test_approval_binds_the_reviewed_record_set(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)

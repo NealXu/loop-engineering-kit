@@ -130,7 +130,6 @@ def reviewed_set_sha256(records, artifact):
         if record.get("kind") == "verification"
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
-        and record.get("status") == "PASS"
         and not (
             record.get("closure_gate") is True
             and record.get("role") == "verifier"
@@ -3039,6 +3038,20 @@ def approve_records(records_dir, artifact_path, approver, statement,
         and record.get("role") in {"verifier", "reviewer", "challenger"}
         and not record.get("closure_gate")
     ]
+    final_bad = [
+        record for record in records
+        if record.get("kind") == "verification"
+        and record.get("artifact_id") == artifact.get("id")
+        and record.get("artifact_version") == artifact.get("version")
+        and not record.get("closure_gate")
+        and record.get("status") in {"FAIL", "BLOCKED", "NOT_RUN"}
+    ]
+    if final_bad:
+        print(
+            "ERROR: approval blocked by final FAIL/BLOCKED/NOT_RUN evidence: {}".format(
+                ", ".join(record["id"] for record in final_bad)),
+            file=sys.stderr)
+        return 1
     execution_failures = [
         error for record in final_evidence
         for error in execution_errors(record)
