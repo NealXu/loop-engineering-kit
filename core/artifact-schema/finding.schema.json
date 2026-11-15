@@ -58,6 +58,7 @@
       "minLength": 1,
       "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
     },
+    "closure_gate": { "type": "boolean" },
     "prevention": {
       "type": "object",
       "additionalProperties": false,

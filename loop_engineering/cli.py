@@ -126,7 +126,7 @@ def reviewed_set_sha256(records, artifact):
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
         and record.get("status") == "PASS"
-        and record.get("evidence_scope") != "record_closure"
+        and not record.get("closure_gate")
         and record.get("role") in {"verifier", "reviewer", "challenger"})
     return records_sha256(selected)
 
@@ -677,7 +677,7 @@ def verification_errors(
                     verification_id, _quoted_names(missing)))
         extra = sorted(
             set(verification) - required - {
-                "role", "host_context", "execution", "evidence_scope"})
+                "role", "host_context", "execution", "closure_gate"})
         if extra:
             errors.append(
                 "Verification {} unknown fields: {}".format(
@@ -708,7 +708,8 @@ def verification_errors(
         status_passes = (
             verification.get("status") == "PASS"
             or (pre_closure
-                and verification.get("evidence_scope") == "record_closure"))
+                and verification.get("closure_gate") is True
+                and finding.get("closure_gate") is True))
         if not status_passes:
             errors.append(
                 "regression Verification {} is not PASS".format(verification_id))
@@ -731,7 +732,11 @@ def verification_errors(
             errors.append(
                 "regression Verification {} artifact content hash mismatch".format(
                     verification_id))
-        errors.extend(execution_errors(verification))
+        if not (
+                pre_closure
+                and verification.get("closure_gate") is True
+                and verification.get("status") != "PASS"):
+            errors.extend(execution_errors(verification))
         verification_criteria = verification.get("criterion_ids")
         if not isinstance(verification_criteria, list) or not verification_criteria:
             errors.append(
@@ -1401,7 +1406,11 @@ def records_errors(records, repo_root=None, pre_closure=False):
                     errors.append(
                         "Approval reviewed_set_digest does not match reviewed records")
             for verification in ref_verifications:
-                errors.extend(execution_errors(verification))
+                if not (
+                        pre_closure
+                        and verification.get("closure_gate") is True
+                        and verification.get("status") != "PASS"):
+                    errors.extend(execution_errors(verification))
             reviewer_evidence = (
                 final_artifact is not None
                 and any(
@@ -1506,10 +1515,8 @@ def records_errors(records, repo_root=None, pre_closure=False):
                                 json.dumps(verification_id, ensure_ascii=True)))
                         continue
                     verifier_passes = (
-                        verification.get("status") == "PASS"
-                        or (pre_closure
-                            and verification.get("evidence_scope")
-                            == "record_closure"))
+                        not verification.get("closure_gate")
+                        and verification.get("status") == "PASS")
                     if not verifier_passes:
                         errors.append(
                             "Decision verification {} is not PASS".format(
@@ -1528,7 +1535,11 @@ def records_errors(records, repo_root=None, pre_closure=False):
                             "Decision verification {} does not cover {}".format(
                                 json.dumps(verification_id, ensure_ascii=True),
                                 json.dumps(criterion_id, ensure_ascii=True)))
-                    errors.extend(execution_errors(verification))
+                    if not (
+                            pre_closure
+                            and verification.get("closure_gate") is True
+                            and verification.get("status") != "PASS"):
+                        errors.extend(execution_errors(verification))
                     has_verifier_role = (
                         verification.get("role") == "verifier"
                         or (
@@ -2498,25 +2509,29 @@ def derive_runtime_state(records, digest):
         and record.get("artifact_id") == latest_artifact.get("id")
         and record.get("artifact_version") == latest_artifact.get("version")
     ]
+    delivery_verifications = [
+        record for record in final_verifications
+        if not record.get("closure_gate")
+    ]
     criteria = set(work_item.get("acceptance_criteria", {}))
     verifier_coverage = {
         criterion_id
-        for record in final_verifications
+        for record in delivery_verifications
         if (record.get("role") == "verifier"
             and record.get("status") == "PASS")
         for criterion_id in record.get("criterion_ids", [])
     }
     final_failed = any(
-        record.get("status") == "FAIL" for record in final_verifications)
+        record.get("status") == "FAIL" for record in delivery_verifications)
     final_pending = (
-        not final_verifications
+        not delivery_verifications
         or any(
             record.get("status") in {"BLOCKED", "NOT_RUN"}
-            for record in final_verifications)
+            for record in delivery_verifications)
         or not any(
             record.get("role") == "verifier"
             and record.get("status") == "PASS"
-            for record in final_verifications)
+            for record in delivery_verifications)
         or not criteria.issubset(verifier_coverage))
     tier = work_item.get("control_tier")
     reviewer_pass = role_pass_exists(
@@ -2898,6 +2913,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
         and record.get("artifact_version") == artifact.get("version")
         and record.get("role") == "verifier"
         and record.get("status") == "PASS"
+        and not record.get("closure_gate")
         for criterion_id in record.get("criterion_ids", [])
     }
     uncovered = sorted(criteria - verifier_coverage)
@@ -2926,6 +2942,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
         and record.get("artifact_version") == artifact.get("version")
         and record.get("status") == "PASS"
         and record.get("role") in {"verifier", "reviewer", "challenger"}
+        and not record.get("closure_gate")
     ]
     execution_failures = [
         error for record in final_evidence
@@ -3329,7 +3346,13 @@ def registry_list(store):
             print("ERROR: {}".format(exc), file=sys.stderr)
             return 1
         if isinstance(old.get("runs"), list):
-            runs.extend(old["runs"])
+            for entry in old["runs"]:
+                if not isinstance(entry, dict):
+                    print(
+                        "ERROR: legacy registry run must be an object",
+                        file=sys.stderr)
+                    return 1
+                runs.append(entry)
     unique = {}
     for entry in runs:
         errors = registry_entry_errors(entry)

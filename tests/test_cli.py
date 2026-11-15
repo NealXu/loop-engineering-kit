@@ -674,6 +674,7 @@ class CliTests(unittest.TestCase):
                 "required_action": "reject",
                 "criterion_ids": ["AC-1"],
                 "status": "resolved",
+                "closure_gate": True,
                 "prevention": {
                     "kind": "structure",
                     "action": "guard",
@@ -1243,6 +1244,7 @@ class CliTests(unittest.TestCase):
                 "required_action": "apply shared validation",
                 "criterion_ids": ["AC-1"],
                 "status": "resolved",
+                "closure_gate": True,
                 "prevention": {
                     "kind": "structure",
                     "action": "guard",
@@ -1503,6 +1505,16 @@ class CliTests(unittest.TestCase):
             runs = json.loads(p.stdout)["runs"]
             self.assertEqual(len(runs), 1)
             self.assertIn(runs[0]["label"], {"A", "B"})
+
+    def test_registry_list_rejects_malformed_legacy_entries(self):
+        with tempfile.TemporaryDirectory() as t:
+            store = Path(t)
+            (store / "registry.json").write_text(
+                json.dumps({"runs": [None]}), encoding="utf-8")
+            p = run_cli("registry-list", "--store", store)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("legacy registry run must be an object", p.stderr)
+            self.assertNotIn("Traceback", p.stderr)
 
     def test_metrics_reject_cross_work_approval_and_nonfinite_values(self):
         with tempfile.TemporaryDirectory() as t:
@@ -1805,6 +1817,7 @@ class CliTests(unittest.TestCase):
                 "required_action": "run record closure",
                 "criterion_ids": ["AC-1"],
                 "status": "resolved",
+                "closure_gate": True,
                 "prevention": {
                     "kind": "structure",
                     "action": "run closure gate",
@@ -1819,7 +1832,7 @@ class CliTests(unittest.TestCase):
                 "artifact_id": "A-1",
                 "artifact_version": "2",
                 "artifact_content_hash": "",
-                "evidence_scope": "record_closure",
+                "closure_gate": True,
                 "finding_id": "F-CLOSURE",
                 "criterion_ids": ["AC-1"],
                 "role": "verifier",
@@ -1838,6 +1851,14 @@ class CliTests(unittest.TestCase):
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("not PASS", p.stderr)
+
+            records["decision.json"]["criteria_evidence"]["AC-1"][
+                "verification_ids"] = ["V-CLOSURE"]
+            write_records(root, records)
+            p = run_cli(
+                "check-records", "--dir", root, "--pre-closure")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("Verifier Verification role", p.stderr)
 
     def test_check_records_verifies_working_tree_source_files(self):
         if shutil.which("git") is None:
