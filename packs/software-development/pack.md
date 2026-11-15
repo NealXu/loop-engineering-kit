@@ -16,7 +16,9 @@
 - Canonical Artifact content hash repeated by Verification, Decision, and
   Human Approval evidence.
 - L3 Producer/Reviewer/Challenger host contexts with distinct declared
-  sessions; the attestation remains host-unverified.
+  sessions and models; the attestation remains host-unverified.
+- Reviewed-set digest binding Work Item criteria, Artifact, Findings, and final
+  PASS evidence to Human Approval and the ACCEPT Decision.
 - Tests or an assert-based self-check for non-trivial logic.
 - Verification report with exact commands, exit codes, and status.
 - A verification skill based on `verification-skill.md` when a browser, GUI, or

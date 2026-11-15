@@ -46,7 +46,9 @@ STOP and blocks only ACCEPT.
 
 L3 ACCEPT additionally requires final-version Reviewer and Challenger PASS
 evidence and a referenced Human Approval record created by the `approve`
-command. `BLOCKED` and `NOT_RUN` remain non-passing.
+command. The Approval and Decision repeat the same `reviewed_set_digest`;
+changing reviewed criteria or evidence invalidates them. `BLOCKED` and
+`NOT_RUN` remain non-passing.
 
 A failure fingerprint combines the failed check, failure signature, and
 artifact versions. If the same fingerprint repeats with no artifact change,
@@ -63,6 +65,8 @@ An `ACCEPT` decision records:
 - accepted residual risks and their owner;
 - unresolved low/medium findings;
 - whether review independence was available;
+- the canonical digest of the reviewed Work Item, Artifact, Findings, and
+  final PASS evidence set;
 - approver identity or `controller` when no human approval is required.
 - for L3, the referenced Human Approval id and matching Artifact version/hash.
 

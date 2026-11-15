@@ -92,6 +92,11 @@ reports may summarize records, but must not replace their evidence.
 Verification and approval records bind to the Artifact `content_hash`; a
 Decision maps every covered version to its hash. This prevents an in-place
 replacement of the same `id@version` from satisfying existing gates.
+For working-tree changes, the Artifact also binds the Git revision and hashes
+of every listed source file. Approval and final ACCEPT bind a
+`reviewed_set_digest` over the Work Item, Artifact, Findings, and final PASS
+Verifications. Final PASS evidence records a command or host-session marker,
+exit code, and execution time.
 
 ## Adversarial Rules
 

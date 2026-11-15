@@ -25,6 +25,11 @@ Verification and Human Approval records repeat this digest as
 runtime reject a valid-looking but stale hash, including the same
 `id@version` being replaced in place.
 
+A `working_tree_change` Artifact additionally records an immutable
+`source_revision` and a `file_hashes` map for every path in `files`.
+`check-records --repo <git-root>` resolves those files at the recorded revision
+and rejects changed or missing content.
+
 For L3, the Artifact records `producer_context` and final Reviewer/Challenger
 PASS records record `host_context` with session id, model, independence, and
 `authentication: unverified_host_attestation`. Reviewer and Challenger sessions
@@ -52,6 +57,17 @@ the earlier finding ID in `recurrence_of` and requires prevention in every
 status; the same Finding cannot reference itself. Every prevention kind
 requires stable `regression_verification_ids`;
 non-`structure` prevention also requires `fallback_reason`.
+
+Final Verifier, Reviewer, and Challenger PASS evidence carries `execution`
+with the exact command or host-session marker, integer `exit_code`, and an ISO
+`executed_at`. Missing execution metadata, or a PASS with non-zero exit code,
+does not satisfy Approval or ACCEPT.
+
+Human Approval records a `reviewed_set_digest`: SHA-256 over canonical Work
+Item, Artifact, all Findings, and every final-version PASS Verifier, Reviewer,
+and Challenger Verification. The final ACCEPT Decision repeats that digest.
+Changing a reviewed criterion, Finding, or Verification after approval
+invalidates both records.
 
 Verification records include a `limitations` array, which may be empty when
 there are no material limitations. A Verification used as regression evidence
@@ -81,6 +97,12 @@ Legacy criterion coverage without an evidence mapping requires explicit
 `--record-criteria`; it is never guessed.
 Version 3 adds explicit control tiers and route flags, typed evidence
 references, Decision cycles, Verification role labels, and Human Approval.
+The identity/evidence upgrade is a required in-place v3 maintenance step for
+older record sets. Run `migrate-records` to add content hashes, Artifact hashes,
+roles, execution metadata, and reviewed-set digests. Roleless legacy evidence
+is auto-labelled `verifier` only when it matches the frozen migration manifest;
+all other roleless Verification records require explicit
+`--verification-role`.
 
 Iteration records may include `output_versions`; Stage 2 record checks require
 it so Artifact ancestry is explicit. Run

@@ -74,10 +74,11 @@ next state. When host metrics exist, retain turn count, tool-call count, token
 use, and cost alongside the outcome; the `metrics` command ingests these fields.
 
 L3 approval is a persistent canonical record bound to the final Artifact
-`id@version` and `content_hash`. Run `approve` with the exact
+`id@version`, `content_hash`, and reviewed record-set digest. Run `approve` with the exact
 `APPROVE <artifact>@<version>` confirmation and reference the resulting
 Approval id from the final Decision. Runtime recovery advances L3 through
 Verifier evidence, Reviewer PASS, Challenger PASS, and approval before it
 reports `DECIDE`. Reviewer and Challenger PASS evidence must declare distinct
-host sessions and independence; a missing or colliding attestation blocks the
-transition.
+host sessions and models and independence; a missing or colliding attestation
+blocks the transition. No more than one terminal Decision may exist, and no
+Decision or Iteration may follow it.

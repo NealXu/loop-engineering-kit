@@ -60,8 +60,12 @@ Schema v3 also binds Artifact identity to a canonical `content_hash`.
 Verification, Decision, and Human Approval records must repeat the matching
 digest, so replacing the same `id@version` in place fails the gate.
 L3 also records Producer, Reviewer, and Challenger session/model declarations
-and requires distinct review/challenge sessions. These remain host
+and requires distinct review/challenge sessions and models. These remain host
 attestations, not cryptographic identity proofs.
+Working-tree Artifacts can bind a Git revision and per-file SHA-256 values.
+Human Approval and the final Decision also repeat a reviewed-set digest, so
+editing criteria, Findings, or verification evidence after approval invalidates
+both.
 
 ## Quick start
 

@@ -112,6 +112,135 @@ def artifact_content_hash(artifact):
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def reviewed_set_sha256(records, artifact):
+    work_items = [
+        record for record in records if record.get("kind") == "work_item"
+    ]
+    selected = work_items + [artifact]
+    selected.extend(
+        record for record in records
+        if record.get("kind") == "finding")
+    selected.extend(
+        record for record in records
+        if record.get("kind") == "verification"
+        and record.get("artifact_id") == artifact.get("id")
+        and record.get("artifact_version") == artifact.get("version")
+        and record.get("status") == "PASS"
+        and record.get("role") in {"verifier", "reviewer", "challenger"})
+    return records_sha256(selected)
+
+
+def execution_errors(verification):
+    execution = verification.get("execution")
+    if not isinstance(execution, dict):
+        return ["Verification {} execution metadata is missing".format(
+            json.dumps(verification.get("id"), ensure_ascii=True))]
+    errors = []
+    required = {"command", "exit_code", "executed_at"}
+    missing = sorted(required - set(execution))
+    if missing:
+        errors.append(
+            "Verification {} execution missing fields: {}".format(
+                json.dumps(verification.get("id"), ensure_ascii=True),
+                _quoted_names(missing)))
+    extra = sorted(set(execution) - required)
+    if extra:
+        errors.append(
+            "Verification {} execution unknown fields: {}".format(
+                json.dumps(verification.get("id"), ensure_ascii=True),
+                _quoted_names(extra)))
+    if (not isinstance(execution.get("command"), str)
+            or not execution.get("command").strip()):
+        errors.append("Verification execution command must be non-blank")
+    exit_code = execution.get("exit_code")
+    if isinstance(exit_code, bool) or not isinstance(exit_code, int):
+        errors.append("Verification execution exit_code must be an integer")
+    elif verification.get("status") == "PASS" and exit_code != 0:
+        errors.append("PASS Verification execution exit_code must be 0")
+    elif verification.get("status") == "FAIL" and exit_code == 0:
+        errors.append("FAIL Verification execution exit_code must be non-zero")
+    try:
+        datetime.datetime.fromisoformat(execution.get("executed_at", ""))
+    except (TypeError, ValueError):
+        errors.append("Verification execution executed_at is invalid")
+    return errors
+
+
+def decision_history_errors(decisions, allow_no_terminal):
+    errors = []
+    cycles = []
+    for decision in decisions:
+        cycle = decision.get("cycle")
+        if (isinstance(cycle, bool) or not isinstance(cycle, int)
+                or cycle < 1):
+            errors.append("Decision cycle must be a positive integer")
+        else:
+            cycles.append(cycle)
+    if len(cycles) != len(set(cycles)):
+        errors.append("Decision cycles must be unique")
+    terminal = [
+        decision for decision in decisions
+        if decision.get("decision") in {"ACCEPT", "STOP", "ESCALATE"}
+    ]
+    if not allow_no_terminal and not terminal:
+        errors.append("records require a final terminal Decision")
+    if len(terminal) > 1:
+        errors.append("records must contain exactly one terminal Decision")
+    if terminal and cycles:
+        final_cycle = max(cycles)
+        terminal_cycles = {
+            decision.get("cycle") for decision in terminal
+            if isinstance(decision.get("cycle"), int)
+        }
+        if final_cycle not in terminal_cycles:
+            errors.append("terminal Decision must be the last cycle")
+    return errors
+
+
+def artifact_source_errors(artifact, repo_root):
+    if artifact.get("artifact_type") != "working_tree_change":
+        return []
+    errors = []
+    revision = artifact.get("source_revision")
+    if not isinstance(revision, str) or not re.fullmatch(
+            r"[0-9a-f]{40}", revision):
+        errors.append("working_tree_change Artifact source_revision is invalid")
+        return errors
+    file_hashes = artifact.get("file_hashes")
+    files = artifact.get("files")
+    if (not isinstance(file_hashes, dict)
+            or not isinstance(files, list)
+            or set(file_hashes) != set(files)):
+        errors.append(
+            "working_tree_change Artifact file_hashes must match files")
+        return errors
+    if repo_root is None:
+        errors.append(
+            "working_tree_change Artifact requires --repo for file verification")
+        return errors
+    repo_root = Path(repo_root).resolve()
+    for relative, expected in sorted(file_hashes.items()):
+        try:
+            process = subprocess.run(
+                ["git", "show", "{}:{}".format(revision, relative)],
+                cwd=str(repo_root), stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, check=False)
+        except OSError as exc:
+            errors.append("Unable to run git for source verification: {}".format(
+                exc))
+            break
+        if process.returncode != 0:
+            errors.append(
+                "Unable to resolve source file {} at {}".format(
+                    relative, revision))
+            continue
+        actual = hashlib.sha256(process.stdout).hexdigest()
+        if actual != expected:
+            errors.append("Artifact source file hash does not match: {}".format(
+                relative))
+    return errors
+
+
 def legacy_roleless_ids(records, work_item_id):
     try:
         manifest = load_json(MIGRATION_MANIFEST)
@@ -484,7 +613,9 @@ def verification_errors(finding, work_item, artifact, verifications):
         errors.append(
             "Artifact missing fields: {}".format(_quoted_names(artifact_missing)))
     artifact_extra = sorted(
-        set(artifact) - artifact_required - {"producer_context"})
+        set(artifact) - artifact_required - {
+            "producer_context", "source_revision", "file_hashes",
+            "evidence_path"})
     if artifact_extra:
         errors.append(
             "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))
@@ -543,7 +674,8 @@ def verification_errors(finding, work_item, artifact, verifications):
                 "Verification {} missing fields: {}".format(
                     verification_id, _quoted_names(missing)))
         extra = sorted(
-            set(verification) - required - {"role", "host_context"})
+            set(verification) - required - {
+                "role", "host_context", "execution"})
         if extra:
             errors.append(
                 "Verification {} unknown fields: {}".format(
@@ -593,6 +725,7 @@ def verification_errors(finding, work_item, artifact, verifications):
             errors.append(
                 "regression Verification {} artifact content hash mismatch".format(
                     verification_id))
+        errors.extend(execution_errors(verification))
         verification_criteria = verification.get("criterion_ids")
         if not isinstance(verification_criteria, list) or not verification_criteria:
             errors.append(
@@ -790,6 +923,9 @@ def l3_host_provenance_errors(work_item, artifact, verifications):
     producer_session = (
         producer_context.get("session_id")
         if isinstance(producer_context, dict) else None)
+    producer_model = (
+        producer_context.get("model")
+        if isinstance(producer_context, dict) else None)
     passing = {}
     for role in ("reviewer", "challenger"):
         passes = [
@@ -801,6 +937,7 @@ def l3_host_provenance_errors(work_item, artifact, verifications):
             and record.get("artifact_version") == artifact.get("version")
         ]
         valid_sessions = set()
+        valid_models = set()
         for verification in passes:
             label = "{} host_context".format(role.capitalize())
             context = verification.get("host_context")
@@ -810,30 +947,41 @@ def l3_host_provenance_errors(work_item, artifact, verifications):
             session_id = (
                 context.get("session_id") if isinstance(context, dict)
                 else None)
+            model = (
+                context.get("model") if isinstance(context, dict)
+                else None)
             if (not context_errors and producer_session is not None
                     and session_id == producer_session):
                 errors.append(
                     "{} must use a different host session than "
                     "producer_context".format(label))
+            elif (not context_errors and producer_model is not None
+                  and model == producer_model):
+                errors.append(
+                    "{} must use a different model than "
+                    "producer_context".format(label))
             elif not context_errors:
                 valid_sessions.add(session_id)
+                valid_models.add(model)
         if passes:
-            passing[role] = valid_sessions
+            passing[role] = (valid_sessions, valid_models)
             if not valid_sessions:
                 errors.append(
                     "{} requires a valid independent host attestation".format(
                         role.capitalize()))
-    if (passing.get("reviewer") and passing.get("challenger")
-            and not any(
-                reviewer_session != challenger_session
-                for reviewer_session in passing["reviewer"]
-                for challenger_session in passing["challenger"])):
-        errors.append(
-            "Reviewer and Challenger require distinct host sessions")
+    if passing.get("reviewer") and passing.get("challenger"):
+        reviewer_sessions, reviewer_models = passing["reviewer"]
+        challenger_sessions, challenger_models = passing["challenger"]
+        if reviewer_sessions & challenger_sessions:
+            errors.append(
+                "Reviewer and Challenger require distinct host sessions")
+        if reviewer_models & challenger_models:
+            errors.append(
+                "Reviewer and Challenger require distinct models")
     return errors
 
 
-def records_errors(records):
+def records_errors(records, repo_root=None):
     errors = []
     groups = {}
     schema_valid = True
@@ -1098,6 +1246,9 @@ def records_errors(records):
             None)
     errors.extend(l3_host_provenance_errors(
         work_item, final_artifact, list(verifications.values())))
+    if final_artifact is not None:
+        errors.extend(artifact_source_errors(
+            final_artifact, repo_root or Path.cwd()))
     for finding_id, finding in findings.items():
         if final_artifact is not None:
             errors.extend(verification_errors(
@@ -1107,6 +1258,7 @@ def records_errors(records):
     decisions = groups.get("decision", [])
     if not decisions:
         errors.append("records must contain at least one Decision")
+    errors.extend(decision_history_errors(decisions, allow_no_terminal=False))
     decision_cycles = [
         decision.get("cycle") for decision in decisions
         if isinstance(decision.get("cycle"), int)]
@@ -1232,6 +1384,18 @@ def records_errors(records):
             ref_approvals = [
                 approvals[ref] for ref in decision.get("evidence_refs", [])
                 if ref in approvals]
+            expected_reviewed_set = (
+                reviewed_set_sha256(records, final_artifact)
+                if final_artifact is not None else None)
+            if decision.get("reviewed_set_digest") != expected_reviewed_set:
+                errors.append(
+                    "ACCEPT reviewed_set_digest does not match reviewed records")
+            for approval in ref_approvals:
+                if approval.get("reviewed_set_digest") != expected_reviewed_set:
+                    errors.append(
+                        "Approval reviewed_set_digest does not match reviewed records")
+            for verification in ref_verifications:
+                errors.extend(execution_errors(verification))
             reviewer_evidence = (
                 final_artifact is not None
                 and any(
@@ -1353,6 +1517,7 @@ def records_errors(records):
                             "Decision verification {} does not cover {}".format(
                                 json.dumps(verification_id, ensure_ascii=True),
                                 json.dumps(criterion_id, ensure_ascii=True)))
+                    errors.extend(execution_errors(verification))
                     has_verifier_role = (
                         verification.get("role") == "verifier"
                         or (
@@ -1434,7 +1599,7 @@ def records_errors(records):
     return errors
 
 
-def check_records(directory):
+def check_records(directory, repo=None):
     root = Path(directory)
     if not root.is_dir():
         print("ERROR: Records directory not found: {}".format(root),
@@ -1448,7 +1613,7 @@ def check_records(directory):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = records_errors(records)
+    errors = records_errors(records, repo)
     if errors:
         blocked = any(error.startswith("BLOCKED:") for error in errors)
         print("[BLOCKED] records" if blocked else "[FAIL] records",
@@ -1485,12 +1650,19 @@ def recover_migration_transaction(root):
         return None, "migration journal schema_version is invalid"
     if data.get("phase") not in {"prepared", "backed_up", "committed"}:
         return None, "migration journal phase is invalid"
-    if not Path(data.get("root", "")).is_absolute():
+    journal_paths = {
+        field: data.get(field) for field in ("root", "backup", "stage")
+    }
+    if not all(
+            isinstance(value, str) and value.strip()
+            for value in journal_paths.values()):
+        return None, "migration journal paths are invalid"
+    if not Path(journal_paths["root"]).is_absolute():
         return None, "migration journal root must be absolute"
-    if Path(data.get("root", "")).resolve() != root:
+    if Path(journal_paths["root"]).resolve() != root:
         return None, "migration journal root does not match"
-    backup = Path(data.get("backup", ""))
-    stage = Path(data.get("stage", ""))
+    backup = Path(journal_paths["backup"])
+    stage = Path(journal_paths["stage"])
     backup_prefix = root.name + ".migration-backup-"
     stage_prefix = root.name + ".migration-stage-"
     if (not backup.is_absolute() or not stage.is_absolute()
@@ -1643,6 +1815,23 @@ def _migrate_records(directory, write=False, verification_roles=None,
         path: record for path, record in records
         if record.get("schema_version") in {1, 2}
     }
+    for path, record in records:
+        if record.get("schema_version") != 3:
+            continue
+        kind = record.get("kind")
+        if ((kind == "artifact"
+             and "content_hash" not in record)
+                or (kind == "verification"
+                    and ("artifact_content_hash" not in record
+                         or "role" not in record
+                         or "execution" not in record))
+                or (kind in {"decision", "approval"}
+                    and "reviewed_set_digest" not in record)
+                or (kind == "decision"
+                    and "artifact_hashes" not in record)
+                or (kind == "approval"
+                    and "artifact_content_hash" not in record)):
+            migrated[path] = record
     work_items = [
         record for _, record in records
         if record.get("kind") == "work_item"
@@ -1652,6 +1841,11 @@ def _migrate_records(directory, write=False, verification_roles=None,
               file=sys.stderr)
         return 1
     work_item = work_items[0]
+    legacy_roleless, legacy_error = legacy_roleless_ids(
+        [record for _, record in records], work_item.get("id"))
+    if legacy_error:
+        print("ERROR: {}".format(legacy_error), file=sys.stderr)
+        return 1
     criteria_map = {}
     if versions[next(
             path for path, record in records if record is work_item)] == 1:
@@ -1760,6 +1954,8 @@ def _migrate_records(directory, write=False, verification_roles=None,
             if record.get("role") is None:
                 if record_id in roles:
                     record["role"] = roles[record_id]
+                elif record_id in legacy_roleless:
+                    record["role"] = "verifier"
                 else:
                     print(
                         "ERROR: Verification {} requires --verification-role".format(
@@ -1780,6 +1976,12 @@ def _migrate_records(directory, write=False, verification_roles=None,
                         file=sys.stderr)
                     return 1
             record.setdefault("limitations", [])
+            if "execution" not in record:
+                record["execution"] = {
+                    "command": "migrate-records legacy evidence import",
+                    "exit_code": 0 if record.get("status") == "PASS" else 1,
+                    "executed_at": datetime.datetime.now().astimezone().isoformat(),
+                }
         elif kind == "finding":
             if "criterion_ids" not in record:
                 record_id = record.get("id")
@@ -1833,6 +2035,34 @@ def _migrate_records(directory, write=False, verification_roles=None,
                     for version in versions
                     if (artifact_id, version) in artifact_lookup
                 }
+        elif record.get("kind") == "approval":
+            key = (record.get("artifact_id"), record.get("artifact_version"))
+            artifact = artifact_lookup.get(key)
+            if artifact is None:
+                print(
+                    "ERROR: Approval {} references an unknown Artifact".format(
+                        record.get("id")),
+                    file=sys.stderr)
+                return 1
+            record["artifact_content_hash"] = artifact.get("content_hash")
+
+    if len(artifact_ids) == 1:
+        review_artifact_id = next(iter(artifact_ids))
+        review_records = [record for _, record in records]
+        for path in sorted(migrated):
+            record = migrated[path]
+            if record.get("kind") not in {"decision", "approval"}:
+                continue
+            artifact = artifact_lookup.get((
+                review_artifact_id, record.get("artifact_version")))
+            if artifact is None:
+                versions = record.get("artifact_versions", [])
+                if len(versions) == 1:
+                    artifact = artifact_lookup.get((
+                        review_artifact_id, versions[0]))
+            if artifact is not None:
+                record["reviewed_set_digest"] = reviewed_set_sha256(
+                    review_records, artifact)
 
     finding_ids = {
         record.get("id") for _, record in records
@@ -2072,6 +2302,13 @@ def runtime_record_errors(records, accept_gate=True):
     work_item = work_items[0]
     work_item_id = work_item.get("id")
     criteria = set(work_item.get("acceptance_criteria", {}))
+    decisions = [
+        record for record in records if record.get("kind") == "decision"
+    ]
+    for error in decision_history_errors(
+            decisions, allow_no_terminal=True):
+        if error not in errors:
+            errors.append(error)
     artifacts = [
         record for record in records if record.get("kind") == "artifact"
     ]
@@ -2215,7 +2452,7 @@ def derive_runtime_state(records, digest):
     verifier_coverage = {
         criterion_id
         for record in final_verifications
-        if (record.get("role") in {None, "verifier"}
+        if (record.get("role") == "verifier"
             and record.get("status") == "PASS")
         for criterion_id in record.get("criterion_ids", [])
     }
@@ -2227,7 +2464,7 @@ def derive_runtime_state(records, digest):
             record.get("status") in {"BLOCKED", "NOT_RUN"}
             for record in final_verifications)
         or not any(
-            record.get("role") in {None, "verifier"}
+            record.get("role") == "verifier"
             and record.get("status") == "PASS"
             for record in final_verifications)
         or not criteria.issubset(verifier_coverage))
@@ -2596,7 +2833,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
         if record.get("kind") == "verification"
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
-        and record.get("role") in {None, "verifier"}
+        and record.get("role") == "verifier"
         and record.get("status") == "PASS"
         for criterion_id in record.get("criterion_ids", [])
     }
@@ -2606,6 +2843,38 @@ def approve_records(records_dir, artifact_path, approver, statement,
             "ERROR: approval requires Verifier coverage for {}".format(
                 ", ".join(uncovered)),
             file=sys.stderr)
+        return 1
+    blocking = [
+        record for record in records
+        if record.get("kind") == "finding"
+        and record.get("status") == "open"
+        and record.get("severity") in {"high", "blocking"}
+    ]
+    if blocking:
+        print(
+            "ERROR: approval blocked by open high/blocking findings: {}".format(
+                ", ".join(record["id"] for record in blocking)),
+            file=sys.stderr)
+        return 1
+    final_evidence = [
+        record for record in records
+        if record.get("kind") == "verification"
+        and record.get("artifact_id") == artifact.get("id")
+        and record.get("artifact_version") == artifact.get("version")
+        and record.get("status") == "PASS"
+        and record.get("role") in {"verifier", "reviewer", "challenger"}
+    ]
+    execution_failures = [
+        error for record in final_evidence
+        for error in execution_errors(record)
+    ]
+    source_failures = artifact_source_errors(final_artifact, Path.cwd())
+    failures = execution_failures + source_failures
+    if failures:
+        print("[FAIL] approval preconditions", file=sys.stderr)
+        for error in failures:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
         return 1
     expected = "APPROVE {}@{}".format(
         artifact.get("id"), artifact.get("version"))
@@ -2620,6 +2889,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
     if not isinstance(statement, str) or not statement.strip():
         print("ERROR: --statement must be non-blank", file=sys.stderr)
         return 2
+    reviewed_set_digest = reviewed_set_sha256(records, artifact)
     approval = {
         "schema_version": 3,
         "id": "AP-{}-{}".format(
@@ -2631,6 +2901,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
         "artifact_id": artifact.get("id"),
         "artifact_version": artifact.get("version"),
         "artifact_content_hash": artifact.get("content_hash"),
+        "reviewed_set_digest": reviewed_set_digest,
         "approver": approver.strip(),
         "statement": statement.strip(),
         "approved_at": datetime.datetime.now().astimezone().isoformat(),
@@ -3271,6 +3542,7 @@ def main():
     cf.add_argument("--verifications-dir", default=None)
     cr = subs.add_parser("check-records")
     cr.add_argument("--dir", required=True)
+    cr.add_argument("--repo", default=None)
     mr = subs.add_parser("migrate-records")
     mr.add_argument("--dir", required=True)
     mr.add_argument("--write", action="store_true")
@@ -3329,7 +3601,7 @@ def main():
         return check_finding(
             a.input, a.work_item, a.artifact, a.verifications_dir)
     if a.command == "check-records":
-        return check_records(a.dir)
+        return check_records(a.dir, a.repo)
     if a.command == "migrate-records":
         return migrate_records(
             a.dir, a.write, a.verification_role, a.record_criteria)

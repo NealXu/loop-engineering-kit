@@ -58,6 +58,24 @@
         }
       }
     },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "file_hashes": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "\\S" },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "evidence_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
     "work_item_id": {
       "type": "string",
       "minLength": 1,

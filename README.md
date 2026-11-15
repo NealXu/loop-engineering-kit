@@ -48,7 +48,10 @@ route flags、Decision cycle、稳定 evidence refs、Verification role，以及
 Artifact `content_hash`。同一 `id@version` 的内容被原地替换时，
 Verification、Decision 和人工审批会因哈希失配而阻断。
 L3 还记录 Producer、Reviewer、Challenger 的 session/model 声明，并要求审查
-与挑战使用不同会话；这些仍是宿主声明，不是密码学身份证明。
+与挑战使用不同会话和模型；这些仍是宿主声明，不是密码学身份证明。
+工作树 Artifact 可绑定 Git revision 与逐文件 SHA-256；人工审批和最终
+Decision 还会绑定 reviewed-set digest，审批后修改验收文本、Finding 或验证
+证据会失效。
 
 ## 快速开始
 
@@ -122,7 +125,8 @@ bash scripts/install.sh --target both --scope user --upgrade
 8. 冻结角色记录后运行 `python3 loop_engineering/cli.py check-records --dir
    <记录目录>`（Windows 用 `py -3`），校验 Work Item、Artifact、Finding、
    Verification、Decision、Iteration 和 Human Approval 的引用与版本
-   ancestry。
+   ancestry。工作树 Artifact 额外传 `--repo <git根目录>`，用记录中的
+   revision 重新计算每个交付文件。
 
 运行控制面补充命令：
 

@@ -13,11 +13,15 @@ remain in `evals/`; canonical role records remain run-scoped JSON evidence.
 | Seven v3 canonical record schemas | Complete | `core/artifact-schema/*.schema.json` |
 | Cross-record, ancestry, role, and approval validation | Complete | `check-records`, `check-finding` |
 | Content-addressed Artifact identity across evidence and approval | Complete | `content_hash`, `check-records` |
+| Working-tree revision and per-file digest verification | Complete | `source_revision`, `file_hashes`, `check-records --repo` |
+| Reviewed-set digest for Approval and ACCEPT | Complete | `reviewed_set_digest` |
 | Safe v1/v2 to v3 migration | Complete | `migrate-records` |
+| Deterministic pre-identity v3 record upgrade | Complete | `migrate-records` |
 | Persistent runtime checkpoints | Complete | `runtime-checkpoint` |
 | Automatic resume and record-based recovery | Complete | `runtime-status`, `runtime-resume` |
 | Structured human approval for L3 | Complete | `approve`, `approval.schema.json` |
 | L3 reviewer/challenger host provenance | Complete | `producer_context`, `host_context` |
+| Exactly-one terminal Decision across runtime/control plane | Complete | shared decision-history validation |
 | Deterministic verification reports | Complete | `doctor`, `verify` |
 | Process metrics and host metrics ingestion | Complete | `metrics` |
 | Persistent version registry | Complete | `registry-update`, `registry-list` |
@@ -54,6 +58,8 @@ recovery journal, and swaps directories only after validation.
   stale.
 - `approve` writes a human approval only when the exact
   `APPROVE <artifact>@<version>` confirmation is supplied.
+- Approval rejects open high/blocking Findings, incomplete Verifier coverage,
+  missing execution metadata, stale Artifact hashes, and changed reviewed sets.
 - L3 ACCEPT requires final-version Reviewer and Challenger PASS evidence plus a
   referenced human approval record.
 

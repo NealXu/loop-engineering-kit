@@ -114,6 +114,10 @@
     },
     "review_independence": {
       "enum": ["independent", "non_independent", "mixed", "not_required"]
+    },
+    "reviewed_set_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     }
   },
   "allOf": [
@@ -126,7 +130,8 @@
         "required": [
           "criteria_evidence",
           "residual_risks",
-          "review_independence"
+          "review_independence",
+          "reviewed_set_digest"
         ],
         "properties": {
           "unresolved_disagreements": {
