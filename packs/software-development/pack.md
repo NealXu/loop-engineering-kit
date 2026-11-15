@@ -15,6 +15,8 @@
 - Code change or patch with versioned file list.
 - Canonical Artifact content hash repeated by Verification, Decision, and
   Human Approval evidence.
+- L3 Producer/Reviewer/Challenger host contexts with distinct declared
+  sessions; the attestation remains host-unverified.
 - Tests or an assert-based self-check for non-trivial logic.
 - Verification report with exact commands, exit codes, and status.
 - A verification skill based on `verification-skill.md` when a browser, GUI, or

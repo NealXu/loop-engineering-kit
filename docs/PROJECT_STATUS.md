@@ -17,6 +17,7 @@ remain in `evals/`; canonical role records remain run-scoped JSON evidence.
 | Persistent runtime checkpoints | Complete | `runtime-checkpoint` |
 | Automatic resume and record-based recovery | Complete | `runtime-status`, `runtime-resume` |
 | Structured human approval for L3 | Complete | `approve`, `approval.schema.json` |
+| L3 reviewer/challenger host provenance | Complete | `producer_context`, `host_context` |
 | Deterministic verification reports | Complete | `doctor`, `verify` |
 | Process metrics and host metrics ingestion | Complete | `metrics` |
 | Persistent version registry | Complete | `registry-update`, `registry-list` |
@@ -77,6 +78,9 @@ Candidate generation does not modify artifacts or promote rules automatically.
   authenticate the person. They are local host attestations, not an identity
   security boundary. Regulated deployments must expose approval only through a
   trusted host channel with identity and access controls.
+- L3 session/model provenance proves only which values the host declared. It
+  detects missing and colliding declarations but is not a cryptographic proof
+  of separate processes or model identity.
 - The default GLM provider remains an external availability constraint; the
   validated Claude path is `qwen3.7-plus`.
 - Literal CentOS 8 is not booted; Rocky Linux 8 is the executed compatibility

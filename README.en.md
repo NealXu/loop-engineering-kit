@@ -59,6 +59,9 @@ rejected instead of overwriting the original.
 Schema v3 also binds Artifact identity to a canonical `content_hash`.
 Verification, Decision, and Human Approval records must repeat the matching
 digest, so replacing the same `id@version` in place fails the gate.
+L3 also records Producer, Reviewer, and Challenger session/model declarations
+and requires distinct review/challenge sessions. These remain host
+attestations, not cryptographic identity proofs.
 
 ## Quick start
 

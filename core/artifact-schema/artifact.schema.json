@@ -38,6 +38,26 @@
       "uniqueItems": true,
       "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
     },
+    "producer_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["session_id", "model", "authentication"],
+      "properties": {
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "authentication": {
+          "const": "unverified_host_attestation"
+        }
+      }
+    },
     "work_item_id": {
       "type": "string",
       "minLength": 1,

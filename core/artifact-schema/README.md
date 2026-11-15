@@ -25,6 +25,13 @@ Verification and Human Approval records repeat this digest as
 runtime reject a valid-looking but stale hash, including the same
 `id@version` being replaced in place.
 
+For L3, the Artifact records `producer_context` and final Reviewer/Challenger
+PASS records record `host_context` with session id, model, independence, and
+`authentication: unverified_host_attestation`. Reviewer and Challenger sessions
+must differ from the Producer and from each other. These fields provide
+provenance and collision checks; the Kit cannot cryptographically prove that a
+host supplied truthful session or model identity.
+
 Work Item `acceptance_criteria` is an object whose keys are stable criterion
 IDs and whose values are statements. The kit's JSON loader rejects duplicate
 object keys, so a Work Item cannot assign two meanings to one criterion ID.

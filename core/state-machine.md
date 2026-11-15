@@ -78,4 +78,6 @@ L3 approval is a persistent canonical record bound to the final Artifact
 `APPROVE <artifact>@<version>` confirmation and reference the resulting
 Approval id from the final Decision. Runtime recovery advances L3 through
 Verifier evidence, Reviewer PASS, Challenger PASS, and approval before it
-reports `DECIDE`.
+reports `DECIDE`. Reviewer and Challenger PASS evidence must declare distinct
+host sessions and independence; a missing or colliding attestation blocks the
+transition.

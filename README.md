@@ -47,6 +47,8 @@ Schema v3 是 breaking change。v1/v2 记录需先迁移；v3 新增 control tie
 route flags、Decision cycle、稳定 evidence refs、Verification role，以及
 Artifact `content_hash`。同一 `id@version` 的内容被原地替换时，
 Verification、Decision 和人工审批会因哈希失配而阻断。
+L3 还记录 Producer、Reviewer、Challenger 的 session/model 声明，并要求审查
+与挑战使用不同会话；这些仍是宿主声明，不是密码学身份证明。
 
 ## 快速开始
 

@@ -483,7 +483,8 @@ def verification_errors(finding, work_item, artifact, verifications):
     if artifact_missing:
         errors.append(
             "Artifact missing fields: {}".format(_quoted_names(artifact_missing)))
-    artifact_extra = sorted(set(artifact) - artifact_required)
+    artifact_extra = sorted(
+        set(artifact) - artifact_required - {"producer_context"})
     if artifact_extra:
         errors.append(
             "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))
@@ -541,7 +542,8 @@ def verification_errors(finding, work_item, artifact, verifications):
             errors.append(
                 "Verification {} missing fields: {}".format(
                     verification_id, _quoted_names(missing)))
-        extra = sorted(set(verification) - required - {"role"})
+        extra = sorted(
+            set(verification) - required - {"role", "host_context"})
         if extra:
             errors.append(
                 "Verification {} unknown fields: {}".format(
@@ -746,6 +748,89 @@ def iteration_lineage(iterations, artifact_versions, max_repair_iterations,
     if repairs > max_repair_iterations:
         errors.append("Artifact repairs exceed max_repair_iterations")
     return current, errors
+
+
+def _host_context_errors(context, label, require_independence=False):
+    if not isinstance(context, dict):
+        return ["{} must be an object".format(label)]
+    required = {"session_id", "model", "authentication"}
+    if require_independence:
+        required.add("independence")
+    errors = []
+    missing = sorted(required - set(context))
+    if missing:
+        errors.append("{} missing fields: {}".format(
+            label, _quoted_names(missing)))
+    extra = sorted(set(context) - required)
+    if extra:
+        errors.append("{} unknown fields: {}".format(
+            label, _quoted_names(extra)))
+    for field in ("session_id", "model"):
+        if (not isinstance(context.get(field), str)
+                or not context.get(field).strip()):
+            errors.append("{} {} must be non-blank".format(label, field))
+    if context.get("authentication") != "unverified_host_attestation":
+        errors.append(
+            "{} must use unverified_host_attestation".format(label))
+    if (require_independence
+            and context.get("independence") != "independent"):
+        errors.append(
+            "{} requires independent host attestation".format(label))
+    return errors
+
+
+def l3_host_provenance_errors(work_item, artifact, verifications):
+    if work_item.get("control_tier") != "L3" or artifact is None:
+        return []
+    errors = []
+    producer_context = artifact.get("producer_context")
+    producer_errors = _host_context_errors(
+        producer_context, "Artifact producer_context")
+    errors.extend(producer_errors)
+    producer_session = (
+        producer_context.get("session_id")
+        if isinstance(producer_context, dict) else None)
+    passing = {}
+    for role in ("reviewer", "challenger"):
+        passes = [
+            record for record in verifications
+            if record.get("kind") == "verification"
+            and record.get("role") == role
+            and record.get("status") == "PASS"
+            and record.get("artifact_id") == artifact.get("id")
+            and record.get("artifact_version") == artifact.get("version")
+        ]
+        valid_sessions = set()
+        for verification in passes:
+            label = "{} host_context".format(role.capitalize())
+            context = verification.get("host_context")
+            context_errors = _host_context_errors(
+                context, label, require_independence=True)
+            errors.extend(context_errors)
+            session_id = (
+                context.get("session_id") if isinstance(context, dict)
+                else None)
+            if (not context_errors and producer_session is not None
+                    and session_id == producer_session):
+                errors.append(
+                    "{} must use a different host session than "
+                    "producer_context".format(label))
+            elif not context_errors:
+                valid_sessions.add(session_id)
+        if passes:
+            passing[role] = valid_sessions
+            if not valid_sessions:
+                errors.append(
+                    "{} requires a valid independent host attestation".format(
+                        role.capitalize()))
+    if (passing.get("reviewer") and passing.get("challenger")
+            and not any(
+                reviewer_session != challenger_session
+                for reviewer_session in passing["reviewer"]
+                for challenger_session in passing["challenger"])):
+        errors.append(
+            "Reviewer and Challenger require distinct host sessions")
+    return errors
 
 
 def records_errors(records):
@@ -1011,6 +1096,8 @@ def records_errors(records):
             (artifact for artifact in artifacts
              if artifact.get("version") == final_version),
             None)
+    errors.extend(l3_host_provenance_errors(
+        work_item, final_artifact, list(verifications.values())))
     for finding_id, finding in findings.items():
         if final_artifact is not None:
             errors.extend(verification_errors(
@@ -2072,8 +2159,12 @@ def runtime_record_errors(records, accept_gate=True):
         else:
             seen[record_id] = record.get("kind")
     if artifacts:
-        _, lineage_errors = lineage_final_artifact(records)
+        final_artifact, lineage_errors = lineage_final_artifact(records)
         for error in lineage_errors:
+            if error not in errors:
+                errors.append(error)
+        for error in l3_host_provenance_errors(
+                work_item, final_artifact, records):
             if error not in errors:
                 errors.append(error)
     if accept_gate and any(

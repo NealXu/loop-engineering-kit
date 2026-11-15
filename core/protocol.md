@@ -119,6 +119,10 @@ decision policy and must not accept based only on role persuasion.
 One model may perform multiple duties in low-risk work. High-risk work should
 use an independent session, a different model, or human approval. A combined
 role must be disclosed and cannot be described as independent.
+L3 records Producer, Reviewer, and Challenger host contexts. Reviewer and
+Challenger must declare distinct sessions from the Producer and from each
+other. This is an unverified host attestation, not a host-enforced identity
+proof.
 
 ## Runtime And Approval
 

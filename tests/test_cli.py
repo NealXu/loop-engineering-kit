@@ -64,6 +64,11 @@ def stage2_records():
         "source": "test",
         "work_item_id": "WI-1",
         "files": ["result.txt", "notes.txt"],
+        "producer_context": {
+            "session_id": "producer-session",
+            "model": "producer-model",
+            "authentication": "unverified_host_attestation",
+        },
     }
     return {
         "work-item.json": {
@@ -135,6 +140,12 @@ def stage2_records():
                 dict(artifact, version="2"))["content_hash"],
             "criterion_ids": ["AC-1"],
             "role": "reviewer",
+            "host_context": {
+                "session_id": "reviewer-session",
+                "model": "reviewer-model",
+                "independence": "independent",
+                "authentication": "unverified_host_attestation",
+            },
             "check": "independent review",
             "method": "review artifact",
             "status": "PASS",
@@ -283,6 +294,12 @@ def l3_records():
         "artifact_content_hash": artifact["content_hash"],
         "criterion_ids": ["AC-1"],
         "role": "challenger",
+        "host_context": {
+            "session_id": "challenger-session",
+            "model": "challenger-model",
+            "independence": "independent",
+            "authentication": "unverified_host_attestation",
+        },
         "check": "independent challenge",
         "method": "inspect boundary cases",
         "status": "PASS",
@@ -469,6 +486,58 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("coverage for AC-2", p.stderr)
             self.assertEqual(list(root.glob("approval-*.json")), [])
+
+    def test_l3_review_provenance_requires_distinct_host_sessions(self):
+        cases = [
+            ("producer-context", lambda records: records[
+                "artifact-2.json"].pop("producer_context"),
+             "producer_context"),
+            ("reviewer-context", lambda records: records[
+                "verification-review.json"].pop("host_context"),
+             "Reviewer host_context"),
+            ("reviewer-producer-session", lambda records: records[
+                "verification-review.json"]["host_context"].update(
+                    session_id="producer-session"),
+             "different host session"),
+            ("reviewer-independence", lambda records: records[
+                "verification-review.json"]["host_context"].update(
+                    independence="non_independent"),
+             "independent host attestation"),
+            ("role-session-collision", lambda records: records[
+                "verification-challenger.json"]["host_context"].update(
+                    session_id="reviewer-session"),
+             "distinct host sessions"),
+        ]
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = l3_records()
+            write_records(root, records)
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "provenance baseline",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records = {
+                path.relative_to(root).as_posix(): json.loads(
+                    path.read_text(encoding="utf-8"))
+                for path in root.rglob("*.json")
+            }
+            records["decision.json"]["evidence_refs"].append(
+                json.loads(p.stdout)["id"])
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            for name, mutate, marker in cases:
+                with self.subTest(name=name):
+                    changed = json.loads(json.dumps(records))
+                    mutate(changed)
+                    rebind_record_hashes(changed)
+                    write_records(root, changed)
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                    self.assertIn(marker, p.stderr)
 
     def test_challenger_finding_cannot_replace_pass(self):
         with tempfile.TemporaryDirectory() as t:
