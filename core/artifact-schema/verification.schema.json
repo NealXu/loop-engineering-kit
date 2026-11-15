@@ -10,6 +10,7 @@
     "kind",
     "artifact_id",
     "artifact_version",
+    "artifact_content_hash",
     "criterion_ids",
     "check",
     "method",
@@ -34,6 +35,10 @@
       "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
     },
     "artifact_version": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "artifact_content_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
     "criterion_ids": {
       "type": "array",
       "minItems": 1,

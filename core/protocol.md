@@ -80,7 +80,7 @@ apply:
 | Record | Purpose |
 |---|---|
 | Work Item | id, selected pack_id, goal, constraints, priority, risk, repair budget, acceptance criteria with stable IDs |
-| Artifact | id, work_item_id, version, type, content, source |
+| Artifact | id, work_item_id, version, content, source, canonical content_hash |
 | Finding | actionable defect, risk, or challenge |
 | Verification | artifact id/version, criterion_ids, check method, result, and evidence |
 | Decision | work_item_id, artifact_versions, criterion-to-verification mapping, outcome, evidence, disagreement, approver |
@@ -89,6 +89,9 @@ apply:
 
 The canonical field contract is in `core/artifact-schema/`. Human-readable
 reports may summarize records, but must not replace their evidence.
+Verification and approval records bind to the Artifact `content_hash`; a
+Decision maps every covered version to its hash. This prevents an in-place
+replacement of the same `id@version` from satisfying existing gates.
 
 ## Adversarial Rules
 

@@ -12,6 +12,7 @@ remain in `evals/`; canonical role records remain run-scoped JSON evidence.
 | L0-L3 routing, repair budgets, role selection | Complete | `loop_engineering/cli.py route` |
 | Seven v3 canonical record schemas | Complete | `core/artifact-schema/*.schema.json` |
 | Cross-record, ancestry, role, and approval validation | Complete | `check-records`, `check-finding` |
+| Content-addressed Artifact identity across evidence and approval | Complete | `content_hash`, `check-records` |
 | Safe v1/v2 to v3 migration | Complete | `migrate-records` |
 | Persistent runtime checkpoints | Complete | `runtime-checkpoint` |
 | Automatic resume and record-based recovery | Complete | `runtime-status`, `runtime-resume` |

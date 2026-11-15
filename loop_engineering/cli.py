@@ -102,6 +102,16 @@ def records_sha256(records):
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def artifact_content_hash(artifact):
+    identity = {
+        key: value for key, value in artifact.items()
+        if key != "content_hash"
+    }
+    payload = json.dumps(
+        identity, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def legacy_roleless_ids(records, work_item_id):
     try:
         manifest = load_json(MIGRATION_MANIFEST)
@@ -467,7 +477,7 @@ def verification_errors(finding, work_item, artifact, verifications):
             "Work Item acceptance_criteria must map stable IDs to non-blank text")
     artifact_required = {
         "schema_version", "id", "kind", "artifact_type", "version",
-        "content", "source", "work_item_id", "files",
+        "content", "source", "work_item_id", "files", "content_hash",
     }
     artifact_missing = sorted(artifact_required - set(artifact))
     if artifact_missing:
@@ -498,6 +508,12 @@ def verification_errors(finding, work_item, artifact, verifications):
                 "Artifact {} must be non-blank".format(field))
     if artifact.get("work_item_id") != work_item.get("id"):
         errors.append("artifact work_item_id does not match Work Item")
+    stored_hash = artifact.get("content_hash")
+    if (not isinstance(stored_hash, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", stored_hash)):
+        errors.append("Artifact content_hash must be a SHA-256 hex digest")
+    elif stored_hash != artifact_content_hash(artifact):
+        errors.append("Artifact content_hash does not match canonical identity")
     by_id = {}
     for verification in verifications:
         verification_id = verification.get("id")
@@ -517,8 +533,8 @@ def verification_errors(finding, work_item, artifact, verifications):
             continue
         required = {
             "schema_version", "id", "kind", "artifact_id", "artifact_version",
-            "criterion_ids", "check", "method", "status", "evidence",
-            "limitations", "finding_id",
+            "artifact_content_hash", "criterion_ids", "check", "method",
+            "status", "evidence", "limitations", "finding_id",
         }
         missing = sorted(required - set(verification))
         if missing:
@@ -569,6 +585,11 @@ def verification_errors(finding, work_item, artifact, verifications):
         if verification.get("artifact_version") != artifact.get("version"):
             errors.append(
                 "regression Verification {} artifact version mismatch".format(
+                    verification_id))
+        if (verification.get("artifact_content_hash")
+                != artifact.get("content_hash")):
+            errors.append(
+                "regression Verification {} artifact content hash mismatch".format(
                     verification_id))
         verification_criteria = verification.get("criterion_ids")
         if not isinstance(verification_criteria, list) or not verification_criteria:
@@ -819,6 +840,7 @@ def records_errors(records):
     artifact_keys = set()
     artifact_ids = set()
     artifact_versions = set()
+    artifacts_by_key = {}
     for artifact in artifacts:
         artifact_id = artifact.get("id")
         version = artifact.get("version")
@@ -835,8 +857,12 @@ def records_errors(records):
             errors.append("duplicate Artifact id/version: {}/{}".format(
                 artifact_id, version))
         artifact_keys.add(key)
+        artifacts_by_key[key] = artifact
         artifact_ids.add(artifact_id)
         artifact_versions.add(version)
+        if artifact.get("content_hash") != artifact_content_hash(artifact):
+            errors.append(
+                "Artifact content_hash does not match canonical identity")
     if len(artifact_ids) != 1:
         errors.append("Stage 2 record checks require one Artifact lineage")
     tier_rank = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
@@ -908,6 +934,12 @@ def records_errors(records):
             errors.append("Verification {} artifact version {} not found".format(
                 verification_id,
                 json.dumps(artifact_version, ensure_ascii=True)))
+        elif (verification.get("artifact_content_hash")
+              != artifacts_by_key[
+                  (artifact_id, artifact_version)].get("content_hash")):
+            errors.append(
+                "Verification {} artifact content hash does not match".format(
+                    verification_id))
         ids = verification.get("criterion_ids")
         if (not isinstance(ids, list)
                 or not all(isinstance(item, str) for item in ids)):
@@ -951,6 +983,12 @@ def records_errors(records):
         if (artifact_id, artifact_version) not in artifact_keys:
             errors.append("Approval {} Artifact version not found".format(
                 approval_id))
+        elif (approval.get("artifact_content_hash")
+              != artifacts_by_key[
+                  (artifact_id, artifact_version)].get("content_hash")):
+            errors.append(
+                "Approval {} artifact content hash does not match".format(
+                    approval_id))
         expected = "APPROVE {}@{}".format(artifact_id, artifact_version)
         if approval.get("confirmation") != expected:
             errors.append("Approval {} confirmation is invalid".format(
@@ -1055,6 +1093,22 @@ def records_errors(records):
             elif version not in artifact_versions:
                 errors.append("Decision artifact version {} not found".format(
                     json.dumps(version, ensure_ascii=True)))
+        hashes = decision.get("artifact_hashes")
+        if not isinstance(hashes, dict):
+            errors.append("Decision artifact_hashes must be an object")
+        else:
+            if set(hashes) != set(versions):
+                errors.append(
+                    "Decision artifact_hashes must exactly match artifact_versions")
+            for version in versions:
+                artifact = next(
+                    (item for item in artifacts
+                     if item.get("version") == version), None)
+                if (artifact is not None
+                        and hashes.get(version) != artifact.get("content_hash")):
+                    errors.append(
+                        "Decision artifact hash does not match version {}".format(
+                            json.dumps(version, ensure_ascii=True)))
         refs = decision.get("evidence_refs")
         if isinstance(refs, list):
             for ref in refs:
@@ -1661,6 +1715,38 @@ def _migrate_records(directory, write=False, verification_roles=None,
             "kind": kind,
         })
 
+    artifact_lookup = {
+        (record.get("id"), record.get("version")): record
+        for _, record in records if record.get("kind") == "artifact"
+    }
+    artifact_ids = {
+        key[0] for key in artifact_lookup
+    }
+    for record in artifact_lookup.values():
+        record["content_hash"] = artifact_content_hash(record)
+    for path in sorted(migrated):
+        record = migrated[path]
+        if record.get("kind") == "verification":
+            key = (record.get("artifact_id"), record.get("artifact_version"))
+            artifact = artifact_lookup.get(key)
+            if artifact is None:
+                print(
+                    "ERROR: Verification {} references an unknown Artifact".format(
+                        record.get("id")),
+                    file=sys.stderr)
+                return 1
+            record["artifact_content_hash"] = artifact.get("content_hash")
+        elif record.get("kind") == "decision":
+            versions = record.get("artifact_versions")
+            if isinstance(versions, list) and len(artifact_ids) == 1:
+                artifact_id = next(iter(artifact_ids))
+                record["artifact_hashes"] = {
+                    version: artifact_lookup[
+                        (artifact_id, version)].get("content_hash")
+                    for version in versions
+                    if (artifact_id, version) in artifact_lookup
+                }
+
     finding_ids = {
         record.get("id") for _, record in records
         if record.get("kind") == "finding"
@@ -1904,6 +1990,14 @@ def runtime_record_errors(records, accept_gate=True):
     ]
     artifact_ids = {record.get("id") for record in artifacts}
     artifact_versions = {record.get("version") for record in artifacts}
+    artifacts_by_key = {
+        (record.get("id"), record.get("version")): record
+        for record in artifacts
+    }
+    for artifact in artifacts:
+        if artifact.get("content_hash") != artifact_content_hash(artifact):
+            errors.append(
+                "Artifact content_hash does not match canonical identity")
     for record in records:
         kind = record.get("kind")
         if kind == "artifact" and record.get("work_item_id") != work_item_id:
@@ -1917,12 +2011,33 @@ def runtime_record_errors(records, accept_gate=True):
                     if version not in artifact_versions:
                         errors.append(
                             "Decision artifact version does not resolve")
+            hashes = record.get("artifact_hashes")
+            if isinstance(versions, list) and isinstance(hashes, dict):
+                if set(hashes) != set(versions):
+                    errors.append(
+                        "Decision artifact_hashes do not resolve")
+                for version in versions:
+                    artifact = next(
+                        (item for item in artifacts
+                         if item.get("version") == version), None)
+                    if (artifact is not None
+                            and hashes.get(version)
+                            != artifact.get("content_hash")):
+                        errors.append(
+                            "Decision artifact hash does not resolve")
         if kind == "iteration" and record.get("work_item_id") != work_item_id:
             errors.append("Iteration work_item_id does not match Work Item")
         if (kind == "verification"
                 and record.get("artifact_id") not in artifact_ids):
             errors.append("Verification artifact_id does not resolve")
         if kind == "verification":
+            artifact = artifacts_by_key.get((
+                record.get("artifact_id"), record.get("artifact_version")))
+            if (artifact is not None
+                    and record.get("artifact_content_hash")
+                    != artifact.get("content_hash")):
+                errors.append(
+                    "Verification artifact content hash does not resolve")
             ids = record.get("criterion_ids")
             if isinstance(ids, list):
                 unknown = set(ids) - criteria
@@ -1943,6 +2058,10 @@ def runtime_record_errors(records, accept_gate=True):
                     (artifact.get("id"), artifact.get("version"))
                     for artifact in artifacts}:
                 errors.append("Approval artifact version does not resolve")
+            elif (record.get("artifact_content_hash")
+                  != artifacts_by_key[key].get("content_hash")):
+                errors.append(
+                    "Approval artifact content hash does not resolve")
     seen = {}
     for record in records:
         if record.get("kind") == "artifact":
@@ -2360,7 +2479,9 @@ def approve_records(records_dir, artifact_path, approver, statement,
     if (work_item.get("control_tier") != "L3"
             or final_artifact is None
             or artifact.get("id") != final_artifact.get("id")
-            or artifact.get("version") != final_artifact.get("version")):
+            or artifact.get("version") != final_artifact.get("version")
+            or artifact.get("content_hash")
+            != final_artifact.get("content_hash")):
         print(
             "ERROR: approval target must be the final L3 Artifact",
             file=sys.stderr)
@@ -2418,6 +2539,7 @@ def approve_records(records_dir, artifact_path, approver, statement,
         "work_item_id": work_item.get("id"),
         "artifact_id": artifact.get("id"),
         "artifact_version": artifact.get("version"),
+        "artifact_content_hash": artifact.get("content_hash"),
         "approver": approver.strip(),
         "statement": statement.strip(),
         "approved_at": datetime.datetime.now().astimezone().isoformat(),

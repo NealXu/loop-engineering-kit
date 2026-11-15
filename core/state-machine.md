@@ -50,8 +50,9 @@ approval before irreversible actions.
 
 ## Parallelism
 
-Review and challenge should receive the same immutable artifact version. Their
-outputs are independent records, not a shared conversation. Reconciliation may
+Review and challenge should receive the same immutable artifact identity:
+`id@version` plus `content_hash`. Their Verification records repeat the digest.
+Outputs are independent records, not a shared conversation. Reconciliation may
 merge duplicate findings, but must preserve source, evidence, and any
 disagreement.
 
@@ -72,7 +73,8 @@ artifact version, original evidence references, open findings, and the exact
 next state. When host metrics exist, retain turn count, tool-call count, token
 use, and cost alongside the outcome; the `metrics` command ingests these fields.
 
-L3 approval is a persistent canonical record. Run `approve` with the exact
+L3 approval is a persistent canonical record bound to the final Artifact
+`id@version` and `content_hash`. Run `approve` with the exact
 `APPROVE <artifact>@<version>` confirmation and reference the resulting
 Approval id from the final Decision. Runtime recovery advances L3 through
 Verifier evidence, Reviewer PASS, Challenger PASS, and approval before it

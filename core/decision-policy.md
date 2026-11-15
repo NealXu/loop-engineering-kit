@@ -36,9 +36,10 @@ Before `ACCEPT`, run `python loop_engineering/cli.py check-finding --input
 --verifications-dir <directory>` for every closed `high`, `blocking`, or
 recurring Finding, or apply the equivalent host validation. Every regression
 Verification must exist, be `PASS`, match the Artifact id/version, and contain
-executed evidence and the Finding id. The directory may use any JSON filename;
-records are selected by `kind: verification`. A missing or invalid prevention
-contract blocks acceptance.
+the Artifact `content_hash`, executed evidence, and the Finding id. The
+directory may use any JSON filename; records are selected by
+`kind: verification`. A missing or invalid prevention contract blocks
+acceptance.
 `check-finding` validates the Finding and its regression evidence, not the
 overall Decision: an open `high` or `blocking` Finding is valid for REPAIR or
 STOP and blocks only ACCEPT.
@@ -56,14 +57,14 @@ changed scope can unlock it.
 
 An `ACCEPT` decision records:
 
-- artifact versions covered by the decision;
+- artifact versions and their `content_hash` values covered by the decision;
 - criterion ID to verification ID mapping;
 - optional failed or skipped checks and why they do not affect acceptance;
 - accepted residual risks and their owner;
 - unresolved low/medium findings;
 - whether review independence was available;
 - approver identity or `controller` when no human approval is required.
-- for L3, the referenced Human Approval id and matching Artifact version.
+- for L3, the referenced Human Approval id and matching Artifact version/hash.
 
 ## Repair Budget
 

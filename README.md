@@ -42,7 +42,9 @@ Loop Engineering Kit 是给 AI 编程 Agent 用的轻量控制层。它按任务
 版本注册和自动改进候选也已实现；候选只能由人类审核后推广。
 
 Schema v3 是 breaking change。v1/v2 记录需先迁移；v3 新增 control tier、
-route flags、Decision cycle、稳定 evidence refs 和 Verification role。
+route flags、Decision cycle、稳定 evidence refs、Verification role，以及
+Artifact `content_hash`。同一 `id@version` 的内容被原地替换时，
+Verification、Decision 和人工审批会因哈希失配而阻断。
 
 ## 快速开始
 

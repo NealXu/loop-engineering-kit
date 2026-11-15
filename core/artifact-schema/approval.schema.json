@@ -11,6 +11,7 @@
     "work_item_id",
     "artifact_id",
     "artifact_version",
+    "artifact_content_hash",
     "approver",
     "statement",
     "approved_at",
@@ -39,6 +40,10 @@
       "type": "string",
       "minLength": 1,
       "pattern": "\\S"
+    },
+    "artifact_content_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     },
     "approver": {
       "type": "string",

@@ -13,6 +13,8 @@
 ## Required Artifacts
 
 - Code change or patch with versioned file list.
+- Canonical Artifact content hash repeated by Verification, Decision, and
+  Human Approval evidence.
 - Tests or an assert-based self-check for non-trivial logic.
 - Verification report with exact commands, exit codes, and status.
 - A verification skill based on `verification-skill.md` when a browser, GUI, or
@@ -28,7 +30,7 @@
 - The selected control tier was followed: L0 is direct; L1 has verification;
   L2 has independent review; L3 has challenge and human approval before
   irreversible actions. L3 approval is a canonical approval record for the
-  final Artifact version.
+  final Artifact version and content hash.
 - No open `blocking`/`high` findings remain.
 - Unrelated work is preserved and scope changes are disclosed.
 - Security, data-loss, accessibility, and migration risks are addressed when

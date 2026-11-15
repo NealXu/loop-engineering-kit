@@ -11,6 +11,7 @@
     "artifact_type",
     "version",
     "content",
+    "content_hash",
     "source",
     "files",
     "work_item_id"
@@ -26,6 +27,10 @@
     "artifact_type": { "type": "string", "minLength": 1, "pattern": "\\S" },
     "version": { "type": "string", "minLength": 1, "pattern": "\\S" },
     "content": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
     "source": { "type": "string", "minLength": 1, "pattern": "\\S" },
     "files": {
       "type": "array",

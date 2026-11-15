@@ -16,6 +16,15 @@ IDs. Evidence is stored as text that identifies a command result, source,
 counterexample, measurement, or human decision; a claim without evidence stays
 open.
 
+Artifact identity is `id@version` plus `content_hash`. Compute `content_hash`
+as SHA-256 over UTF-8 canonical JSON containing every Artifact field except
+`content_hash`: sorted keys, comma/colon separators, and ASCII-escaped strings.
+Verification and Human Approval records repeat this digest as
+`artifact_content_hash`. Decision `artifact_hashes` maps every declared
+`artifact_versions` entry to the matching digest. `check-records` and the
+runtime reject a valid-looking but stale hash, including the same
+`id@version` being replaced in place.
+
 Work Item `acceptance_criteria` is an object whose keys are stable criterion
 IDs and whose values are statements. The kit's JSON loader rejects duplicate
 object keys, so a Work Item cannot assign two meanings to one criterion ID.

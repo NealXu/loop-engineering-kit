@@ -53,6 +53,10 @@ Stage 2 runtime and approval capabilities and Stage 3 metrics, registry, and
 improvement candidates are implemented. Generated improvement candidates are
 review inputs; they are never promoted automatically.
 
+Schema v3 also binds Artifact identity to a canonical `content_hash`.
+Verification, Decision, and Human Approval records must repeat the matching
+digest, so replacing the same `id@version` in place fails the gate.
+
 ## Quick start
 
 Windows PowerShell:

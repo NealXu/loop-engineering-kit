@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 import shutil
 import contextlib
@@ -17,6 +18,40 @@ CLI = Path(__file__).resolve().parents[1] / "loop_engineering" / "cli.py"
 def run_cli(*args):
     return subprocess.run([sys.executable, str(CLI), *map(str, args)],
                           text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+def bind_artifact(record):
+    record = dict(record)
+    record.pop("content_hash", None)
+    payload = json.dumps(
+        record, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    record["content_hash"] = hashlib.sha256(
+        payload.encode("utf-8")).hexdigest()
+    return record
+
+
+def rebind_record_hashes(records):
+    artifacts = [
+        record for record in records.values()
+        if record.get("kind") == "artifact"
+    ]
+    for artifact in artifacts:
+        artifact["content_hash"] = bind_artifact(artifact)["content_hash"]
+    by_version = {
+        artifact["version"]: artifact["content_hash"]
+        for artifact in artifacts
+    }
+    for record in records.values():
+        if record.get("kind") in {"verification", "approval"}:
+            record["artifact_content_hash"] = by_version.get(
+                record.get("artifact_version"))
+        elif record.get("kind") == "decision":
+            record["artifact_hashes"] = {
+                version: by_version[version]
+                for version in record.get("artifact_versions", [])
+                if version in by_version
+            }
+    return records
 
 
 def stage2_records():
@@ -50,14 +85,16 @@ def stage2_records():
             "acceptance_criteria": {"AC-1": "result is verified"},
             "open_questions": [],
         },
-        "artifact-1.json": dict(artifact, version="1"),
-        "artifact-2.json": dict(artifact, version="2"),
+        "artifact-1.json": bind_artifact(dict(artifact, version="1")),
+        "artifact-2.json": bind_artifact(dict(artifact, version="2")),
         "verification.json": {
             "schema_version": 3,
             "id": "V-1",
             "kind": "verification",
             "artifact_id": "A-1",
             "artifact_version": "2",
+            "artifact_content_hash": bind_artifact(
+                dict(artifact, version="2"))["content_hash"],
             "criterion_ids": ["AC-1"],
             "check": "result",
             "method": "python -m unittest",
@@ -73,6 +110,10 @@ def stage2_records():
             "cycle": 2,
             "work_item_id": "WI-1",
             "artifact_versions": ["2"],
+            "artifact_hashes": {
+                "2": bind_artifact(dict(artifact, version="2"))[
+                    "content_hash"],
+            },
             "decision": "ACCEPT",
             "rationale": "verified",
             "evidence_refs": ["V-1", "V-REVIEW"],
@@ -90,6 +131,8 @@ def stage2_records():
             "kind": "verification",
             "artifact_id": "A-1",
             "artifact_version": "2",
+            "artifact_content_hash": bind_artifact(
+                dict(artifact, version="2"))["content_hash"],
             "criterion_ids": ["AC-1"],
             "role": "reviewer",
             "check": "independent review",
@@ -104,6 +147,8 @@ def stage2_records():
             "kind": "verification",
             "artifact_id": "A-1",
             "artifact_version": "1",
+            "artifact_content_hash": bind_artifact(
+                dict(artifact, version="1"))["content_hash"],
             "criterion_ids": ["AC-1"],
             "role": "verifier",
             "check": "repair finding",
@@ -119,6 +164,10 @@ def stage2_records():
             "cycle": 1,
             "work_item_id": "WI-1",
             "artifact_versions": ["1"],
+            "artifact_hashes": {
+                "1": bind_artifact(dict(artifact, version="1"))[
+                    "content_hash"],
+            },
             "decision": "REPAIR",
             "rationale": "produce the next version",
             "evidence_refs": ["V-REPAIR-EVIDENCE"],
@@ -224,12 +273,14 @@ def l3_records():
     })
     records["work-item.json"]["route_flags"]["irreversible"] = True
     records["decision.json"]["approver"] = "human-reviewer"
+    artifact = records["artifact-2.json"]
     records["verification-challenger.json"] = {
         "schema_version": 3,
         "id": "V-CHALLENGE",
         "kind": "verification",
         "artifact_id": "A-1",
         "artifact_version": "2",
+        "artifact_content_hash": artifact["content_hash"],
         "criterion_ids": ["AC-1"],
         "role": "challenger",
         "check": "independent challenge",
@@ -331,7 +382,8 @@ class CliTests(unittest.TestCase):
     def test_human_approval_runtime_unblocks_l3_accept(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
-            write_records(root, l3_records())
+            source_records = l3_records()
+            write_records(root, source_records)
             p = run_cli(
                 "approve", "--records", root,
                 "--artifact", root / "artifact-2.json",
@@ -341,6 +393,9 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             approval = json.loads(p.stdout)
             self.assertEqual(approval["kind"], "approval")
+            self.assertEqual(
+                approval["artifact_content_hash"],
+                source_records["artifact-2.json"]["content_hash"])
             records = {
                 path.relative_to(root).as_posix(): json.loads(
                     path.read_text(encoding="utf-8"))
@@ -808,6 +863,7 @@ class CliTests(unittest.TestCase):
             records["decision.json"]["artifact_versions"] = ["10"]
             records["iterations/iteration-01.json"].update(
                 input_versions=["9"], output_versions=["10"])
+            rebind_record_hashes(records)
             write_records(records_dir, records)
             p = run_cli(
                 "runtime-checkpoint", "--records", records_dir,
@@ -1001,6 +1057,8 @@ class CliTests(unittest.TestCase):
                 "kind": "verification",
                 "artifact_id": "A-1",
                 "artifact_version": "2",
+                "artifact_content_hash": records["artifact-2.json"][
+                    "content_hash"],
                 "criterion_ids": ["AC-1"],
                 "role": "verifier",
                 "check": "network check",
@@ -1078,6 +1136,8 @@ class CliTests(unittest.TestCase):
                 "work_item_id": "WI-OTHER",
                 "artifact_id": "A-1",
                 "artifact_version": "2",
+                "artifact_content_hash": records["artifact-2.json"][
+                    "content_hash"],
                 "approver": "human",
                 "statement": "other run",
                 "approved_at": "2026-11-15T09:00:00+08:00",
@@ -1126,6 +1186,7 @@ class CliTests(unittest.TestCase):
                 for record in records.values():
                     if record.get("work_item_id") == "WI-1":
                         record["work_item_id"] = work_item_id
+                rebind_record_hashes(records)
                 write_records(records_dir, records)
                 record_dirs.append(records_dir)
             processes = [
@@ -1291,6 +1352,60 @@ class CliTests(unittest.TestCase):
             "^[A-Za-z][A-Za-z0-9._-]*$")
         for field in ("artifact_type", "version", "content", "source"):
             self.assertEqual(data["properties"][field]["pattern"], "\\S")
+        self.assertIn("content_hash", data["required"])
+        self.assertEqual(
+            data["properties"]["content_hash"]["pattern"],
+            "^[0-9a-f]{64}$")
+
+    def test_check_records_rejects_stale_artifact_hashes(self):
+        cases = [
+            ("artifact", "artifact-2.json",
+             lambda value: value.update(content="replaced"),
+             "content_hash"),
+            ("verification", "verification.json",
+             lambda value: value.update(artifact_content_hash="0" * 64),
+             "artifact content hash"),
+            ("decision", "decision.json",
+             lambda value: value["artifact_hashes"].update({"2": "0" * 64}),
+             "artifact hash"),
+            ("missing-decision-hash", "decision.json",
+             lambda value: value["artifact_hashes"].pop("2"),
+             "artifact_hashes"),
+        ]
+        for name, filename, mutate, marker in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as t:
+                root = Path(t)
+                records = stage2_records()
+                mutate(records[filename])
+                write_records(root, records)
+                p = run_cli("check-records", "--dir", root)
+                self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                self.assertIn(marker, p.stderr)
+
+    def test_migration_binds_artifact_hashes(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, legacy_v2_records())
+            p = run_cli(
+                "migrate-records", "--dir", root, "--write",
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            artifact = json.loads(
+                (root / "artifact.json").read_text(encoding="utf-8"))
+            verification = json.loads(
+                (root / "verification.json").read_text(encoding="utf-8"))
+            decision = json.loads(
+                (root / "decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                artifact["content_hash"],
+                bind_artifact(artifact)["content_hash"])
+            self.assertEqual(
+                verification["artifact_content_hash"],
+                artifact["content_hash"])
+            self.assertEqual(
+                decision["artifact_hashes"],
+                {"1": artifact["content_hash"]})
 
     def test_record_id_and_text_schemas_reject_blank(self):
         root = CLI.parents[1] / "core" / "artifact-schema"
@@ -1706,7 +1821,7 @@ class CliTests(unittest.TestCase):
                     "AC-OTHER": "other criterion"
                 }
             }), encoding="utf-8")
-            artifact.write_text(json.dumps({
+            artifact_value = bind_artifact({
                 "schema_version": 3,
                 "id": "A-1",
                 "kind": "artifact",
@@ -1716,13 +1831,15 @@ class CliTests(unittest.TestCase):
                 "source": "test",
                 "files": ["test.py"],
                 "work_item_id": "WI-1"
-            }), encoding="utf-8")
+            })
+            artifact.write_text(json.dumps(artifact_value), encoding="utf-8")
             (root / "V-1.json").write_text(json.dumps({
                 "schema_version": 3,
                 "id": "V-1",
                 "kind": "verification",
                 "artifact_id": "A-1",
                 "artifact_version": "1",
+                "artifact_content_hash": artifact_value["content_hash"],
                 "finding_id": "F-1",
                 "criterion_ids": ["AC-1"],
                 "check": "gate",
@@ -2075,11 +2192,13 @@ class CliTests(unittest.TestCase):
             records["verification-review.json"]["status"] = "PASS"
 
             records["verification-review.json"]["artifact_version"] = "1"
+            rebind_record_hashes(records)
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("PASS Reviewer Verification", p.stderr)
             records["verification-review.json"]["artifact_version"] = "2"
+            rebind_record_hashes(records)
 
             records["verification.json"]["role"] = "producer"
             write_records(root, records)
@@ -2195,11 +2314,13 @@ class CliTests(unittest.TestCase):
             records["iterations/iteration-01.json"]["result"] = "REPAIR"
 
             records["decision-repair.json"]["artifact_versions"] = ["2"]
+            rebind_record_hashes(records)
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("input_versions", p.stderr)
             records["decision-repair.json"]["artifact_versions"] = ["1"]
+            rebind_record_hashes(records)
 
             records["decision.json"]["cycle"] = 3
             records["decision-stop.json"] = {
@@ -2209,6 +2330,9 @@ class CliTests(unittest.TestCase):
                 "cycle": 2,
                 "work_item_id": "WI-1",
                 "artifact_versions": ["2"],
+                "artifact_hashes": {
+                    "2": records["artifact-2.json"]["content_hash"],
+                },
                 "decision": "STOP",
                 "rationale": "terminal",
                 "evidence_refs": ["V-1"],
@@ -2384,6 +2508,7 @@ class CliTests(unittest.TestCase):
                 "evidence": ["the STOP state preserves open questions"],
                 "limitations": [],
             }
+            rebind_record_hashes(records)
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -2408,6 +2533,7 @@ class CliTests(unittest.TestCase):
                 "residual_risks": [],
                 "review_independence": "independent",
             }
+            rebind_record_hashes(records)
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
@@ -2448,6 +2574,7 @@ class CliTests(unittest.TestCase):
                 "unresolved_disagreements": [],
                 "approver": "controller",
             }
+            rebind_record_hashes(records)
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -2560,7 +2687,7 @@ class CliTests(unittest.TestCase):
                         if name == "open-question" else []
                     )
                 }), encoding="utf-8")
-                artifact.write_text(json.dumps({
+                artifact_value = bind_artifact({
                     "schema_version": 3,
                     "id": "A-1",
                     "kind": "artifact",
@@ -2570,7 +2697,9 @@ class CliTests(unittest.TestCase):
                     "source": "test",
                     "files": ["test.py"],
                     "work_item_id": "WI-1"
-                }), encoding="utf-8")
+                })
+                artifact.write_text(
+                    json.dumps(artifact_value), encoding="utf-8")
                 finding.write_text(json.dumps({
                     "schema_version": 3,
                     "id": "F-1",
@@ -2598,6 +2727,8 @@ class CliTests(unittest.TestCase):
                         "kind": "verification",
                         "artifact_id": "A-1",
                         "artifact_version": verification_version,
+                        "artifact_content_hash": artifact_value[
+                            "content_hash"],
                         "finding_id": "F-OTHER" if name == "unrelated" else "F-1",
                         "criterion_ids": criterion_ids,
                         "check": "gate",
@@ -2703,7 +2834,7 @@ class CliTests(unittest.TestCase):
                     "max_repair_iterations": 3,
                     "acceptance_criteria": {"AC-1": "gate works"}
                 }), encoding="utf-8")
-                (root / "artifact.json").write_text(json.dumps({
+                artifact_value = bind_artifact({
                     "schema_version": 3,
                     "id": "A-1",
                     "kind": "artifact",
@@ -2713,7 +2844,9 @@ class CliTests(unittest.TestCase):
                     "source": "test",
                     "files": ["test.py"],
                     "work_item_id": "WI-1"
-                }), encoding="utf-8")
+                })
+                (root / "artifact.json").write_text(
+                    json.dumps(artifact_value), encoding="utf-8")
                 (root / "finding.json").write_text(json.dumps({
                     "schema_version": 3,
                     "id": "F-1",
@@ -2734,6 +2867,9 @@ class CliTests(unittest.TestCase):
                         "regression_verification_ids": ["V-1"]
                     }
                 }), encoding="utf-8")
+                verification = dict(verification)
+                verification["artifact_content_hash"] = artifact_value[
+                    "content_hash"]
                 (root / "verification-V-1.json").write_text(
                     json.dumps(verification), encoding="utf-8")
                 p = run_cli(
@@ -2765,7 +2901,7 @@ class CliTests(unittest.TestCase):
                 "risk_level": {},
                 "open_questions": "material ambiguity"
             }), encoding="utf-8")
-            (root / "artifact.json").write_text(json.dumps({
+            artifact_value = bind_artifact({
                 "schema_version": 3,
                 "id": "A-1",
                 "kind": "artifact",
@@ -2775,7 +2911,9 @@ class CliTests(unittest.TestCase):
                 "source": "test",
                 "files": ["test.py"],
                 "work_item_id": "WI-1"
-            }), encoding="utf-8")
+            })
+            (root / "artifact.json").write_text(
+                json.dumps(artifact_value), encoding="utf-8")
             (root / "finding.json").write_text(json.dumps({
                 "schema_version": 3,
                 "id": "F-1",
@@ -2802,6 +2940,7 @@ class CliTests(unittest.TestCase):
                 "kind": "verification",
                 "artifact_id": "A-1",
                 "artifact_version": "1",
+                "artifact_content_hash": artifact_value["content_hash"],
                 "criterion_ids": ["AC-1", "AC-1"],
                 "finding_id": "F-1",
                 "check": "gate",
