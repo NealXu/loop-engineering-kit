@@ -3,12 +3,12 @@
   "work_item_id": "WI-LE-STAGE3-COMPLETION-20261115",
   "artifact": {
     "id": "A-LE-STAGE3-COMPLETION",
-    "version": "3",
+    "version": "4",
     "file_count": 18,
     "base": "73ea97a",
-    "code_head": "74c94b98771188512553b97644e3ad54df6b2938",
-    "diff_git_blob": "7c101262e6d755e9f74ef5f4ab23ce738727db79",
-    "diff_hash_command": "git diff --binary 73ea97a..74c94b9 | git hash-object --stdin"
+    "code_head": "e5c2ddc94578dcb748b5eaf67c1c74b46b400e8f",
+    "diff_git_blob": "caf677af0b507cdc34c842a25f86d7e7e91152b6",
+    "diff_hash_command": "git diff --binary 73ea97a..e5c2ddc | git hash-object --stdin"
   },
   "acceptance_criteria": {
     "AC-MIGRATION": "migrate-records performs safe v1/v2 to v3 migration with dry-run, full validation, backup, and atomic writes.",
@@ -131,14 +131,14 @@
   "post_delivery_verification": {
     "tests": "80/80",
     "verify": "PASS",
-    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage3-repair2b-20261115-100938",
+    "verify_report": "C:\\Users\\xuqi\\AppData\\Local\\Temp\\loop-engineering-stage3-repair3-20261115-101624",
     "external_schema": "PowerShell Test-Json: 7 valid accepted, 7 invalid rejected",
     "installed_doctors": ["Codex PASS", "Claude PASS"],
     "installed_cli_hash_match": true,
     "host_checks": ["CODEX_USER_VERIFY_PASS", "CLAUDE_USER_VERIFY_PASS"],
-    "user_scope_backup_stamp": "20261115-101259",
-    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43666567186",
-    "ci_final_head": "74c94b98771188512553b97644e3ad54df6b2938",
+    "user_scope_backup_stamp": "20261115-101848",
+    "ci_final_run": "https://github.com/NealXu/loop-engineering-kit/actions/runs/43667079009",
+    "ci_final_head": "e5c2ddc94578dcb748b5eaf67c1c74b46b400e8f",
     "ci_final_status": "PASS (5/5 jobs)"
   }
 }

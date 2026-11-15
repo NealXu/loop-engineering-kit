@@ -3,9 +3,9 @@
 ## Scope
 
 - Work Item: `WI-LE-STAGE3-COMPLETION-20261115`
-- Artifact: `A-LE-STAGE3-COMPLETION` version `3`
+- Artifact: `A-LE-STAGE3-COMPLETION` version `4`
 - Base: `73ea97a`
-- Code head: `74c94b9`
+- Code head: `e5c2ddc`
 - Control route: `L3`, audited
 
 ## Delivered
@@ -30,7 +30,7 @@
 - Source, Codex, and Claude CLI SHA-256 values match; both installed doctors
   pass.
 - Real Codex and Claude sessions return the expected PASS markers.
-- Final branch CI run `43666567186`: five jobs PASS at `74c94b9`, including
+- Final branch CI run `43667079009`: five jobs PASS at `e5c2ddc`, including
   Rocky Linux 8 and Python 3.8/3.12.
 
 ## Boundaries
