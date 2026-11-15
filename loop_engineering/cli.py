@@ -681,7 +681,7 @@ def verification_errors(
     artifact_extra = sorted(
         set(artifact) - artifact_required - {
             "producer_context", "source_revision", "file_hashes",
-            "evidence_path"})
+            "evidence_path", "base_revision"})
     if artifact_extra:
         errors.append(
             "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))
