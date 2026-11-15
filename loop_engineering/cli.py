@@ -4,9 +4,11 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -1259,6 +1261,205 @@ def check_records(directory):
     return 0
 
 
+def infer_verification_role(record):
+    text = "{} {}".format(record.get("id", ""), record.get("check", "")).lower()
+    for marker, role in (
+            ("review", "reviewer"),
+            ("challeng", "challenger"),
+            ("approv", "arbiter"),
+            ("producer", "producer")):
+        if marker in text:
+            return role
+    return "verifier"
+
+
+def migrate_records(directory, write=False, verification_roles=None):
+    root = Path(directory)
+    if not root.is_dir():
+        print("ERROR: Records directory not found: {}".format(root),
+              file=sys.stderr)
+        return 2
+    roles = {}
+    for spec in verification_roles or []:
+        if "=" not in spec:
+            print("ERROR: --verification-role must be ID=ROLE", file=sys.stderr)
+            return 2
+        record_id, role = spec.split("=", 1)
+        if (not STABLE_ID.fullmatch(record_id)
+                or role not in {
+                    "producer", "verifier", "reviewer", "challenger",
+                    "arbiter"}):
+            print("ERROR: invalid --verification-role {}".format(spec),
+                  file=sys.stderr)
+            return 2
+        roles[record_id] = role
+    paths = sorted(root.rglob("*.json"))
+    if not paths:
+        print("ERROR: Records directory contains no JSON files",
+              file=sys.stderr)
+        return 2
+    records = []
+    try:
+        for path in paths:
+            records.append((path, load_json(path)))
+    except ValueError as exc:
+        print("ERROR: {}".format(exc), file=sys.stderr)
+        return 2
+    for path, record in records:
+        version = record.get("schema_version")
+        if type(version) is not int or version not in {1, 2, 3}:
+            print("ERROR: {} has unsupported schema_version".format(path),
+                  file=sys.stderr)
+            return 2
+    migrated = {
+        path: record for path, record in records
+        if record.get("schema_version") in {1, 2}
+    }
+    work_items = [
+        record for _, record in records
+        if record.get("kind") == "work_item"
+    ]
+    if len(work_items) != 1:
+        print("ERROR: migration requires exactly one Work Item",
+              file=sys.stderr)
+        return 1
+    work_item = work_items[0]
+    artifacts = [
+        record for _, record in records if record.get("kind") == "artifact"
+    ]
+    file_count = max(
+        (len(record.get("files", [])) for record in artifacts), default=1)
+    flags = work_item.get("route_flags", {})
+    planned_route = route_plan(
+        work_item.get("risk_level", "low"),
+        file_count,
+        bool(flags.get("trivial", False)),
+        bool(flags.get("ambiguous", False)),
+        bool(flags.get("irreversible", False)))
+
+    decisions = sorted(
+        ((path, record) for path, record in records
+         if record.get("kind") == "decision"),
+        key=lambda item: str(item[0]))
+    used_cycles = {
+        record.get("cycle") for _, record in decisions
+        if type(record.get("cycle")) is int and record.get("cycle") > 0
+    }
+    next_cycle = 1
+    decision_cycles = {}
+    for path, record in decisions:
+        if record.get("cycle") is None:
+            while next_cycle in used_cycles:
+                next_cycle += 1
+            decision_cycles[path] = next_cycle
+            used_cycles.add(next_cycle)
+            next_cycle += 1
+
+    transforms = []
+    for path in sorted(migrated):
+        record = migrated[path]
+        kind = record.get("kind")
+        if kind == "work_item":
+            record.setdefault("control_tier", planned_route["tier"])
+            record.setdefault("route_flags", {
+                "trivial": False,
+                "ambiguous": False,
+                "irreversible": False,
+            })
+            record.setdefault("max_repair_iterations", 3)
+        elif kind == "verification":
+            inferred = roles.get(
+                record.get("id"), infer_verification_role(record))
+            record.setdefault("role", inferred)
+        elif kind == "decision":
+            if record.get("cycle") is None:
+                record["cycle"] = decision_cycles[path]
+            if record.get("decision") == "ACCEPT":
+                record.setdefault("residual_risks", [])
+                record.setdefault("review_independence", "non_independent")
+        record["schema_version"] = 3
+        transforms.append({
+            "file": str(path.relative_to(root)),
+            "kind": kind,
+        })
+
+    finding_ids = {
+        record.get("id") for _, record in records
+        if record.get("kind") == "finding"
+    }
+    verification_ids = {
+        record.get("id") for _, record in records
+        if record.get("kind") == "verification"
+    }
+    stable_ids = finding_ids | verification_ids
+    for path, record in decisions:
+        if path not in migrated:
+            continue
+        refs = record.get("evidence_refs")
+        if not isinstance(refs, list):
+            continue
+        notes = record.setdefault("evidence_notes", [])
+        stable_refs = [
+            ref for ref in refs
+            if isinstance(ref, str) and ref in stable_ids
+        ]
+        unresolved = [
+            ref for ref in refs
+            if isinstance(ref, str) and ref not in stable_ids
+        ]
+        notes.extend(
+            "Migrated evidence: {}".format(ref) for ref in unresolved)
+        if not stable_refs:
+            versions = set(record.get("artifact_versions", []))
+            if record.get("decision") == "ACCEPT":
+                stable_refs = sorted(
+                    record.get("id")
+                    for _, record in records
+                    if record.get("kind") == "verification"
+                    and record.get("status") == "PASS"
+                    and record.get("artifact_version") in versions
+                )
+            elif record.get("decision") == "REPAIR":
+                stable_refs = sorted(finding_ids)
+        if not stable_refs:
+            print(
+                "ERROR: {} has no resolvable evidence_refs".format(path),
+                file=sys.stderr)
+            return 1
+        record["evidence_refs"] = sorted(set(stable_refs))
+
+    transformed_records = [record for _, record in records]
+    errors = records_errors(transformed_records)
+    if errors:
+        print("[FAIL] migration validation", file=sys.stderr)
+        for error in errors:
+            print("ERROR: {}".format(json.dumps(error, ensure_ascii=True)),
+                  file=sys.stderr)
+        return 1
+    backup = None
+    if write and migrated:
+        stamp = datetime.datetime.now().astimezone().strftime(
+            "%Y%m%d-%H%M%S-%f")
+        backup = root.parent / "{}.migration-backup-{}".format(
+            root.name, stamp)
+        shutil.copytree(root, backup)
+        for path in sorted(migrated):
+            temporary = path.with_name(
+                ".{}.{}.tmp".format(path.name, uuid.uuid4().hex))
+            temporary.write_text(
+                json.dumps(migrated[path], indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8")
+            os.replace(str(temporary), str(path))
+    print(json.dumps({
+        "mode": "write" if write else "dry-run",
+        "directory": str(root.resolve()),
+        "changed": len(migrated),
+        "backup": str(backup) if backup else None,
+        "transforms": transforms,
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
 def doctor(root, mode="kit"):
     root = Path(root).resolve()
     print("Loop Engineering Kit doctor")
@@ -1524,6 +1725,10 @@ def main():
     cf.add_argument("--verifications-dir", default=None)
     cr = subs.add_parser("check-records")
     cr.add_argument("--dir", required=True)
+    mr = subs.add_parser("migrate-records")
+    mr.add_argument("--dir", required=True)
+    mr.add_argument("--write", action="store_true")
+    mr.add_argument("--verification-role", action="append", default=[])
     r = subs.add_parser("report")
     r.add_argument("--input", required=True)
     r.add_argument("--format", choices=("markdown", "json"), default="markdown")
@@ -1549,6 +1754,9 @@ def main():
             a.input, a.work_item, a.artifact, a.verifications_dir)
     if a.command == "check-records":
         return check_records(a.dir)
+    if a.command == "migrate-records":
+        return migrate_records(
+            a.dir, a.write, a.verification_role)
     try:
         data = load_json(a.input)
     except ValueError as exc:

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -137,6 +138,81 @@ def stage2_records():
     }
 
 
+def legacy_v2_records():
+    return {
+        "work-item.json": {
+            "schema_version": 2,
+            "id": "WI-OLD",
+            "kind": "work_item",
+            "goal": "migrate old records",
+            "pack_id": "software-development",
+            "constraints": [],
+            "priority": "medium",
+            "risk_level": "medium",
+            "max_repair_iterations": 3,
+            "acceptance_criteria": {"AC-1": "works"},
+            "open_questions": [],
+        },
+        "artifact.json": {
+            "schema_version": 2,
+            "id": "A-1",
+            "kind": "artifact",
+            "artifact_type": "test",
+            "version": "1",
+            "content": "candidate",
+            "source": "legacy",
+            "files": ["one.py", "two.py"],
+            "work_item_id": "WI-OLD",
+        },
+        "verification.json": {
+            "schema_version": 2,
+            "id": "V-1",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "1",
+            "criterion_ids": ["AC-1"],
+            "check": "tests",
+            "method": "run",
+            "status": "PASS",
+            "evidence": ["executed"],
+            "limitations": [],
+        },
+        "verification-review.json": {
+            "schema_version": 2,
+            "id": "V-REVIEW",
+            "kind": "verification",
+            "artifact_id": "A-1",
+            "artifact_version": "1",
+            "criterion_ids": ["AC-1"],
+            "check": "review",
+            "method": "inspect",
+            "status": "PASS",
+            "evidence": ["reviewed"],
+            "limitations": [],
+        },
+        "decision.json": {
+            "schema_version": 2,
+            "id": "D-1",
+            "kind": "decision",
+            "work_item_id": "WI-OLD",
+            "artifact_versions": ["1"],
+            "decision": "ACCEPT",
+            "rationale": "verified",
+            "evidence_refs": ["legacy free-text evidence"],
+            "unresolved_disagreements": [],
+            "approver": "controller",
+            "criteria_evidence": {
+                "AC-1": {
+                    "verification_ids": ["V-1"],
+                    "result": "PASS",
+                },
+            },
+            "residual_risks": [],
+            "review_independence": "independent",
+        },
+    }
+
+
 def write_records(root, records):
     for path in root.rglob("*.json"):
         path.unlink()
@@ -147,6 +223,78 @@ def write_records(root, records):
 
 
 class CliTests(unittest.TestCase):
+    def test_migrate_records_dry_run_preserves_legacy_files(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, legacy_v2_records())
+            before = {
+                path.name: path.read_bytes()
+                for path in root.glob("*.json")
+            }
+            p = run_cli("migrate-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertIn('"mode": "dry-run"', p.stdout)
+            after = {
+                path.name: path.read_bytes()
+                for path in root.glob("*.json")
+            }
+            self.assertEqual(before, after)
+
+    def test_migrate_records_writes_valid_v3_and_backup(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, legacy_v2_records())
+            p = run_cli(
+                "migrate-records", "--dir", root, "--write",
+                "--verification-role", "V-REVIEW=reviewer")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            output = json.loads(p.stdout)
+            self.assertEqual(output["mode"], "write")
+            self.assertEqual(output["changed"], 5)
+            self.assertTrue(Path(output["backup"]).is_dir())
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            work_item = json.loads(
+                (root / "work-item.json").read_text(encoding="utf-8"))
+            self.assertEqual(work_item["control_tier"], "L2")
+            self.assertEqual(
+                json.loads((root / "verification-review.json").read_text(
+                    encoding="utf-8"))["role"],
+                "reviewer")
+            decision = json.loads(
+                (root / "decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["cycle"], 1)
+            self.assertTrue(decision["evidence_refs"])
+            shutil.rmtree(output["backup"])
+
+    def test_migrate_records_does_not_write_invalid_output(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = legacy_v2_records()
+            records["artifact.json"].pop("work_item_id")
+            write_records(root, records)
+            before = {
+                path.name: path.read_bytes()
+                for path in root.glob("*.json")
+            }
+            before_backups = {
+                path.name for path in root.parent.iterdir()
+                if path.name.startswith(root.name + ".migration-backup-")
+            }
+            p = run_cli("migrate-records", "--dir", root, "--write")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("migration validation", p.stderr)
+            after = {
+                path.name: path.read_bytes()
+                for path in root.glob("*.json")
+            }
+            self.assertEqual(before, after)
+            after_backups = {
+                path.name for path in root.parent.iterdir()
+                if path.name.startswith(root.name + ".migration-backup-")
+            }
+            self.assertEqual(before_backups, after_backups)
+
     def test_legacy_migration_manifest_metadata_is_enforced(self):
         records = [
             {"id": "V-1", "kind": "verification"},
