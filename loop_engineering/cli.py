@@ -232,9 +232,12 @@ def verification_time_errors(artifact, verifications, repo_root):
                 execution.get("executed_at", ""))
         except (TypeError, ValueError):
             continue
-        if (executed_at.tzinfo is not None
-                and executed_at.astimezone(datetime.timezone.utc)
-                < source_time):
+        if executed_at.tzinfo is None:
+            errors.append(
+                "Verification {} execution executed_at must include a timezone"
+                .format(json.dumps(
+                    verification.get("id"), ensure_ascii=True)))
+        elif executed_at.astimezone(datetime.timezone.utc) < source_time:
             errors.append(
                 "Verification {} execution executed_at is before source revision"
                 .format(json.dumps(
@@ -307,6 +310,20 @@ def artifact_source_errors(artifact, repo_root, records_dir=None):
             "working_tree_change Artifact requires --repo for file verification")
         return errors
     repo_root = Path(repo_root).resolve()
+    for label, ancestor, descendant in (
+            ("base_revision", base_revision, revision),
+            ("source_revision", revision, "HEAD")):
+        try:
+            ancestry = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+                cwd=str(repo_root), stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, check=False)
+        except OSError as exc:
+            errors.append("Unable to check Artifact ancestry: {}".format(exc))
+            continue
+        if ancestry.returncode != 0:
+            errors.append(
+                "{} must be an ancestor of {}".format(label, descendant))
     evidence_path = artifact.get("evidence_path")
     evidence_path = (
         evidence_path.replace("\\", "/").rstrip("/")
@@ -323,6 +340,20 @@ def artifact_source_errors(artifact, repo_root, records_dir=None):
         errors.append(
             "working_tree_change Artifact evidence_hashes must match evidence_files")
         evidence_hashes = {}
+    if records_dir is not None:
+        evidence_root = Path(records_dir).resolve().parent
+        for relative in evidence_files:
+            candidate = (repo_root / relative).resolve()
+            try:
+                candidate.relative_to(evidence_root)
+            except ValueError:
+                errors.append(
+                    "Artifact evidence file must be under the records evidence root: {}"
+                    .format(relative))
+            if candidate.suffix not in {".json", ".md"}:
+                errors.append(
+                    "Artifact evidence file must be JSON or Markdown: {}".format(
+                        relative))
     canonical_evidence = False
     records_lock = None
     if records_dir is not None and evidence_path:
@@ -1660,6 +1691,13 @@ def records_errors(
             ref_approvals = [
                 approvals[ref] for ref in decision.get("evidence_refs", [])
                 if ref in approvals]
+            expected_approval_hashes = {
+                approval.get("id"): records_sha256([approval])
+                for approval in ref_approvals
+            }
+            if decision.get("approval_hashes", {}) != expected_approval_hashes:
+                errors.append(
+                    "ACCEPT approval_hashes do not match referenced approvals")
             bad_final_evidence = [
                 verification for verification in verifications.values()
                 if final_artifact is not None

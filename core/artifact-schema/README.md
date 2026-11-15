@@ -28,12 +28,15 @@ runtime reject a valid-looking but stale hash, including the same
 A `working_tree_change` Artifact additionally records an immutable
 `source_revision` and a `file_hashes` map for every path in `files`.
 `check-records --repo <git-root>` resolves those files at the recorded revision
-and rejects changed or missing content. `files` must exactly equal the
-`base_revision..source_revision` changed-file set. A directory exemption is
+and rejects changed or missing content. `base_revision` and `source_revision`
+must be Git ancestors of the current `HEAD`; `files` must exactly equal the
+`base_revision..source_revision` changed-file set; and every claimed deletion
+must be absent at source and in the worktree. A directory exemption is
 accepted only when `evidence_path` resolves to the actual records directory
-being checked; other evidence files require exact `evidence_files` entries and
-matching `evidence_hashes`. Verification execution timestamps cannot precede
-the source revision.
+being checked. Other evidence files must stay under the records evidence root,
+use JSON or Markdown, and match exact `evidence_hashes`. Verification
+execution timestamps require a timezone and cannot precede the locally
+attested source revision.
 
 For L3, the Artifact records `producer_context` and final Reviewer/Challenger
 PASS records record `host_context` with session id, model, independence, and
@@ -53,6 +56,9 @@ Decision `evidence_refs` contain stable Finding or Verification IDs; use the
 optional `evidence_notes` array for file paths, URLs, and prose. A repaired run
 may retain multiple Decisions ordered by `cycle`, with exactly one final ACCEPT
 for the final Artifact version. Decision cycles must be unique and strictly
+increasing. An ACCEPT that references an Approval also records
+`approval_hashes` mapping each referenced Approval ID to the canonical digest
+of that Approval record.
 increasing; a `CONTINUE` Iteration may remain undecided.
 
 A resolved `high` or `blocking` Finding includes a `prevention` object with

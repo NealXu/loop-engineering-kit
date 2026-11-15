@@ -64,6 +64,15 @@ def rebind_record_hashes(records):
                 for version in record.get("artifact_versions", [])
                 if version in by_version
             }
+            approvals_by_id = {
+                item.get("id"): item for item in records.values()
+                if item.get("kind") == "approval"
+            }
+            record["approval_hashes"] = {
+                ref: cli_module.records_sha256([approvals_by_id[ref]])
+                for ref in record.get("evidence_refs", [])
+                if ref in approvals_by_id
+            }
             if (record.get("decision") == "ACCEPT"
                     and len(record.get("artifact_versions", [])) == 1):
                 version = record["artifact_versions"][0]
@@ -460,6 +469,12 @@ class CliTests(unittest.TestCase):
             write_records(root, records)
             p = run_cli("check-records", "--dir", root)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            records["approval-test.json"]["statement"] = (
+                "rewritten approval statement")
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("approval_hashes", p.stderr)
 
     def test_human_approval_requires_exact_confirmation(self):
         with tempfile.TemporaryDirectory() as t:
@@ -2339,12 +2354,51 @@ class CliTests(unittest.TestCase):
                 "check-records", "--dir", records_dir, "--repo", repo)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
 
+            tree = subprocess.check_output(
+                ["git", "rev-parse", "{}^{{tree}}".format(revision)],
+                cwd=repo, text=True).strip()
+            orphan = subprocess.check_output(
+                ["git", "commit-tree", tree, "-m", "orphan"],
+                cwd=repo, text=True).strip()
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["source_revision"] = orphan
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("source_revision must be an ancestor", p.stderr)
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["source_revision"] = revision
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+
             route.write_text("{\"changed\":true}\n", encoding="utf-8")
             p = run_cli(
                 "check-records", "--dir", records_dir, "--repo", repo)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("evidence file hash", p.stderr)
             route.write_text("{}\n", encoding="utf-8")
+
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["evidence_files"].append("source.txt")
+                    record["evidence_hashes"]["source.txt"] = hashlib.sha256(
+                        b"source\n").hexdigest()
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("under the records evidence root", p.stderr)
+            for record in records.values():
+                if record.get("kind") == "artifact":
+                    record["evidence_files"].remove("source.txt")
+                    record["evidence_hashes"].pop("source.txt")
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
 
             configs = repo / "configs"
             configs.mkdir()
@@ -2385,6 +2439,35 @@ class CliTests(unittest.TestCase):
                 "check-records", "--dir", records_dir, "--repo", repo)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("before source revision", p.stderr)
+
+            records["verification.json"]["execution"]["executed_at"] = now
+            records["verification-naive.json"] = {
+                "schema_version": 3,
+                "id": "V-NAIVE",
+                "kind": "verification",
+                "artifact_id": "A-1",
+                "artifact_version": "2",
+                "artifact_content_hash": records["artifact-2.json"][
+                    "content_hash"],
+                "criterion_ids": ["AC-1"],
+                "role": "verifier",
+                "check": "naive time",
+                "method": "targeted test",
+                "status": "PASS",
+                "evidence": ["timestamp omitted timezone"],
+                "limitations": [],
+                "execution": {
+                    "command": "python -m unittest naive",
+                    "exit_code": 0,
+                    "executed_at": "2026-11-15T14:00:00",
+                },
+            }
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("must include a timezone", p.stderr)
 
     def test_approval_keeps_records_scope(self):
         if shutil.which("git") is None:

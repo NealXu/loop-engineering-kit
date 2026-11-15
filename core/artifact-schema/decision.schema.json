@@ -46,6 +46,14 @@
         "pattern": "^[0-9a-f]{64}$"
       }
     },
+    "approval_hashes": {
+      "type": "object",
+      "propertyNames": { "pattern": "\\S" },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
     "decision": { "enum": ["ACCEPT", "REPAIR", "ESCALATE", "STOP"] },
     "rationale": { "type": "string", "minLength": 1, "pattern": "\\S" },
     "evidence_refs": {
