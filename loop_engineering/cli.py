@@ -830,7 +830,7 @@ def verification_errors(
         set(artifact) - artifact_required - {
             "producer_context", "source_revision", "file_hashes",
             "evidence_path", "base_revision", "deleted_files",
-            "evidence_files"})
+            "evidence_files", "evidence_hashes"})
     if artifact_extra:
         errors.append(
             "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))
