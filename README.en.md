@@ -159,7 +159,9 @@ explicit project request, creates canonical record files.
 Control-plane commands:
 
 ```text
-migrate-records --dir <records> [--write]
+migrate-records --dir <records> \
+  --verification-role V-1=verifier --verification-role V-REVIEW=reviewer \
+  [--write]
 runtime-checkpoint --records <records> --store <store>
 runtime-status --store <store> [--records <records>]
 runtime-resume --store <store> [--records <records>]

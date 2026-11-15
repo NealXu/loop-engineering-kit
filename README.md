@@ -123,7 +123,9 @@ bash scripts/install.sh --target both --scope user --upgrade
 ```powershell
 # v1/v2 -> v3：默认 dry-run，--write 才修改并自动备份
 py -3 loop_engineering\cli.py migrate-records --dir <记录目录>
-py -3 loop_engineering\cli.py migrate-records --dir <记录目录> --write
+py -3 loop_engineering\cli.py migrate-records --dir <记录目录> `
+  --verification-role V-1=verifier --verification-role V-REVIEW=reviewer `
+  --write
 
 # 持久化、恢复与状态查询
 py -3 loop_engineering\cli.py runtime-checkpoint --records <记录目录> --store <状态目录>

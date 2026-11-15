@@ -57,10 +57,10 @@ An open `high` or `blocking` Finding is structurally valid for REPAIR/STOP and
 
 This is a breaking schema upgrade. The repository ships only version 3
 schemas. Version 1 and 2 records can be migrated with `migrate-records`; the
-command defaults to dry-run, validates the complete result, and backs up files
-before `--write`. Version 3 adds explicit control tiers and route flags, typed
-evidence references, Decision cycles, Verification role labels, and Human
-Approval.
+command requires explicit Verification role mappings, defaults to dry-run,
+validates a complete staged copy, and swaps directories only after validation.
+Version 3 adds explicit control tiers and route flags, typed evidence
+references, Decision cycles, Verification role labels, and Human Approval.
 
 Iteration records may include `output_versions`; Stage 2 record checks require
 it so Artifact ancestry is explicit. Run

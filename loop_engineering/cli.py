@@ -4,6 +4,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -66,7 +67,8 @@ def write_json_file(path, value):
     temporary = path.with_name(
         ".{}.{}.tmp".format(path.name, uuid.uuid4().hex))
     temporary.write_text(
-        json.dumps(value, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(
+            value, indent=2, ensure_ascii=False, allow_nan=False) + "\n",
         encoding="utf-8")
     os.replace(str(temporary), str(path))
 
@@ -1083,9 +1085,6 @@ def records_errors(records):
                 errors.append(
                     "ACCEPT requires independent review for this control tier")
             approver = decision.get("approver")
-            ref_findings = [
-                findings[ref] for ref in decision.get("evidence_refs", [])
-                if ref in findings]
             ref_verifications = [
                 verifications[ref] for ref in decision.get("evidence_refs", [])
                 if ref in verifications]
@@ -1106,12 +1105,10 @@ def records_errors(records):
                 errors.append(
                     "ACCEPT requires a final-version PASS Reviewer Verification")
             challenger_evidence = (
-                any(finding.get("source_role") == "challenger"
-                    for finding in ref_findings)
-                or any(
+                final_artifact is not None
+                and any(
                     verification.get("role") == "challenger"
                     and verification.get("status") == "PASS"
-                    and final_artifact is not None
                     and verification.get("artifact_id")
                     == final_artifact.get("id")
                     and verification.get("artifact_version")
@@ -1328,18 +1325,6 @@ def check_records(directory):
     return 0
 
 
-def infer_verification_role(record):
-    text = "{} {}".format(record.get("id", ""), record.get("check", "")).lower()
-    for marker, role in (
-            ("review", "reviewer"),
-            ("challeng", "challenger"),
-            ("approv", "arbiter"),
-            ("producer", "producer")):
-        if marker in text:
-            return role
-    return "verifier"
-
-
 def migrate_records(directory, write=False, verification_roles=None):
     root = Path(directory)
     if not root.is_dir():
@@ -1372,12 +1357,14 @@ def migrate_records(directory, write=False, verification_roles=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
+    versions = {}
     for path, record in records:
         version = record.get("schema_version")
         if type(version) is not int or version not in {1, 2, 3}:
             print("ERROR: {} has unsupported schema_version".format(path),
                   file=sys.stderr)
             return 2
+        versions[path] = version
     migrated = {
         path: record for path, record in records
         if record.get("schema_version") in {1, 2}
@@ -1391,6 +1378,28 @@ def migrate_records(directory, write=False, verification_roles=None):
               file=sys.stderr)
         return 1
     work_item = work_items[0]
+    criteria_map = {}
+    if versions[next(
+            path for path, record in records if record is work_item)] == 1:
+        criteria_values = work_item.get("acceptance_criteria")
+        if (not isinstance(criteria_values, list)
+                or not criteria_values
+                or not all(
+                    isinstance(item, str) and item.strip()
+                    for item in criteria_values)
+                or len(criteria_values) != len(set(criteria_values))):
+            print(
+                "ERROR: v1 acceptance_criteria must be unique non-blank strings",
+                file=sys.stderr)
+            return 1
+        criteria_map = {
+            criterion: "AC-{}".format(index)
+            for index, criterion in enumerate(criteria_values, 1)
+        }
+        work_item["acceptance_criteria"] = {
+            criterion_id: criterion
+            for criterion, criterion_id in criteria_map.items()
+        }
     artifacts = [
         record for _, record in records if record.get("kind") == "artifact"
     ]
@@ -1408,6 +1417,29 @@ def migrate_records(directory, write=False, verification_roles=None):
         ((path, record) for path, record in records
          if record.get("kind") == "decision"),
         key=lambda item: str(item[0]))
+    criteria_for_verification = {}
+    for path, record in decisions:
+        evidence = record.get("criteria_evidence")
+        if isinstance(evidence, list):
+            converted = {}
+            for item in evidence:
+                criterion = item.get("criterion") if isinstance(
+                    item, dict) else None
+                criterion_id = criteria_map.get(criterion)
+                if criterion_id is None or criterion_id in converted:
+                    print(
+                        "ERROR: v1 Decision criterion cannot be mapped: {}".format(
+                            json.dumps(criterion, ensure_ascii=True)),
+                        file=sys.stderr)
+                    return 1
+                converted[criterion_id] = {
+                    "verification_ids": item.get("verification_ids"),
+                    "result": item.get("result"),
+                }
+                for verification_id in item.get("verification_ids", []):
+                    criteria_for_verification.setdefault(
+                        verification_id, set()).add(criterion_id)
+            record["criteria_evidence"] = converted
     used_cycles = {
         record.get("cycle") for _, record in decisions
         if type(record.get("cycle")) is int and record.get("cycle") > 0
@@ -1434,10 +1466,26 @@ def migrate_records(directory, write=False, verification_roles=None):
                 "irreversible": False,
             })
             record.setdefault("max_repair_iterations", 3)
+        elif kind == "artifact":
+            record.setdefault("files", [record.get("source")])
         elif kind == "verification":
-            inferred = roles.get(
-                record.get("id"), infer_verification_role(record))
-            record.setdefault("role", inferred)
+            record_id = record.get("id")
+            if record.get("role") is None:
+                if record_id in roles:
+                    record["role"] = roles[record_id]
+                else:
+                    print(
+                        "ERROR: Verification {} requires --verification-role".format(
+                            record_id),
+                        file=sys.stderr)
+                    return 1
+            record.setdefault(
+                "criterion_ids",
+                sorted(criteria_for_verification.get(
+                    record_id, set(criteria_map.values()))))
+            record.setdefault("limitations", [])
+        elif kind == "finding":
+            record.setdefault("criterion_ids", sorted(criteria_map.values()))
         elif kind == "decision":
             if record.get("cycle") is None:
                 record["cycle"] = decision_cycles[path]
@@ -1507,16 +1555,35 @@ def migrate_records(directory, write=False, verification_roles=None):
     if write and migrated:
         stamp = datetime.datetime.now().astimezone().strftime(
             "%Y%m%d-%H%M%S-%f")
+        stage = root.parent / "{}.migration-stage-{}".format(
+            root.name, uuid.uuid4().hex)
         backup = root.parent / "{}.migration-backup-{}".format(
             root.name, stamp)
-        shutil.copytree(root, backup)
-        for path in sorted(migrated):
-            temporary = path.with_name(
-                ".{}.{}.tmp".format(path.name, uuid.uuid4().hex))
-            temporary.write_text(
-                json.dumps(migrated[path], indent=2, ensure_ascii=False) + "\n",
-                encoding="utf-8")
-            os.replace(str(temporary), str(path))
+        try:
+            shutil.copytree(root, stage)
+            for path in sorted(migrated):
+                shadow = stage / path.relative_to(root)
+                write_json_file(shadow, migrated[path])
+            staged_records = [
+                load_json(path) for path in sorted(stage.rglob("*.json"))
+            ]
+            errors = records_errors(staged_records)
+            if errors:
+                raise ValueError(
+                    "staged migration validation failed: {}".format(
+                        _quoted_names(errors)))
+            os.replace(str(root), str(backup))
+            try:
+                os.replace(str(stage), str(root))
+            except OSError:
+                os.replace(str(backup), str(root))
+                raise
+        except (OSError, ValueError) as exc:
+            if stage.exists():
+                shutil.rmtree(stage)
+            print("ERROR: migration commit failed: {}".format(exc),
+                  file=sys.stderr)
+            return 1
     print(json.dumps({
         "mode": "write" if write else "dry-run",
         "directory": str(root.resolve()),
@@ -1539,11 +1606,61 @@ def load_runtime_records(directory):
     return root, records
 
 
+def version_key(value):
+    return tuple(
+        (0, int(part)) if part.isdigit() else (1, part)
+        for part in re.split(r"(\d+)", str(value)) if part != "")
+
+
+def final_artifact_record(records):
+    work_items = [
+        record for record in records if record.get("kind") == "work_item"
+    ]
+    artifacts = [
+        record for record in records if record.get("kind") == "artifact"
+    ]
+    if not artifacts:
+        return None
+    if len(work_items) == 1:
+        work_item = work_items[0]
+        final_versions, errors = iteration_lineage(
+            [record for record in records
+             if record.get("kind") == "iteration"],
+            {record.get("version") for record in artifacts},
+            work_item.get("max_repair_iterations", 0),
+            work_item.get("id"))
+        if not errors and len(final_versions) == 1:
+            version = next(iter(final_versions))
+            return next(
+                (record for record in artifacts
+                 if record.get("version") == version),
+                None)
+    return sorted(
+        artifacts, key=lambda record: version_key(record.get("version")))[-1]
+
+
+def role_pass_exists(records, artifact, role):
+    return bool(artifact) and any(
+        record.get("kind") == "verification"
+        and record.get("role") == role
+        and record.get("status") == "PASS"
+        and record.get("artifact_id") == artifact.get("id")
+        and record.get("artifact_version") == artifact.get("version")
+        for record in records)
+
+
+def approval_exists(records, artifact, approver=None):
+    return bool(artifact) and any(
+        record.get("kind") == "approval"
+        and record.get("artifact_id") == artifact.get("id")
+        and record.get("artifact_version") == artifact.get("version")
+        and (approver is None or record.get("approver") == approver)
+        for record in records)
+
+
 def runtime_record_errors(records):
     errors = []
     work_items = []
-    artifact_ids = set()
-    work_item_id = None
     for record in records:
         kind = record.get("kind")
         if not isinstance(kind, str) or kind not in SCHEMA_FILES:
@@ -1559,23 +1676,65 @@ def runtime_record_errors(records):
             for error in schema_errors(record, schema))
         if kind == "work_item":
             work_items.append(record)
-        elif kind == "artifact":
-            artifact_ids.add(record.get("id"))
     if len(work_items) != 1:
         errors.append("runtime requires exactly one Work Item")
-    else:
-        work_item_id = work_items[0].get("id")
+        return errors
+    work_item = work_items[0]
+    work_item_id = work_item.get("id")
+    criteria = set(work_item.get("acceptance_criteria", {}))
+    artifacts = [
+        record for record in records if record.get("kind") == "artifact"
+    ]
+    artifact_ids = {record.get("id") for record in artifacts}
+    artifact_versions = {record.get("version") for record in artifacts}
     for record in records:
         kind = record.get("kind")
         if kind == "artifact" and record.get("work_item_id") != work_item_id:
             errors.append("Artifact work_item_id does not match Work Item")
         if kind == "decision" and record.get("work_item_id") != work_item_id:
             errors.append("Decision work_item_id does not match Work Item")
+        if kind == "decision":
+            versions = record.get("artifact_versions")
+            if isinstance(versions, list):
+                for version in versions:
+                    if version not in artifact_versions:
+                        errors.append(
+                            "Decision artifact version does not resolve")
         if kind == "iteration" and record.get("work_item_id") != work_item_id:
             errors.append("Iteration work_item_id does not match Work Item")
         if (kind == "verification"
                 and record.get("artifact_id") not in artifact_ids):
             errors.append("Verification artifact_id does not resolve")
+        if kind == "verification":
+            ids = record.get("criterion_ids")
+            if isinstance(ids, list):
+                unknown = set(ids) - criteria
+                if unknown:
+                    errors.append(
+                        "Verification criterion_ids do not resolve")
+        if kind == "finding":
+            ids = record.get("criterion_ids")
+            if isinstance(ids, list):
+                unknown = set(ids) - criteria
+                if unknown:
+                    errors.append("Finding criterion_ids do not resolve")
+        if kind == "approval":
+            if record.get("work_item_id") != work_item_id:
+                errors.append("Approval work_item_id does not match Work Item")
+            key = (record.get("artifact_id"), record.get("artifact_version"))
+            if key not in {
+                    (artifact.get("id"), artifact.get("version"))
+                    for artifact in artifacts}:
+                errors.append("Approval artifact version does not resolve")
+    seen = {}
+    for record in records:
+        if record.get("kind") == "artifact":
+            continue
+        record_id = record.get("id")
+        if record_id in seen:
+            errors.append("cross-record ID conflict {}".format(record_id))
+        else:
+            seen[record_id] = record.get("kind")
     return errors
 
 
@@ -1606,12 +1765,34 @@ def derive_runtime_state(records, digest):
         if record.get("status") == "open"
         and record.get("severity") in {"high", "blocking"}
     ]
-    latest_artifact = None
-    if artifacts:
-        latest_artifact = sorted(
-            artifacts, key=lambda record: record.get("version", ""))[-1]
-    if terminal:
-        decision = terminal[-1]
+    latest_artifact = final_artifact_record(records)
+    final_verifications = [
+        record for record in verifications
+        if latest_artifact is not None
+        and record.get("artifact_id") == latest_artifact.get("id")
+        and record.get("artifact_version") == latest_artifact.get("version")
+    ]
+    final_failed = any(
+        record.get("status") == "FAIL" for record in final_verifications)
+    final_pending = (
+        not final_verifications
+        or any(
+            record.get("status") in {"BLOCKED", "NOT_RUN"}
+            for record in final_verifications)
+        or not any(
+            record.get("role") in {None, "verifier"}
+            and record.get("status") == "PASS"
+            for record in final_verifications))
+    tier = work_item.get("control_tier")
+    reviewer_pass = role_pass_exists(
+        records, latest_artifact, "reviewer")
+    challenger_pass = role_pass_exists(
+        records, latest_artifact, "challenger")
+    human_approval = approval_exists(records, latest_artifact)
+    latest_terminal = terminal[-1] if terminal else None
+    if (latest_terminal is not None
+            and latest_terminal.get("decision") in {"STOP", "ESCALATE"}):
+        decision = latest_terminal
         state = decision.get("decision")
         next_action = "none"
     elif decisions and decisions[-1].get("decision") == "REPAIR":
@@ -1631,21 +1812,31 @@ def derive_runtime_state(records, digest):
         decision = None
         state = "PRODUCE"
         next_action = "produce the first artifact"
-    elif not verifications:
+    elif final_failed:
+        decision = None
+        state = "REPAIR"
+        next_action = "repair failed verification evidence"
+    elif final_pending:
         decision = None
         state = "VERIFY"
         next_action = "run required verification"
-    elif (work_item.get("control_tier") in {"L2", "L3"}
-          and not any(
-              verification.get("role") == "reviewer"
-              and verification.get("status") == "PASS"
-              and verification.get("artifact_id") == latest_artifact.get("id")
-              and verification.get("artifact_version")
-              == latest_artifact.get("version")
-              for verification in verifications)):
+    elif tier in {"L2", "L3"} and not reviewer_pass:
         decision = None
         state = "REVIEW"
         next_action = "collect independent review"
+    elif tier == "L3" and not challenger_pass:
+        decision = None
+        state = "CHALLENGE"
+        next_action = "collect independent challenge"
+    elif tier == "L3" and not human_approval:
+        decision = None
+        state = "RECONCILE"
+        next_action = "obtain exact-version human approval"
+    elif (latest_terminal is not None
+          and latest_terminal.get("decision") == "ACCEPT"):
+        decision = latest_terminal
+        state = "ACCEPT"
+        next_action = "none"
     else:
         decision = None
         state = "DECIDE"
@@ -1662,7 +1853,8 @@ def derive_runtime_state(records, digest):
         "state": state,
         "next_action": next_action,
         "artifact_versions": sorted(
-            record.get("version") for record in artifacts),
+            (record.get("version") for record in artifacts),
+            key=version_key),
         "open_findings": open_findings,
         "last_decision": (
             decision.get("id") if isinstance(decision, dict) else None),
@@ -1775,10 +1967,7 @@ def runtime_checkpoint(records_dir, store):
 
 def runtime_status(store, records_dir=None):
     checkpoints, skipped = valid_checkpoints(store)
-    if not checkpoints:
-        print("ERROR: no valid runtime checkpoint found", file=sys.stderr)
-        return 1
-    checkpoint = checkpoints[0]
+    checkpoint = checkpoints[0] if checkpoints else None
     if records_dir:
         try:
             _, records = load_runtime_records(records_dir)
@@ -1797,6 +1986,11 @@ def runtime_status(store, records_dir=None):
                 return 1
             checkpoint = derive_runtime_state(records, digest)
             checkpoint["source"] = "canonical_records_recovery"
+        else:
+            checkpoint = matching
+    elif checkpoint is None:
+        print("ERROR: no valid runtime checkpoint found", file=sys.stderr)
+        return 1
     result = dict(checkpoint, skipped_invalid=skipped)
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0
@@ -1870,6 +2064,29 @@ def approve_records(records_dir, artifact_path, approver, statement,
     if artifact.get("kind") != "artifact":
         print("ERROR: approval target must be an Artifact", file=sys.stderr)
         return 2
+    work_item = next(
+        record for record in records if record.get("kind") == "work_item")
+    final_artifact = final_artifact_record(records)
+    if (work_item.get("control_tier") != "L3"
+            or final_artifact is None
+            or artifact.get("id") != final_artifact.get("id")
+            or artifact.get("version") != final_artifact.get("version")):
+        print(
+            "ERROR: approval target must be the final L3 Artifact",
+            file=sys.stderr)
+        return 1
+    missing = [
+        role for role, ready in (
+            ("reviewer", role_pass_exists(records, artifact, "reviewer")),
+            ("challenger", role_pass_exists(records, artifact, "challenger")),
+        ) if not ready
+    ]
+    if missing:
+        print(
+            "ERROR: approval requires final-version PASS evidence for {}".format(
+                ", ".join(missing)),
+            file=sys.stderr)
+        return 1
     expected = "APPROVE {}@{}".format(
         artifact.get("id"), artifact.get("version"))
     if confirmation != expected:
@@ -1883,8 +2100,6 @@ def approve_records(records_dir, artifact_path, approver, statement,
     if not isinstance(statement, str) or not statement.strip():
         print("ERROR: --statement must be non-blank", file=sys.stderr)
         return 2
-    work_item = next(
-        record for record in records if record.get("kind") == "work_item")
     approval = {
         "schema_version": 3,
         "id": "AP-{}-{}".format(
@@ -1934,7 +2149,7 @@ def load_host_metrics(path):
     for key, item in value.items():
         if (isinstance(item, bool)
                 or not isinstance(item, (int, float))
-                or item < 0):
+                or not math.isfinite(item) or item < 0):
             raise ValueError(
                 "host metric {} must be a non-negative number".format(key))
     return value
@@ -2125,6 +2340,7 @@ def registry_update(store, records_dir, label=None, commit=None):
     digest = records_sha256(records)
     runtime = derive_runtime_state(records, digest)
     entry = {
+        "schema_version": 1,
         "work_item_id": runtime["work_item_id"],
         "records_digest": digest,
         "artifact_versions": runtime["artifact_versions"],
@@ -2135,49 +2351,48 @@ def registry_update(store, records_dir, label=None, commit=None):
         "commit": commit or "",
         "registered_at": datetime.datetime.now().astimezone().isoformat(),
     }
-    path = Path(store).resolve() / "registry.json"
-    if path.exists():
-        try:
-            registry = load_json(path)
-        except ValueError as exc:
-            print("ERROR: {}".format(exc), file=sys.stderr)
-            return 1
-        runs = registry.get("runs")
-        if not isinstance(runs, list):
-            print("ERROR: registry runs must be an array", file=sys.stderr)
-            return 1
-    else:
-        registry = {
-            "schema_version": 1,
-            "runs": [],
-        }
-        runs = registry["runs"]
-    key = (entry["work_item_id"], digest)
-    runs[:] = [
-        run for run in runs
-        if (run.get("work_item_id"), run.get("records_digest")) != key
-    ]
-    runs.append(entry)
-    registry["updated_at"] = datetime.datetime.now().astimezone().isoformat()
-    write_json_file(path, registry)
+    key = "{}\0{}".format(entry["work_item_id"], digest).encode("utf-8")
+    filename = "{}.json".format(hashlib.sha256(key).hexdigest())
+    path = Path(store).resolve() / "registry" / "runs" / filename
+    write_json_file(path, entry)
     print(json.dumps(entry, indent=2, ensure_ascii=False))
     return 0
 
 
 def registry_list(store):
-    path = Path(store).resolve() / "registry.json"
-    if not path.exists():
-        print("ERROR: registry not found: {}".format(path), file=sys.stderr)
-        return 1
-    try:
-        registry = load_json(path)
-    except ValueError as exc:
-        print("ERROR: {}".format(exc), file=sys.stderr)
-        return 1
-    if registry.get("schema_version") != 1 or not isinstance(
-            registry.get("runs"), list):
-        print("ERROR: registry format is invalid", file=sys.stderr)
-        return 1
+    root = Path(store).resolve()
+    runs = []
+    for path in sorted((root / "registry" / "runs").glob("*.json")):
+        try:
+            entry = load_json(path)
+        except ValueError as exc:
+            print("ERROR: {}".format(exc), file=sys.stderr)
+            return 1
+        if entry.get("schema_version") != 1:
+            print("ERROR: registry entry format is invalid", file=sys.stderr)
+            return 1
+        runs.append(entry)
+    legacy = root / "registry.json"
+    if legacy.exists():
+        try:
+            old = load_json(legacy)
+        except ValueError as exc:
+            print("ERROR: {}".format(exc), file=sys.stderr)
+            return 1
+        if isinstance(old.get("runs"), list):
+            runs.extend(old["runs"])
+    unique = {
+        (entry.get("work_item_id"), entry.get("records_digest")): entry
+        for entry in runs
+    }
+    registry = {
+        "schema_version": 1,
+        "runs": sorted(
+            unique.values(),
+            key=lambda entry: (
+                entry.get("work_item_id", ""),
+                entry.get("registered_at", ""))),
+    }
     print(json.dumps(registry, indent=2, ensure_ascii=False))
     return 0
 

@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
 import shutil
+import contextlib
+import io
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import loop_engineering.cli as cli_module
 
@@ -240,6 +243,81 @@ def l3_records():
     return records
 
 
+def legacy_v1_records():
+    return {
+        "work-item.json": {
+            "schema_version": 1,
+            "id": "WI-V1",
+            "kind": "work_item",
+            "goal": "migrate v1",
+            "pack_id": "software-development",
+            "constraints": [],
+            "priority": "medium",
+            "risk_level": "medium",
+            "acceptance_criteria": ["works", "reviewed"],
+            "open_questions": [],
+        },
+        "artifact.json": {
+            "schema_version": 1,
+            "id": "A-V1",
+            "kind": "artifact",
+            "artifact_type": "test",
+            "version": "1",
+            "content": "candidate",
+            "source": "legacy-artifact",
+            "work_item_id": "WI-V1",
+        },
+        "verification.json": {
+            "schema_version": 1,
+            "id": "V-1",
+            "kind": "verification",
+            "artifact_id": "A-V1",
+            "artifact_version": "1",
+            "check": "tests",
+            "method": "run",
+            "status": "PASS",
+            "evidence": ["executed"],
+        },
+        "verification-review.json": {
+            "schema_version": 1,
+            "id": "V-REVIEW",
+            "kind": "verification",
+            "artifact_id": "A-V1",
+            "artifact_version": "1",
+            "check": "review",
+            "method": "inspect",
+            "status": "PASS",
+            "evidence": ["reviewed"],
+        },
+        "decision.json": {
+            "schema_version": 1,
+            "id": "D-1",
+            "kind": "decision",
+            "work_item_id": "WI-V1",
+            "artifact_versions": ["1"],
+            "decision": "ACCEPT",
+            "rationale": "verified",
+            "evidence_refs": ["legacy evidence"],
+            "unresolved_disagreements": [],
+            "approver": "controller",
+            "criteria_evidence": [
+                {
+                    "criterion": "works",
+                    "verification_ids": ["V-1"],
+                    "result": "PASS",
+                },
+                {
+                    "criterion": "reviewed",
+                    "verification_ids": ["V-1", "V-REVIEW"],
+                    "result": "PASS",
+                },
+            ],
+            "residual_risks": [],
+            "review_independence": "independent",
+        },
+    }
+
+
 def write_records(root, records):
     for path in root.rglob("*.json"):
         path.unlink()
@@ -286,6 +364,65 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
             self.assertEqual(list(root.glob("approval-*.json")), [])
 
+    def test_human_approval_requires_review_and_challenge_pass(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = l3_records()
+            records.pop("verification-review.json")
+            records.pop("verification-challenger.json")
+            records["decision.json"]["evidence_refs"] = ["V-1"]
+            write_records(root, records)
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "premature approval",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("reviewer, challenger", p.stderr)
+            self.assertEqual(list(root.glob("approval-*.json")), [])
+
+    def test_challenger_finding_cannot_replace_pass(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = l3_records()
+            write_records(root, records)
+            p = run_cli(
+                "approve", "--records", root,
+                "--artifact", root / "artifact-2.json",
+                "--approver", "human-reviewer",
+                "--statement", "approved",
+                "--confirm", "APPROVE A-1@2")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            approval = json.loads(p.stdout)
+            records = {
+                path.relative_to(root).as_posix(): json.loads(
+                    path.read_text(encoding="utf-8"))
+                for path in root.rglob("*.json")
+            }
+            records["decision.json"]["evidence_refs"].append(approval["id"])
+            records.pop("verification-challenger.json")
+            records["decision.json"]["evidence_refs"].remove("V-CHALLENGE")
+            records["finding-challenger.json"] = {
+                "schema_version": 3,
+                "id": "F-CHALLENGE",
+                "kind": "finding",
+                "source_role": "challenger",
+                "severity": "low",
+                "target": "challenge",
+                "claim": "challenge is still open",
+                "evidence": ["not closed"],
+                "impact": "challenge is not complete",
+                "required_action": "complete challenge",
+                "criterion_ids": ["AC-1"],
+                "status": "open",
+            }
+            records["decision.json"]["evidence_refs"].append("F-CHALLENGE")
+            write_records(root, records)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("PASS Challenger evidence", p.stderr)
+
     def test_migrate_records_dry_run_preserves_legacy_files(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -294,7 +431,10 @@ class CliTests(unittest.TestCase):
                 path.name: path.read_bytes()
                 for path in root.glob("*.json")
             }
-            p = run_cli("migrate-records", "--dir", root)
+            p = run_cli(
+                "migrate-records", "--dir", root,
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             self.assertIn('"mode": "dry-run"', p.stdout)
             after = {
@@ -309,6 +449,7 @@ class CliTests(unittest.TestCase):
             write_records(root, legacy_v2_records())
             p = run_cli(
                 "migrate-records", "--dir", root, "--write",
+                "--verification-role", "V-1=verifier",
                 "--verification-role", "V-REVIEW=reviewer")
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             output = json.loads(p.stdout)
@@ -344,7 +485,10 @@ class CliTests(unittest.TestCase):
                 path.name for path in root.parent.iterdir()
                 if path.name.startswith(root.name + ".migration-backup-")
             }
-            p = run_cli("migrate-records", "--dir", root, "--write")
+            p = run_cli(
+                "migrate-records", "--dir", root, "--write",
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer")
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("migration validation", p.stderr)
             after = {
@@ -357,6 +501,65 @@ class CliTests(unittest.TestCase):
                 if path.name.startswith(root.name + ".migration-backup-")
             }
             self.assertEqual(before_backups, after_backups)
+
+    def test_migrate_records_converts_real_v1_shape(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, legacy_v1_records())
+            p = run_cli(
+                "migrate-records", "--dir", root, "--write",
+                "--verification-role", "V-1=verifier",
+                "--verification-role", "V-REVIEW=reviewer")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            output = json.loads(p.stdout)
+            self.addCleanup(
+                lambda: shutil.rmtree(
+                    output["backup"], ignore_errors=True))
+            work_item = json.loads(
+                (root / "work-item.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                list(work_item["acceptance_criteria"]), ["AC-1", "AC-2"])
+            decision = json.loads(
+                (root / "decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(set(decision["criteria_evidence"]), {
+                "AC-1", "AC-2"})
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+    def test_migrate_records_rolls_back_mid_commit_failure(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            write_records(root, legacy_v2_records())
+            before = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*.json")
+            }
+            original_replace = cli_module.os.replace
+            calls = {"count": 0}
+
+            def failing_replace(source, target):
+                calls["count"] += 1
+                if calls["count"] == 2:
+                    raise OSError("injected commit failure")
+                return original_replace(source, target)
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch.object(
+                    cli_module.os, "replace",
+                    side_effect=failing_replace):
+                with contextlib.redirect_stdout(stdout), \
+                        contextlib.redirect_stderr(stderr):
+                    code = cli_module.migrate_records(
+                        root, True,
+                        ["V-1=verifier", "V-REVIEW=reviewer"])
+            self.assertEqual(code, 1)
+            self.assertIn("migration commit failed", stderr.getvalue())
+            after = {
+                path.relative_to(root).as_posix(): path.read_bytes()
+                for path in root.rglob("*.json")
+            }
+            self.assertEqual(before, after)
 
     def test_runtime_checkpoint_resumes_from_canonical_records(self):
         with tempfile.TemporaryDirectory() as t:
@@ -418,6 +621,80 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
             self.assertIn("inside the records directory", p.stderr)
 
+    def test_runtime_uses_lineage_and_failed_verification(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            records = stage2_records()
+            records["artifact-1.json"]["version"] = "9"
+            records["artifact-2.json"]["version"] = "10"
+            records["verification.json"]["artifact_version"] = "10"
+            records["verification-review.json"]["artifact_version"] = "10"
+            records["verification-repair-evidence.json"][
+                "artifact_version"] = "9"
+            records["decision-repair.json"]["artifact_versions"] = ["9"]
+            records["decision.json"]["artifact_versions"] = ["10"]
+            records["iterations/iteration-01.json"].update(
+                input_versions=["9"], output_versions=["10"])
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            checkpoint = json.loads(p.stdout)
+            self.assertEqual(checkpoint["artifact_versions"], ["9", "10"])
+            self.assertEqual(checkpoint["state"], "ACCEPT")
+
+            records["verification.json"]["status"] = "FAIL"
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(json.loads(p.stdout)["state"], "REPAIR")
+
+    def test_runtime_requires_l3_challenge_and_approval(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store"
+            records_dir.mkdir()
+            records = l3_records()
+            records.pop("verification-challenger.json")
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(json.loads(p.stdout)["state"], "CHALLENGE")
+
+            records = l3_records()
+            write_records(records_dir, records)
+            p = run_cli(
+                "runtime-checkpoint", "--records", records_dir,
+                "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(json.loads(p.stdout)["state"], "RECONCILE")
+
+    def test_runtime_status_recovers_from_only_corrupt_checkpoints(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            store = base / "store" / "checkpoints"
+            records_dir.mkdir()
+            store.mkdir(parents=True)
+            write_records(records_dir, stage2_records())
+            (store / "only.json").write_text("{bad", encoding="utf-8")
+            p = run_cli(
+                "runtime-status", "--store", store.parent,
+                "--records", records_dir)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            status = json.loads(p.stdout)
+            self.assertEqual(status["state"], "ACCEPT")
+            self.assertEqual(status["source"], "canonical_records_recovery")
+
     def test_metrics_and_improvement_candidates(self):
         with tempfile.TemporaryDirectory() as t:
             base = Path(t)
@@ -472,7 +749,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(metrics["host_metrics"]["total_tokens"], 1400)
             self.assertEqual(
                 json.loads(output.read_text(encoding="utf-8"))["state"],
-                "ACCEPT")
+                "VERIFY")
 
             p = run_cli("improvements", "--dir", records_dir)
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
@@ -503,6 +780,72 @@ class CliTests(unittest.TestCase):
             self.assertEqual(
                 registry["runs"][0]["artifact_versions"], ["1", "2"])
             self.assertEqual(registry["runs"][0]["state"], "ACCEPT")
+            self.assertEqual(
+                len(list((store / "registry" / "runs").glob("*.json"))), 1)
+
+    def test_metrics_reject_cross_work_approval_and_nonfinite_values(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            records_dir = base / "records"
+            records_dir.mkdir()
+            records = stage2_records()
+            records["approval-other.json"] = {
+                "schema_version": 3,
+                "id": "AP-OTHER",
+                "kind": "approval",
+                "work_item_id": "WI-OTHER",
+                "artifact_id": "A-1",
+                "artifact_version": "2",
+                "approver": "human",
+                "statement": "other run",
+                "approved_at": "2026-11-15T09:00:00+08:00",
+                "confirmation": "APPROVE A-1@2",
+            }
+            write_records(records_dir, records)
+            p = run_cli("metrics", "--dir", records_dir)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("Approval work_item_id", p.stderr)
+
+            records.pop("approval-other.json")
+            write_records(records_dir, records)
+            host = base / "host.json"
+            host.write_text('{"turns": NaN}', encoding="utf-8")
+            p = run_cli(
+                "metrics", "--dir", records_dir,
+                "--host-metrics", host)
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertIn("non-negative number", p.stderr)
+
+    def test_registry_concurrent_updates_preserve_both_runs(self):
+        with tempfile.TemporaryDirectory() as t:
+            base = Path(t)
+            store = base / "store"
+            record_dirs = []
+            for suffix in ("A", "B"):
+                records_dir = base / ("records-" + suffix)
+                records_dir.mkdir()
+                records = stage2_records()
+                work_item_id = "WI-" + suffix
+                records["work-item.json"]["id"] = work_item_id
+                for record in records.values():
+                    if record.get("work_item_id") == "WI-1":
+                        record["work_item_id"] = work_item_id
+                write_records(records_dir, records)
+                record_dirs.append(records_dir)
+            processes = [
+                subprocess.Popen([
+                    sys.executable, str(CLI), "registry-update",
+                    "--store", str(store), "--records", str(records_dir),
+                    "--label", records_dir.name,
+                ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                for records_dir in record_dirs
+            ]
+            outputs = [process.communicate(timeout=30) for process in processes]
+            for process, (stdout, stderr) in zip(processes, outputs):
+                self.assertEqual(process.returncode, 0, stdout + stderr)
+            p = run_cli("registry-list", "--store", store)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(len(json.loads(p.stdout)["runs"]), 2)
 
     def test_legacy_migration_manifest_metadata_is_enforced(self):
         records = [

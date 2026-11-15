@@ -35,8 +35,9 @@ The v3 schema family contains:
 - Iteration
 - Human Approval
 
-`migrate-records` defaults to dry-run. `--write` validates the complete output,
-creates a sibling backup, and only then replaces records atomically.
+`migrate-records` defaults to dry-run and requires explicit Verification role
+mapping. `--write` validates a complete staged copy, retains the original as a
+sibling backup, and swaps directories only after validation.
 
 ## Runtime and control plane
 
@@ -56,7 +57,8 @@ creates a sibling backup, and only then replaces records atomically.
 - `metrics` reports workflow metrics and accepts optional host metrics for
   turns, tool calls, tokens, elapsed time, and cost.
 - `registry-update` and `registry-list` persist Work Item and Artifact version
-  evidence by canonical record digest.
+  evidence by canonical record digest in per-run files, so concurrent updates
+  do not overwrite one another.
 - `improvements` generates deterministic candidates from recurring findings,
   failed or blocked checks, repeated repairs, and unresolved medium risks.
 
