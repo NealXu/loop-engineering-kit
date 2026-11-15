@@ -1741,6 +1741,57 @@ class CliTests(unittest.TestCase):
             self.assertIn("execution", p.stderr)
             self.assertEqual(list(root.glob("approval-*.json")), [])
 
+    def test_pre_closure_check_bootstraps_record_closure_evidence(self):
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            records = stage2_records()
+            records["finding-closure.json"] = {
+                "schema_version": 3,
+                "id": "F-CLOSURE",
+                "kind": "finding",
+                "source_role": "reviewer",
+                "severity": "high",
+                "target": "records",
+                "claim": "records need closure",
+                "evidence": ["not yet closed"],
+                "impact": "audit gap",
+                "required_action": "run record closure",
+                "criterion_ids": ["AC-1"],
+                "status": "resolved",
+                "prevention": {
+                    "kind": "structure",
+                    "action": "run closure gate",
+                    "evidence": ["test"],
+                    "regression_verification_ids": ["V-CLOSURE"],
+                },
+            }
+            records["verification-closure.json"] = {
+                "schema_version": 3,
+                "id": "V-CLOSURE",
+                "kind": "verification",
+                "artifact_id": "A-1",
+                "artifact_version": "2",
+                "artifact_content_hash": "",
+                "evidence_scope": "record_closure",
+                "finding_id": "F-CLOSURE",
+                "criterion_ids": ["AC-1"],
+                "role": "verifier",
+                "check": "record closure",
+                "method": "check-records --pre-closure",
+                "status": "NOT_RUN",
+                "evidence": ["bootstrap phase"],
+                "limitations": [],
+                "execution": execution("check-records --pre-closure"),
+            }
+            rebind_record_hashes(records)
+            write_records(root, records)
+            p = run_cli(
+                "check-records", "--dir", root, "--pre-closure")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            p = run_cli("check-records", "--dir", root)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("not PASS", p.stderr)
+
     def test_check_records_verifies_working_tree_source_files(self):
         with tempfile.TemporaryDirectory() as t:
             repo = Path(t) / "repo"

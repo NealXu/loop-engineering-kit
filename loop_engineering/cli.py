@@ -126,6 +126,7 @@ def reviewed_set_sha256(records, artifact):
         and record.get("artifact_id") == artifact.get("id")
         and record.get("artifact_version") == artifact.get("version")
         and record.get("status") == "PASS"
+        and record.get("evidence_scope") != "record_closure"
         and record.get("role") in {"verifier", "reviewer", "challenger"})
     return records_sha256(selected)
 
@@ -533,7 +534,8 @@ def finding_errors(value):
     return errors
 
 
-def verification_errors(finding, work_item, artifact, verifications):
+def verification_errors(
+        finding, work_item, artifact, verifications, pre_closure=False):
     errors = []
     prevention = finding.get("prevention")
     if not isinstance(prevention, dict):
@@ -675,7 +677,7 @@ def verification_errors(finding, work_item, artifact, verifications):
                     verification_id, _quoted_names(missing)))
         extra = sorted(
             set(verification) - required - {
-                "role", "host_context", "execution"})
+                "role", "host_context", "execution", "evidence_scope"})
         if extra:
             errors.append(
                 "Verification {} unknown fields: {}".format(
@@ -703,7 +705,11 @@ def verification_errors(finding, work_item, artifact, verifications):
                 errors.append(
                     "Verification {} {} must be non-blank".format(
                         verification_id, field))
-        if verification.get("status") != "PASS":
+        status_passes = (
+            verification.get("status") == "PASS"
+            or (pre_closure
+                and verification.get("evidence_scope") == "record_closure"))
+        if not status_passes:
             errors.append(
                 "regression Verification {} is not PASS".format(verification_id))
         evidence = verification.get("evidence")
@@ -981,7 +987,7 @@ def l3_host_provenance_errors(work_item, artifact, verifications):
     return errors
 
 
-def records_errors(records, repo_root=None):
+def records_errors(records, repo_root=None, pre_closure=False):
     errors = []
     groups = {}
     schema_valid = True
@@ -1253,7 +1259,7 @@ def records_errors(records, repo_root=None):
         if final_artifact is not None:
             errors.extend(verification_errors(
                 finding, work_item, final_artifact,
-                list(verifications.values())))
+                list(verifications.values()), pre_closure))
 
     decisions = groups.get("decision", [])
     if not decisions:
@@ -1499,7 +1505,12 @@ def records_errors(records, repo_root=None):
                             "Decision verification {} not found".format(
                                 json.dumps(verification_id, ensure_ascii=True)))
                         continue
-                    if verification.get("status") != "PASS":
+                    verifier_passes = (
+                        verification.get("status") == "PASS"
+                        or (pre_closure
+                            and verification.get("evidence_scope")
+                            == "record_closure"))
+                    if not verifier_passes:
                         errors.append(
                             "Decision verification {} is not PASS".format(
                                 json.dumps(verification_id, ensure_ascii=True)))
@@ -1524,7 +1535,7 @@ def records_errors(records, repo_root=None):
                             verification.get("role") is None
                             and verification_id in legacy_roleless))
                     if (has_verifier_role
-                            and verification.get("status") == "PASS"
+                            and verifier_passes
                             and final_artifact is not None
                             and verification.get("artifact_id")
                             == final_artifact.get("id")
@@ -1599,7 +1610,7 @@ def records_errors(records, repo_root=None):
     return errors
 
 
-def check_records(directory, repo=None):
+def check_records(directory, repo=None, pre_closure=False):
     root = Path(directory)
     if not root.is_dir():
         print("ERROR: Records directory not found: {}".format(root),
@@ -1613,7 +1624,7 @@ def check_records(directory, repo=None):
     except ValueError as exc:
         print("ERROR: {}".format(exc), file=sys.stderr)
         return 2
-    errors = records_errors(records, repo)
+    errors = records_errors(records, repo, pre_closure)
     if errors:
         blocked = any(error.startswith("BLOCKED:") for error in errors)
         print("[BLOCKED] records" if blocked else "[FAIL] records",
@@ -3543,6 +3554,7 @@ def main():
     cr = subs.add_parser("check-records")
     cr.add_argument("--dir", required=True)
     cr.add_argument("--repo", default=None)
+    cr.add_argument("--pre-closure", action="store_true")
     mr = subs.add_parser("migrate-records")
     mr.add_argument("--dir", required=True)
     mr.add_argument("--write", action="store_true")
@@ -3601,7 +3613,7 @@ def main():
         return check_finding(
             a.input, a.work_item, a.artifact, a.verifications_dir)
     if a.command == "check-records":
-        return check_records(a.dir, a.repo)
+        return check_records(a.dir, a.repo, a.pre_closure)
     if a.command == "migrate-records":
         return migrate_records(
             a.dir, a.write, a.verification_role, a.record_criteria)

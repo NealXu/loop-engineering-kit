@@ -54,6 +54,9 @@
       "minLength": 1,
       "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
     },
+    "evidence_scope": {
+      "enum": ["delivery", "record_closure"]
+    },
     "host_context": {
       "type": "object",
       "additionalProperties": false,

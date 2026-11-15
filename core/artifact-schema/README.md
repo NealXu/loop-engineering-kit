@@ -69,6 +69,12 @@ and Challenger Verification. The final ACCEPT Decision repeats that digest.
 Changing a reviewed criterion, Finding, or Verification after approval
 invalidates both records.
 
+Evidence that can only exist after the complete record set is valid uses
+`evidence_scope: record_closure`. Such Verification records are excluded from
+`reviewed_set_digest` to avoid a self-referential fixed point. The first pass
+uses `check-records --pre-closure`; after that succeeds, closure Verification
+records are marked PASS and the same command is rerun without the flag.
+
 Verification records include a `limitations` array, which may be empty when
 there are no material limitations. A Verification used as regression evidence
 for a Finding includes `finding_id`; `check-finding` requires it to equal the
