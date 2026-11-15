@@ -91,7 +91,8 @@ def legacy_roleless_ids(records, work_item_id):
         manifest = load_json(MIGRATION_MANIFEST)
     except ValueError:
         return set(), "migration manifest unavailable"
-    if manifest.get("schema_version") != 1:
+    if type(manifest.get("schema_version")) is not int or (
+            manifest.get("schema_version") != 1):
         return set(), "migration manifest schema_version must be 1"
     if manifest.get("digest_algorithm") != (
             "SHA-256 over sorted compact JSON records joined by LF"):
@@ -99,16 +100,23 @@ def legacy_roleless_ids(records, work_item_id):
     migrations = manifest.get("migrations")
     if not isinstance(migrations, list):
         return set(), "migration manifest migrations must be an array"
+    seen = set()
+    matched = None
     for migration in migrations:
         if not isinstance(migration, dict):
             return set(), "migration manifest entries must be objects"
-        if migration.get("work_item_id") != work_item_id:
-            continue
-        if migration.get("from_schema_version") != 2 or (
-                migration.get("to_schema_version") != 3):
+        migration_work_item = migration.get("work_item_id")
+        if (not isinstance(migration_work_item, str)
+                or not STABLE_ID.fullmatch(migration_work_item)):
+            return set(), "migration manifest work_item_id is invalid"
+        from_version = migration.get("from_schema_version")
+        to_version = migration.get("to_schema_version")
+        if (type(from_version) is not int or from_version != 2
+                or type(to_version) is not int or to_version != 3):
             return set(), "migration manifest versions must be 2 to 3"
-        if migration.get("record_count") != len(records):
-            return set(), "migration manifest record_count does not match"
+        record_count = migration.get("record_count")
+        if type(record_count) is not int or record_count < 0:
+            return set(), "migration manifest record_count is invalid"
         if not isinstance(
                 migration.get("pre_migration_snapshot_retained"), bool):
             return set(), "migration manifest snapshot flag is invalid"
@@ -131,26 +139,39 @@ def legacy_roleless_ids(records, work_item_id):
                     for item in ids)
                 or len(ids) != len(set(ids))):
             return set(), "migration manifest roleless ids are invalid"
-        if migration.get("records_sha256") != records_sha256(records):
-            return set(), "legacy migration record digest mismatch"
-        actual_roles = {
-            record.get("id"): record.get("role")
-            for record in records
-            if record.get("kind") == "verification"
-            and record.get("role") is not None
-        }
-        if roles != actual_roles:
-            return set(), "migration manifest role disclosure does not match"
-        actual_roleless = {
-            record.get("id")
-            for record in records
-            if record.get("kind") == "verification"
-            and record.get("role") is None
-        }
-        if set(ids) != actual_roleless:
-            return set(), "migration manifest roleless IDs do not match"
-        return set(ids), None
-    return set(), None
+        digest = migration.get("records_sha256")
+        if not isinstance(digest, str) or not re.fullmatch(
+                r"[0-9a-f]{64}", digest):
+            return set(), "migration manifest records_sha256 is invalid"
+        key = (migration_work_item, from_version, to_version)
+        if key in seen:
+            return set(), "migration manifest duplicate migration entry"
+        seen.add(key)
+        if migration_work_item == work_item_id:
+            matched = migration
+    if matched is None:
+        return set(), None
+    if matched["record_count"] != len(records):
+        return set(), "migration manifest record_count does not match"
+    if matched["records_sha256"] != records_sha256(records):
+        return set(), "legacy migration record digest mismatch"
+    actual_roles = {
+        record.get("id"): record.get("role")
+        for record in records
+        if record.get("kind") == "verification"
+        and record.get("role") is not None
+    }
+    if matched["role_fields_present_before_rewrite"] != actual_roles:
+        return set(), "migration manifest role disclosure does not match"
+    actual_roleless = {
+        record.get("id")
+        for record in records
+        if record.get("kind") == "verification"
+        and record.get("role") is None
+    }
+    if set(matched["roleless_verification_ids"]) != actual_roleless:
+        return set(), "migration manifest roleless IDs do not match"
+    return set(matched["roleless_verification_ids"]), None
 
 
 def schema_errors(value, schema, path="$"):

@@ -173,7 +173,7 @@
       "id": "V-REGRESSION",
       "criterion_ids": ["AC-SCHEMA", "AC-MIGRATION", "AC-REVIEW", "AC-REGRESSION"],
       "status": "PASS",
-      "evidence": "56/56 tests, configured verify, 9 Finding gates, compileall, and git diff --check passed locally."
+      "evidence": "57/57 tests, configured verify, 9 Finding gates, compileall, and git diff --check passed locally."
     },
     {
       "id": "V-INSTALL",
@@ -239,13 +239,13 @@
       "id": "V-MIGRATION-MANIFEST",
       "criterion_ids": ["AC-MIGRATION"],
       "status": "PASS",
-      "evidence": "The history discloses two pre-existing role labels and lists all 12 roleless Verification IDs in the Work Item allowlist."
+      "evidence": "The history discloses two pre-existing role labels and lists all 12 roleless Verification IDs in the frozen repository migration manifest."
     },
     {
       "id": "V-LEGACY-ROLE-BOUNDARY",
       "criterion_ids": ["AC-REGRESSION"],
       "status": "PASS",
-      "evidence": "New roleless Verifications are rejected unless allowlisted; producer roles never count; the old session still passes."
+      "evidence": "New roleless Verifications are rejected unless the frozen digest applies; producer roles never count; the old session still passes."
     },
     {
       "id": "V-FROZEN-MIGRATION",

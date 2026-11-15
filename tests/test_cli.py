@@ -217,6 +217,38 @@ class CliTests(unittest.TestCase):
                     "roleless IDs",
                     cli_module.legacy_roleless_ids(
                         records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, schema_version=True)
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "schema_version",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, record_count=3.0)
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "record_count",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[
+                    dict(migration, from_schema_version=2.0)
+                ])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "2 to 3",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
+
+                invalid = dict(manifest, migrations=[migration, migration])
+                path.write_text(json.dumps(invalid), encoding="utf-8")
+                self.assertIn(
+                    "duplicate",
+                    cli_module.legacy_roleless_ids(
+                        records, "WI-LEGACY")[1])
             finally:
                 cli_module.MIGRATION_MANIFEST = original
 
