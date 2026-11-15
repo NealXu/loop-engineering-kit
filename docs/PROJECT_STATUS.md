@@ -5,31 +5,31 @@ Updated: 2026-11-15
 This is the authoritative project-level status ledger. Historical run details
 remain in `evals/`; canonical role records remain run-scoped JSON evidence.
 
-## Completed capabilities
+## Implemented capabilities
 
 | Capability | Status | Entry point / evidence |
 |---|---|---|
-| L0-L3 routing, repair budgets, role selection | Complete | `loop_engineering/cli.py route` |
-| Seven v3 canonical record schemas | Complete | `core/artifact-schema/*.schema.json` |
-| Cross-record, ancestry, role, and approval validation | Complete | `check-records`, `check-finding` |
-| Content-addressed Artifact identity across evidence and approval | Complete | `content_hash`, `check-records` |
-| Working-tree revision and per-file digest verification | Complete | `source_revision`, `file_hashes`, `check-records --repo` |
-| Reviewed-set digest for Approval and ACCEPT | Complete | `reviewed_set_digest` |
-| Safe v1/v2 to v3 migration | Complete | `migrate-records` |
-| Deterministic pre-identity v3 record upgrade | Complete | `migrate-records` |
-| Explicit execution evidence during migration | Complete | `migrate-records --execution-evidence` |
-| Persistent runtime checkpoints | Complete | `runtime-checkpoint` |
-| Automatic resume and record-based recovery | Complete | `runtime-status`, `runtime-resume` |
-| Structured human approval for L3 | Complete | `approve`, `approval.schema.json` |
-| L3 reviewer/challenger host provenance | Complete | `producer_context`, `host_context` |
-| Exactly-one terminal Decision across runtime/control plane | Complete | shared decision-history validation |
-| Deterministic verification reports | Complete | `doctor`, `verify` |
-| Process metrics and host metrics ingestion | Complete | `metrics` |
-| Persistent version registry | Complete | `registry-update`, `registry-list` |
-| Registry provenance conflict rejection | Complete | same-digest metadata validation |
-| Automatic improvement candidates | Complete | `improvements` |
-| Codex and Claude Code adapters | Complete | `.codex/`, `.claude/`, `adapters/` |
-| Windows, Ubuntu, and Rocky Linux 8 CI | Complete | `.github/workflows/tests.yml` |
+| L0-L3 routing, repair budgets, role selection | Implemented | `loop_engineering/cli.py route` |
+| Seven v3 canonical record schemas | Implemented | `core/artifact-schema/*.schema.json` |
+| Cross-record, ancestry, role, and approval validation | Implemented | `check-records`, `check-finding` |
+| Content-addressed Artifact identity across evidence and approval | Implemented | `content_hash`, `check-records` |
+| Working-tree revision and per-file digest verification | Implemented | `source_revision`, `file_hashes`, `check-records --repo` |
+| Reviewed-set digest for Approval and ACCEPT | Implemented | `reviewed_set_digest` |
+| Safe v1/v2 to v3 migration | Implemented | `migrate-records` |
+| Deterministic pre-identity v3 record upgrade | Implemented | `migrate-records` |
+| Explicit execution evidence during migration | Implemented | `migrate-records --execution-evidence` |
+| Persistent runtime checkpoints | Implemented | `runtime-checkpoint` |
+| Automatic resume and record-based recovery | Implemented | `runtime-status`, `runtime-resume` |
+| Structured human approval for L3 | Implemented | `approve`, `approval.schema.json` |
+| L3 reviewer/challenger host provenance | Implemented | `producer_context`, `host_context` |
+| Exactly-one terminal Decision across runtime/control plane | Implemented | shared decision-history validation |
+| Deterministic verification reports | Implemented | `doctor`, `verify` |
+| Process metrics and host metrics ingestion | Implemented | `metrics` |
+| Persistent version registry | Implemented | `registry-update`, `registry-list` |
+| Registry provenance conflict rejection | Implemented | same-digest metadata validation |
+| Automatic improvement candidates | Implemented | `improvements` |
+| Codex and Claude Code adapters | Implemented | `.codex/`, `.claude/`, `adapters/` |
+| Windows, Ubuntu, and Rocky Linux 8 CI | Implemented | `.github/workflows/tests.yml` |
 
 ## Canonical records
 

@@ -267,12 +267,27 @@ def artifact_source_errors(artifact, repo_root):
             "working_tree_change Artifact requires --repo for file verification")
         return errors
     repo_root = Path(repo_root).resolve()
-    evidence_entries = [
-        item.rstrip("/") for item in
-        [artifact.get("evidence_path")] + artifact.get(
-            "evidence_files", [])
+    evidence_path = artifact.get("evidence_path")
+    evidence_path = (
+        evidence_path.replace("\\", "/").rstrip("/")
+        if isinstance(evidence_path, str) and evidence_path.strip() else ""
+    )
+    evidence_files = {
+        item.replace("\\", "/").rstrip("/")
+        for item in artifact.get("evidence_files", [])
         if isinstance(item, str) and item.strip()
-    ]
+    }
+
+    def is_evidence_path(path_text):
+        return (
+            path_text in evidence_files
+            or (
+                bool(evidence_path)
+                and path_text.startswith(evidence_path + "/")
+                and path_text.endswith(".json")
+            )
+        )
+
     try:
         changed = subprocess.run(
             ["git", "diff", "--name-only", "-z",
@@ -303,9 +318,7 @@ def artifact_source_errors(artifact, repo_root):
         for path_text in post_revision.stdout.split("\0"):
             if not path_text:
                 continue
-            if not any(
-                    path_text == entry or path_text.startswith(entry + "/")
-                    for entry in evidence_entries):
+            if not is_evidence_path(path_text):
                 errors.append(
                     "Artifact HEAD contains post-source change: {}".format(
                         path_text))
@@ -354,9 +367,7 @@ def artifact_source_errors(artifact, repo_root):
             if not item:
                 continue
             path_text = item[3:] if len(item) > 3 else ""
-            if any(
-                    path_text == entry or path_text.startswith(entry + "/")
-                    for entry in evidence_entries):
+            if is_evidence_path(path_text):
                 continue
             if path_text not in declared:
                 errors.append(

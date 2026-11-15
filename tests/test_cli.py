@@ -2139,6 +2139,43 @@ class CliTests(unittest.TestCase):
             (repo / "evals" / "rogue.py").unlink()
             (repo / "evals").rmdir()
 
+            for name, record in records.items():
+                if record.get("kind") == "artifact":
+                    record["evidence_path"] = "evals/final"
+                    record["evidence_files"] = ["evals/final/route.json"]
+            rebind_record_hashes(records)
+            write_records(records_dir, records)
+            (repo / "evals" / "final").mkdir(parents=True)
+            (repo / "evals" / "final" / "record.json").write_text(
+                "{}\n", encoding="utf-8")
+            (repo / "evals" / "final" / "route.json").write_text(
+                "{}\n", encoding="utf-8")
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+            rogue = repo / "evals" / "final" / "rogue.py"
+            rogue.write_text("UNREVIEWED = True\n", encoding="utf-8")
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("evals/final/rogue.py", p.stderr)
+            rogue.unlink()
+
+            rogue.write_text("UNREVIEWED = True\n", encoding="utf-8")
+            for argv in (
+                ("git", "add", "evals/final/rogue.py"),
+                ("git", "commit", "-m", "unreviewed evidence code"),
+            ):
+                p = subprocess.run(
+                    argv, cwd=repo, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("post-source change: evals/final/rogue.py", p.stderr)
+
             source.write_text("UNREVIEWED replacement\n", encoding="utf-8")
             p = run_cli(
                 "check-records", "--dir", records_dir, "--repo", repo)
