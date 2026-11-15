@@ -186,9 +186,19 @@ def execution_errors(verification):
     elif verification.get("status") == "FAIL" and exit_code == 0:
         errors.append("FAIL Verification execution exit_code must be non-zero")
     try:
-        datetime.datetime.fromisoformat(execution.get("executed_at", ""))
+        executed_at = datetime.datetime.fromisoformat(
+            execution.get("executed_at", ""))
     except (TypeError, ValueError):
         errors.append("Verification execution executed_at is invalid")
+    else:
+        if executed_at.tzinfo is None:
+            errors.append(
+                "Verification execution executed_at must include a timezone")
+        elif executed_at.astimezone(datetime.timezone.utc) > (
+                datetime.datetime.now(datetime.timezone.utc)
+                + datetime.timedelta(minutes=5)):
+            errors.append(
+                "Verification execution executed_at cannot be in the future")
     return errors
 
 
@@ -316,15 +326,20 @@ def artifact_source_errors(artifact, repo_root):
     if status.returncode != 0:
         errors.append("Unable to resolve Artifact working tree status")
     else:
-        evidence_prefix = artifact.get(
-            "evidence_path", "evals/2026-11-15-stage3-final")
+        evidence_entries = [
+            item.rstrip("/") for item in
+            [artifact.get("evidence_path")] + artifact.get(
+                "evidence_files", [])
+            if isinstance(item, str) and item.strip()
+        ]
         declared = set(files) | set(deleted_files)
         for item in status.stdout.split("\0"):
             if not item:
                 continue
             path_text = item[3:] if len(item) > 3 else ""
-            if (path_text.startswith(evidence_prefix)
-                    or path_text.startswith("evals/")):
+            if any(
+                    path_text == entry or path_text.startswith(entry + "/")
+                    for entry in evidence_entries):
                 continue
             if path_text not in declared:
                 errors.append(
@@ -711,7 +726,8 @@ def verification_errors(
     artifact_extra = sorted(
         set(artifact) - artifact_required - {
             "producer_context", "source_revision", "file_hashes",
-            "evidence_path", "base_revision", "deleted_files"})
+            "evidence_path", "base_revision", "deleted_files",
+            "evidence_files"})
     if artifact_extra:
         errors.append(
             "Artifact unknown fields: {}".format(_quoted_names(artifact_extra)))

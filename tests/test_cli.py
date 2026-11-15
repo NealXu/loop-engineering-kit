@@ -1928,6 +1928,19 @@ class CliTests(unittest.TestCase):
             self.assertIn("execution", p.stderr)
             self.assertEqual(list(root.glob("approval-*.json")), [])
 
+            for executed_at in (
+                    "2999-01-01T00:00:00+08:00",
+                    "2026-11-15T10:00:00",
+                    "2026-11-15"):
+                with self.subTest(executed_at=executed_at):
+                    records = stage2_records()
+                    records["verification.json"]["execution"][
+                        "executed_at"] = executed_at
+                    write_records(root, records)
+                    p = run_cli("check-records", "--dir", root)
+                    self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+                    self.assertIn("executed_at", p.stderr)
+
     def test_pre_closure_check_bootstraps_record_closure_evidence(self):
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
@@ -2095,6 +2108,16 @@ class CliTests(unittest.TestCase):
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("unlisted change", p.stderr)
             (repo / "helper.py").unlink()
+
+            (repo / "evals").mkdir()
+            (repo / "evals" / "rogue.py").write_text(
+                "UNREVIEWED = True\n", encoding="utf-8")
+            p = run_cli(
+                "check-records", "--dir", records_dir, "--repo", repo)
+            self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+            self.assertIn("evals/rogue.py", p.stderr)
+            (repo / "evals" / "rogue.py").unlink()
+            (repo / "evals").rmdir()
 
             source.write_text("UNREVIEWED replacement\n", encoding="utf-8")
             p = run_cli(

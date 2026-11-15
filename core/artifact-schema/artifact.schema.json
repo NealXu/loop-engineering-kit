@@ -85,6 +85,11 @@
       "minLength": 1,
       "pattern": "\\S"
     },
+    "evidence_files": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
+    },
     "work_item_id": {
       "type": "string",
       "minLength": 1,
