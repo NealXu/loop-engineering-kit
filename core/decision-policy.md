@@ -43,6 +43,10 @@ contract blocks acceptance.
 overall Decision: an open `high` or `blocking` Finding is valid for REPAIR or
 STOP and blocks only ACCEPT.
 
+L3 ACCEPT additionally requires final-version Reviewer and Challenger PASS
+evidence and a referenced Human Approval record created by the `approve`
+command. `BLOCKED` and `NOT_RUN` remain non-passing.
+
 A failure fingerprint combines the failed check, failure signature, and
 artifact versions. If the same fingerprint repeats with no artifact change,
 the loop has not made progress: `STOP`, or `ESCALATE` when new authority or a
@@ -59,6 +63,7 @@ An `ACCEPT` decision records:
 - unresolved low/medium findings;
 - whether review independence was available;
 - approver identity or `controller` when no human approval is required.
+- for L3, the referenced Human Approval id and matching Artifact version.
 
 ## Repair Budget
 

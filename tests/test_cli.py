@@ -2197,7 +2197,27 @@ class CliTests(unittest.TestCase):
     def test_release_identity_matches_breaking_schema(self):
         readme = (CLI.parents[1] / "README.md").read_text(encoding="utf-8")
         self.assertTrue(readme.startswith(
-            "# Universal Work Loop Engine Kit v0.5.0"))
+            "# Universal Work Loop Engine Kit v0.6.0"))
+
+    def test_status_ledger_and_runtime_commands_are_documented(self):
+        root = CLI.parents[1]
+        status = (root / "docs" / "PROJECT_STATUS.md").read_text(
+            encoding="utf-8")
+        for command in (
+                "migrate-records", "runtime-checkpoint", "runtime-resume",
+                "approve", "metrics", "registry-update", "improvements"):
+            self.assertIn(command, status)
+        chinese = (root / "README.md").read_text(encoding="utf-8")
+        english = (root / "README.en.md").read_text(encoding="utf-8")
+        for text in (chinese, english):
+            self.assertIn("v0.6.0", text)
+            self.assertIn("v3", text)
+            self.assertIn("approval.schema.json", text)
+        schema = (root / "core" / "artifact-schema" / "README.md").read_text(
+            encoding="utf-8")
+        self.assertIn("approval.schema.json", schema)
+        self.assertIn("migrate-records", schema)
+        self.assertIn("runtime-checkpoint", schema)
 
     def test_source_review_eval_is_traceable(self):
         path = CLI.parents[1] / "evals" / "2026-11-13-source-review-loop.md"
@@ -2358,7 +2378,8 @@ class CliTests(unittest.TestCase):
         for raw in texts:
             text = " ".join(raw.split())
             self.assertIn("Skip formal Work Item, Artifact, Finding, "
-                          "Verification, Decision, and Iteration records", text)
+                          "Verification, Decision, Iteration, and Human "
+                          "Approval records", text)
             self.assertIn("Keep canonical role records in-session unless the "
                           "project explicitly requests persistence", text)
             self.assertIn("The numbered Define through Finish steps apply "

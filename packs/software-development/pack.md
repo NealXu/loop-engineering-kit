@@ -27,7 +27,8 @@
   happy-path test alone is insufficient.
 - The selected control tier was followed: L0 is direct; L1 has verification;
   L2 has independent review; L3 has challenge and human approval before
-  irreversible actions.
+  irreversible actions. L3 approval is a canonical approval record for the
+  final Artifact version.
 - No open `blocking`/`high` findings remain.
 - Unrelated work is preserved and scope changes are disclosed.
 - Security, data-loss, accessibility, and migration risks are addressed when

@@ -10,9 +10,9 @@ agent environments execute the loop; they are not the loop itself.
 - A **workflow** defines role order, parallel work, repair paths, and stopping
   points.
 - A **workflow pack** binds the generic roles and artifacts to one domain.
-- In the target runtime, the **engine** applies the state machine and decision
-  policy so progress does not depend on model memory. Until that runtime exists,
-  the Controller records the same state and version identifiers manually.
+- The **runtime** persists the same state and version identifiers so progress
+  does not depend on model memory. `runtime-checkpoint`, `runtime-status`, and
+  `runtime-resume` implement checkpointing and automatic record-based recovery.
 - The **host adapter** maps roles to agents, skills, permissions, and commands.
 
 ## Lifecycle
@@ -85,6 +85,7 @@ apply:
 | Verification | artifact id/version, criterion_ids, check method, result, and evidence |
 | Decision | work_item_id, artifact_versions, criterion-to-verification mapping, outcome, evidence, disagreement, approver |
 | Iteration | work_item_id, cycle, input versions, changes, and result |
+| Human Approval | exact final Artifact version, named human approver, statement, timestamp, and confirmation token |
 
 The canonical field contract is in `core/artifact-schema/`. Human-readable
 reports may summarize records, but must not replace their evidence.
@@ -115,6 +116,17 @@ decision policy and must not accept based only on role persuasion.
 One model may perform multiple duties in low-risk work. High-risk work should
 use an independent session, a different model, or human approval. A combined
 role must be disclosed and cannot be described as independent.
+
+## Runtime And Approval
+
+Persistent checkpoints are stored outside the canonical records directory and
+bound to a digest of the record set. A stale or missing checkpoint is rebuilt
+from canonical records; corrupt checkpoints are skipped.
+
+L3 work uses the `approve` command after Reviewer and Challenger PASS evidence
+exists. The command requires the exact `APPROVE <artifact>@<version>`
+confirmation and writes a canonical Human Approval record. L3 ACCEPT must
+reference that record for the final Artifact version.
 
 ## Pack Contract
 

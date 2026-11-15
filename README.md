@@ -1,4 +1,4 @@
-# Universal Work Loop Engine Kit v0.5.0
+# Universal Work Loop Engine Kit v0.6.0
 
 [English](README.en.md) | 简体中文
 
@@ -20,24 +20,26 @@ Loop Engineering Kit 是给 AI 编程 Agent 用的轻量控制层。它按任务
   返修失控；本项目把这些控制点显式化。
 - **不是什么**：不是模型运行时，也不负责启动子 Agent；实际执行仍由 Codex、
   Claude Code 或你的编排器负责。
-- **阶段状态**：v0.4 已实现路由、验证证据、决策校验和安装适配；持久化
-  运行时、检查点/恢复、人工审批运行时、指标和自动改进仍未实现。
+- **阶段状态**：阶段 1-3 已完成；持久化运行时、检查点/恢复、结构化人工
+  审批、指标、版本注册和自动改进候选均已落地。完整台账见
+  [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)。
 
-## 当前实现（阶段 1）
+## 当前实现
 
 - `core/`：通用协议、状态机、决策策略，以及 Work Item、Artifact、
-  Finding、Verification、Decision、Iteration 六类 JSON Schema（v3，验收标准
-  以稳定 `criterion_id` 为键并与验证证据关联）。
+  Finding、Verification、Decision、Iteration、Human Approval
+  （`approval.schema.json`）七类 JSON Schema（v3，验收标准以稳定
+  `criterion_id` 为键并与验证证据关联）。
 - `roles/`：Producer、Verifier、Reviewer、Challenger、Arbiter 五类职责。
 - `workflows/`：迭代交付、对抗审查、受控持续改进。
 - `packs/`：软件开发和架构设计两个领域包；软件包包含可执行验证技能模板。
 - `.codex/`、`.claude/`、`adapters/`：Codex 与 Claude Code 的角色映射。
-- `loop_engineering/cli.py`：无第三方依赖的任务分级、环境检查和确定性
-  验证报告工具；`check-finding` 校验 prevention 门禁，`check-records`
-  解析跨记录引用和 Artifact/Iteration ancestry。
+- `loop_engineering/cli.py`：无第三方依赖的控制面；支持任务分级、环境
+  检查、确定性验证、Schema 迁移、持久化检查点/恢复、人工审批、指标、
+  版本注册和自动改进候选。
 
-阶段 2 的确定性记录解析已实现；持久化存储、自动恢复和人工审批运行时仍未
-实现。阶段 3（指标、版本注册、自动改进候选）也尚未实现。
+阶段 2 的持久化运行时、自动恢复和人工审批运行时已实现。阶段 3 的指标、
+版本注册和自动改进候选也已实现；候选只能由人类审核后推广。
 
 Schema v3 是 breaking change。v1/v2 记录需先迁移；v3 新增 control tier、
 route flags、Decision cycle、稳定 evidence refs 和 Verification role。
@@ -113,7 +115,32 @@ bash scripts/install.sh --target both --scope user --upgrade
    长期保留证据或 L3 时才写入项目目录。
 8. 冻结角色记录后运行 `python3 loop_engineering/cli.py check-records --dir
    <记录目录>`（Windows 用 `py -3`），校验 Work Item、Artifact、Finding、
-   Verification、Decision 和 Iteration 的引用与版本 ancestry。
+   Verification、Decision、Iteration 和 Human Approval 的引用与版本
+   ancestry。
+
+运行控制面补充命令：
+
+```powershell
+# v1/v2 -> v3：默认 dry-run，--write 才修改并自动备份
+py -3 loop_engineering\cli.py migrate-records --dir <记录目录>
+py -3 loop_engineering\cli.py migrate-records --dir <记录目录> --write
+
+# 持久化、恢复与状态查询
+py -3 loop_engineering\cli.py runtime-checkpoint --records <记录目录> --store <状态目录>
+py -3 loop_engineering\cli.py runtime-resume --store <状态目录> --records <记录目录>
+py -3 loop_engineering\cli.py runtime-status --store <状态目录> --records <记录目录>
+
+# L3 人工审批；确认字符串必须与 Artifact 精确匹配
+py -3 loop_engineering\cli.py approve --records <记录目录> `
+  --artifact <artifact.json> --approver <human> --statement "<说明>" `
+  --confirm "APPROVE <artifact-id>@<version>"
+
+# 阶段 3
+py -3 loop_engineering\cli.py metrics --dir <记录目录> --host-metrics <host-metrics.json>
+py -3 loop_engineering\cli.py registry-update --store <状态目录> --records <记录目录>
+py -3 loop_engineering\cli.py registry-list --store <状态目录>
+py -3 loop_engineering\cli.py improvements --dir <记录目录>
+```
 
 任务分级：
 
@@ -133,11 +160,12 @@ py -3 loop_engineering\cli.py route --risk low --files 1 --irreversible
 py -3 loop_engineering\cli.py route --risk medium --files 2 --max-repairs 20
 ```
 
-`route` 只输出控制策略，不修改项目。`record_depth` 管的是六类 canonical
-角色记录：Work Item、Artifact、Finding、Verification、Decision、Iteration。
+`route` 只输出控制策略，不修改项目。`record_depth` 管的是七类 canonical
+记录：Work Item、Artifact、Finding、Verification、Decision、Iteration、
+Human Approval。
 L0 不要求多角色记录；L1 只保留三行目标/验收/预算简报；L2 使用完整角色循环
 但只保留会话内记录；只有 L3 或项目明确要求时才创建 canonical 记录文件。
-显式运行的 `verify` 所写 JSON/Markdown 是证据报告，不属于上述六类记录；
+显式运行的 `verify` 所写 JSON/Markdown 是证据报告，不属于上述七类记录；
 因此应通过 `--report-dir` 明确选择会话目录还是项目目录。
 compact 路由不会因项目要求持久化而升级；如必须保留 canonical 记录，应先
 重新路由到 full 或 audited。
@@ -170,6 +198,8 @@ Python 解释器。只配置你信任的本地命令。
 每条验收标准还需最终 Artifact 上 role 为 `verifier` 的 PASS 证据；
 仅仓库内冻结迁移清单与整组记录摘要同时匹配的历史记录可省略 role；
 Producer 自验不能充当 Verifier。
+L3 还必须引用最终版本的 Challenger PASS 证据和 `approve` 生成的 Human
+Approval 记录。
 默认最多返修 3 轮，达到上限后只能停止或升级。
 如果同一失败指纹重复出现且 artifact 版本没有变化，立即停止或升级。
 
@@ -184,7 +214,7 @@ Rocky Linux 8 容器使用 Python 3.8 覆盖 CentOS 8 兼容路径。远端工�
 
 ## 设计依据
 
-v0.4 的任务分级、独立审查、上下文检查点和停机规则参考了以下工程结论：
+v0.6 的任务分级、独立审查、持久化检查点、人工审批和停机规则参考了以下工程结论：
 
 - Agentless 表明简单、可解释的定位—修复—验证路径必须保留为基线。
 - SWE-agent 表明工具与文件接口本身会改变 Agent 行为。

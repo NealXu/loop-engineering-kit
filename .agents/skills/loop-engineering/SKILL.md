@@ -28,13 +28,14 @@ For an installed copy, verify it from its own root with
    - `compact`: read project instructions and only the selected pack. State the
      goal, acceptance criteria, and repair budget in three lines, produce,
      verify, and decide. Skip formal Work Item, Artifact, Finding, Verification,
-     Decision, and Iteration records; keep the brief and check outcomes
-     in-session. Do not narrate roles unless the project explicitly requires it.
+     Decision, Iteration, and Human Approval records; keep the brief and check
+     outcomes in-session. Do not narrate roles unless the project explicitly
+     requires it.
    - `full`: continue through the complete loop below. Keep canonical role
      records in-session unless the project explicitly requests persistence.
    - `audited`: continue through the complete loop and persist the required
      machine-readable records.
-   The six JSON objects in `core/artifact-schema/` are canonical role records;
+   The seven JSON objects in `core/artifact-schema/` are canonical records;
    verify JSON/Markdown reports are evidence, not canonical records.
    The numbered Define through Finish steps apply only to full and audited
    routes. A compact route keeps Work Item, Artifact, Verification, and
@@ -105,3 +106,11 @@ evidence reports requested by `--report-dir`; omitting that option keeps its
 existing project-default behavior. Never fabricate results or treat
 BLOCKED/NOT_RUN as PASS. Ask before destructive, irreversible,
 production-impacting, or credential-related actions.
+
+Use `migrate-records` for v1/v2 to v3 migration; it defaults to dry-run and
+backs up records before `--write`. Use `runtime-checkpoint`, `runtime-status`,
+and `runtime-resume` for persistent checkpoints and recovery. For L3, create a
+Human Approval with `approve` and reference its id from the final Decision.
+Stage 3 operations are `metrics`, `registry-update`/`registry-list`, and
+`improvements`; generated candidates require review and are never promoted
+automatically.

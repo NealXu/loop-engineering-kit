@@ -13,6 +13,8 @@ The Arbiter applies the decision policy and owns the final gate for a run.
   Verification directory for every closed high, blocking, or recurring
   Finding; reject missing prevention or unresolved/non-PASS regression
   Verification IDs.
+- For L3, require final-version Reviewer and Challenger PASS evidence and a
+  referenced Human Approval record for the same Artifact version.
 - Record one outcome: `ACCEPT`, `REPAIR`, `ESCALATE`, or `STOP`.
 - For artifact repair, record `repair_kind: artifact` and
   `next_state: PRODUCE`.

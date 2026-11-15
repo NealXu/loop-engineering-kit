@@ -18,4 +18,6 @@ owners, independence, and approver. BLOCKED, NOT_RUN, and majority opinion do
 not pass the gate. Before `ACCEPT`, run `check-finding` with the Work Item,
 Artifact, and Verification directory for every closed high, blocking, or
 recurring finding and reject missing prevention or unresolved/non-PASS
-regression verification IDs.
+regression verification IDs. For L3, require final-version Reviewer and
+Challenger PASS evidence and a referenced Human Approval record for the same
+Artifact version.

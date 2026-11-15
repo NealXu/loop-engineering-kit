@@ -9,6 +9,7 @@ Schema 2020-12, use `schema_version: 3`, and contain no host-specific fields.
 - `verification.schema.json`
 - `decision.schema.json`
 - `iteration.schema.json`
+- `approval.schema.json`
 
 IDs are stable strings within one run. References between records use those
 IDs. Evidence is stored as text that identifies a command result, source,
@@ -43,6 +44,9 @@ Finding id and scans JSON records by `kind`, not by filename prefix.
 L2/L3 ACCEPT requires a referenced `role: reviewer` Verification with `PASS`
 status on the final Artifact id/version; a reviewer Finding alone is not proof
 that the review completed.
+L3 also requires final-version Challenger PASS evidence and a referenced
+Human Approval record created by the `approve` command for the same Work Item
+and Artifact version.
 Each accepted criterion also needs a final-version Verification whose role is
 `verifier`. Role-omitted evidence is accepted only for the frozen migration
 entry in `migrations/v2-to-v3.json` whose exact canonical record-set digest and
@@ -52,15 +56,18 @@ An open `high` or `blocking` Finding is structurally valid for REPAIR/STOP and
 `check-finding`; it blocks only the final ACCEPT decision.
 
 This is a breaking schema upgrade. The repository ships only version 3
-schemas. Version 1 and 2 records need external migration before validation;
-there is no automatic migration. Version 3 adds explicit control tiers and
-route flags, typed evidence references, Decision cycles, and Verification role
-labels.
+schemas. Version 1 and 2 records can be migrated with `migrate-records`; the
+command defaults to dry-run, validates the complete result, and backs up files
+before `--write`. Version 3 adds explicit control tiers and route flags, typed
+evidence references, Decision cycles, Verification role labels, and Human
+Approval.
 
 Iteration records may include `output_versions`; Stage 2 record checks require
 it so Artifact ancestry is explicit. Run
 `python loop_engineering/cli.py check-records --dir <records-dir>` over frozen
-records to resolve IDs, criteria, versions, Finding recurrences, Decisions, and
-Iteration ancestry. `check-finding` remains the focused regression-evidence
-gate for high, blocking, and recurring Findings. Persistent storage, automatic
-migration, and durable runtime recovery remain deferred.
+records to resolve IDs, criteria, versions, Finding recurrences, Decisions,
+Approvals, and Iteration ancestry. `check-finding` remains the focused
+regression-evidence gate for high, blocking, and recurring Findings.
+`runtime-checkpoint`, `runtime-status`, and `runtime-resume` provide durable
+storage and automatic recovery. `metrics`, `registry-update`, and
+`improvements` implement the Stage 3 control-plane operations.

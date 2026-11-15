@@ -60,11 +60,18 @@ disagreement.
 The state and version identifiers are part of the records so a later run can
 resume from the last completed stage. When canonical records are frozen, run
 `python loop_engineering/cli.py check-records --dir <records-dir>` to resolve
-their references and Artifact/Iteration ancestry. Persistent runtime storage
-is not implemented yet; the Controller still records the same identifiers in
-the run report.
+their references and Artifact/Iteration ancestry.
+
+Use `runtime-checkpoint --records <dir> --store <dir>` to persist a
+digest-bound checkpoint outside the records directory. `runtime-status` and
+`runtime-resume` skip corrupt checkpoints, detect stale digests, and rebuild
+state from canonical records when persistent state is missing or outdated.
 
 Context compression is not recovery by itself. A resumed run needs the frozen
 artifact version, original evidence references, open findings, and the exact
 next state. When host metrics exist, retain turn count, tool-call count, token
-use, and cost alongside the outcome.
+use, and cost alongside the outcome; the `metrics` command ingests these fields.
+
+L3 approval is a persistent canonical record. Run `approve` with the exact
+`APPROVE <artifact>@<version>` confirmation and reference the resulting
+Approval id from the final Decision.

@@ -24,5 +24,6 @@ process itself and therefore needs its own evidence and approval.
 8. Keep the prior version available and record how to restore it.
 
 An agent may propose an improvement but may not silently promote it into global
-rules. Stage 3 adds the metrics, version registry, and automation around this
-approval process.
+rules. Stage 3 implements metrics with `metrics`, version history with
+`registry-update`/`registry-list`, and deterministic candidate generation with
+`improvements`. Candidate generation stops before review and approval.

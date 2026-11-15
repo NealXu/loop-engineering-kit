@@ -1,4 +1,4 @@
-# Universal Work Loop Engine Kit v0.4.0
+# Universal Work Loop Engine Kit v0.6.0
 
 English | [简体中文](README.md)
 
@@ -26,17 +26,16 @@ ships.**
   This project makes those control points explicit.
 - **What it is not:** a model runtime or a sub-agent launcher. Codex, Claude
   Code, or your own orchestrator still performs the work.
-- **Current stage:** v0.4 includes routing, verification evidence, decision
-  validation, and installation adapters. Persistent runtime storage,
-  checkpoint/recovery, a human-approval runtime, metrics, and automated
-  improvement are not implemented yet.
+- **Current stage:** Stages 1-3 are complete. Persistent runtime storage,
+  checkpoint/recovery, structured human approval, metrics, a version registry,
+  and automated improvement candidates are implemented. See
+  [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
 
-## Current implementation (Stage 1)
+## Current implementation
 
 - `core/`: the protocol, state machine, decision policy, and JSON Schemas
-  (v2) for six record types: Work Item, Artifact, Finding, Verification,
-  Decision, and Iteration. Acceptance criteria use stable `criterion_id` keys
-  and are linked to verification evidence.
+  (v3) for seven record types: Work Item, Artifact, Finding, Verification,
+  Decision, Iteration, and Human Approval (`approval.schema.json`).
 - `roles/`: five responsibilities: Producer, Verifier, Reviewer, Challenger,
   and Arbiter.
 - `workflows/`: iterative delivery, adversarial review, and controlled
@@ -45,13 +44,14 @@ ships.**
   includes a reusable verification-skill template.
 - `.codex/`, `.claude/`, and `adapters/`: role mappings for Codex and Claude
   Code.
-- `loop_engineering/cli.py`: a dependency-free CLI for risk routing,
-  environment checks, and deterministic verification reports.
-  `check-finding` validates the prevention gate before the Arbiter can accept.
+- `loop_engineering/cli.py`: a dependency-free control plane for risk routing,
+  deterministic verification, safe schema migration, persistent checkpoints and
+  recovery, human approval, metrics, a version registry, and improvement
+  candidates.
 
-The current documentation does not claim Stage 2 capabilities (persistent
-runtime, checkpoints, recovery, and a human-approval runtime) or Stage 3
-capabilities (metrics, version registry, and automated improvement candidates).
+Stage 2 runtime and approval capabilities and Stage 3 metrics, registry, and
+improvement candidates are implemented. Generated improvement candidates are
+review inputs; they are never promoted automatically.
 
 ## Quick start
 
@@ -150,11 +150,26 @@ py -3 loop_engineering\cli.py route --risk medium --files 2 --max-repairs 20
 ```
 
 `route` only prints the control policy; it does not modify the project.
-`record_depth` governs the six canonical role records: Work Item, Artifact,
-Finding, Verification, Decision, and Iteration. L0 requires no multi-role
-records; L1 keeps a compact three-line goal/acceptance/budget brief; L2 runs
-the full role loop but keeps records in session; only L3, or an explicit
-project request, creates canonical record files.
+`record_depth` governs the seven canonical records: Work Item, Artifact,
+Finding, Verification, Decision, Iteration, and Human Approval. L0 requires no
+multi-role records; L1 keeps a compact three-line goal/acceptance/budget brief;
+L2 runs the full role loop but keeps records in session; only L3, or an
+explicit project request, creates canonical record files.
+
+Control-plane commands:
+
+```text
+migrate-records --dir <records> [--write]
+runtime-checkpoint --records <records> --store <store>
+runtime-status --store <store> [--records <records>]
+runtime-resume --store <store> [--records <records>]
+approve --records <records> --artifact <artifact.json> \
+  --approver <human> --statement <text> --confirm "APPROVE <id>@<version>"
+metrics --dir <records> [--host-metrics <json>]
+registry-update --store <store> --records <records>
+registry-list --store <store>
+improvements --dir <records>
+```
 
 JSON/Markdown files written by an explicit `verify` run are evidence reports,
 not canonical role records. Use `--report-dir` to choose a session or project
@@ -186,9 +201,12 @@ configure commands you trust.
 `ACCEPT` requires explicit acceptance criteria, executed evidence for every
 required check, no unresolved `blocking` or `high` findings, and resolution or
 escalation of material disagreements. `BLOCKED` and `NOT_RUN` never count as
-passing. The default repair limit is three iterations; at the limit, stop or
-escalate. If the same failure fingerprint recurs without a new artifact
-version, stop or escalate immediately.
+passing. L2/L3 require final-version Reviewer PASS evidence, each criterion
+requires final-version Verifier evidence, and L3 additionally requires
+Challenger PASS evidence plus a referenced `approve` Human Approval record.
+The default repair limit is three iterations; at the limit, stop or escalate.
+If the same failure fingerprint recurs without a new artifact version, stop or
+escalate immediately.
 
 ## Boundaries
 
@@ -204,7 +222,8 @@ of compatibility.
 
 ## Design rationale
 
-The v0.4 routing, independent review, context checkpoint, and stopping rules
+The v0.6 routing, independent review, persistent checkpoint, human approval,
+and stopping rules
 draw on these engineering findings:
 
 - Agentless shows that a simple, explainable locate-fix-verify path should
